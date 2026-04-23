@@ -1,0 +1,483 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-23 19:40:04.732266",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "employee",
+  "employee_name",
+  "column_break_cdvx",
+  "employee_category",
+  "month",
+  "year",
+  "posting_date",
+  "employee_details_section",
+  "division",
+  "location",
+  "department",
+  "column_break_nouz",
+  "currency",
+  "bank",
+  "worked_days",
+  "earnings_standard_allowances_section",
+  "basic",
+  "housing_allowance",
+  "transport_allowance",
+  "living_allowance",
+  "service_allowance",
+  "driving_allowance",
+  "merit_award",
+  "column_break_itry",
+  "aramco_certification",
+  "supervisor_allowance",
+  "education_allowance",
+  "rso_allowance",
+  "rpp_allowance",
+  "other_allowance",
+  "overtime_section",
+  "normal_ot_hours",
+  "normal_ot_amount",
+  "holiday_ot_hours",
+  "holiday_ot_amount",
+  "column_break_twjk",
+  "travel_ot_hours",
+  "travel_ot_amount",
+  "total_ot_amount",
+  "special_earnings_section",
+  "others",
+  "bonus",
+  "expenses",
+  "air_fare",
+  "column_break_kuvd",
+  "vacation_pay",
+  "gratuity",
+  "retention",
+  "section_break_ckxr",
+  "total_earnings",
+  "deductions_section",
+  "gosi",
+  "general_advance",
+  "housing_advance",
+  "housing_deduction",
+  "column_break_hlvm",
+  "transport_deduction",
+  "education_deduction",
+  "retention_deduction",
+  "other_deduction",
+  "section_break_anly",
+  "total_deduction",
+  "net_payable_section",
+  "net_payable",
+  "notes_section",
+  "remarks",
+  "status",
+  "column_break_fxjk",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_cdvx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "default": "Expat",
+   "fieldname": "employee_category",
+   "fieldtype": "Select",
+   "label": "Employee Category",
+   "options": "Expat\nSaudi\nNational"
+  },
+  {
+   "fieldname": "month",
+   "fieldtype": "Select",
+   "label": "Month",
+   "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
+  },
+  {
+   "default": "2026",
+   "fieldname": "year",
+   "fieldtype": "Int",
+   "label": "Year"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "employee_details_section",
+   "fieldtype": "Section Break",
+   "label": "Employee Details"
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "division",
+   "fieldtype": "Data",
+   "label": "Division"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department"
+  },
+  {
+   "fieldname": "column_break_nouz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "SAR",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bank",
+   "fieldtype": "Data",
+   "label": "Bank"
+  },
+  {
+   "default": "30",
+   "fieldname": "worked_days",
+   "fieldtype": "Int",
+   "label": "Worked Days"
+  },
+  {
+   "fieldname": "earnings_standard_allowances_section",
+   "fieldtype": "Section Break",
+   "label": "Earnings Standard Allowances"
+  },
+  {
+   "fieldname": "basic",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Basic"
+  },
+  {
+   "fieldname": "housing_allowance",
+   "fieldtype": "Currency",
+   "label": "Housing Allowance"
+  },
+  {
+   "fieldname": "transport_allowance",
+   "fieldtype": "Currency",
+   "label": "Transport Allowance"
+  },
+  {
+   "fieldname": "living_allowance",
+   "fieldtype": "Currency",
+   "label": "Living Allowance"
+  },
+  {
+   "fieldname": "service_allowance",
+   "fieldtype": "Currency",
+   "label": "Service Allowance"
+  },
+  {
+   "fieldname": "driving_allowance",
+   "fieldtype": "Currency",
+   "label": "Driving Allowance"
+  },
+  {
+   "fieldname": "merit_award",
+   "fieldtype": "Currency",
+   "label": "Merit Award"
+  },
+  {
+   "fieldname": "column_break_itry",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aramco_certification",
+   "fieldtype": "Currency",
+   "label": "Aramco Certification"
+  },
+  {
+   "fieldname": "supervisor_allowance",
+   "fieldtype": "Currency",
+   "label": "Supervisor Allowance"
+  },
+  {
+   "fieldname": "education_allowance",
+   "fieldtype": "Currency",
+   "label": "Education Allowance"
+  },
+  {
+   "fieldname": "rso_allowance",
+   "fieldtype": "Currency",
+   "label": "RSO Allowance"
+  },
+  {
+   "fieldname": "rpp_allowance",
+   "fieldtype": "Currency",
+   "label": "RPP Allowance"
+  },
+  {
+   "fieldname": "other_allowance",
+   "fieldtype": "Currency",
+   "label": "Other Allowance"
+  },
+  {
+   "fieldname": "overtime_section",
+   "fieldtype": "Section Break",
+   "label": "Overtime"
+  },
+  {
+   "fieldname": "normal_ot_hours",
+   "fieldtype": "Float",
+   "label": "Normal OT Hours"
+  },
+  {
+   "fieldname": "normal_ot_amount",
+   "fieldtype": "Currency",
+   "label": "Normal OT Amount"
+  },
+  {
+   "fieldname": "holiday_ot_hours",
+   "fieldtype": "Float",
+   "label": "Holiday OT Hours"
+  },
+  {
+   "fieldname": "holiday_ot_amount",
+   "fieldtype": "Currency",
+   "label": "Holiday OT Amount"
+  },
+  {
+   "fieldname": "column_break_twjk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "travel_ot_hours",
+   "fieldtype": "Float",
+   "label": "Travel OT Hours"
+  },
+  {
+   "fieldname": "travel_ot_amount",
+   "fieldtype": "Currency",
+   "label": "Travel OT Amount"
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_ot_amount",
+   "fieldtype": "Currency",
+   "label": "Total OT Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "special_earnings_section",
+   "fieldtype": "Section Break",
+   "label": "Special Earnings"
+  },
+  {
+   "fieldname": "others",
+   "fieldtype": "Currency",
+   "label": "Others"
+  },
+  {
+   "fieldname": "bonus",
+   "fieldtype": "Currency",
+   "label": "Bonus"
+  },
+  {
+   "fieldname": "expenses",
+   "fieldtype": "Currency",
+   "label": "Expenses"
+  },
+  {
+   "fieldname": "air_fare",
+   "fieldtype": "Currency",
+   "label": "Air Fare"
+  },
+  {
+   "fieldname": "column_break_kuvd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vacation_pay",
+   "fieldtype": "Currency",
+   "label": "Vacation Pay"
+  },
+  {
+   "fieldname": "gratuity",
+   "fieldtype": "Currency",
+   "label": "Gratuity"
+  },
+  {
+   "fieldname": "retention",
+   "fieldtype": "Currency",
+   "label": "Retention"
+  },
+  {
+   "fieldname": "section_break_ckxr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_earnings",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Earnings",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deductions_section",
+   "fieldtype": "Section Break",
+   "label": "Deductions"
+  },
+  {
+   "depends_on": "eval:doc.employee_category=='Saudi National'",
+   "fieldname": "gosi",
+   "fieldtype": "Currency",
+   "label": "GOSI"
+  },
+  {
+   "fieldname": "general_advance",
+   "fieldtype": "Currency",
+   "label": "General Advance"
+  },
+  {
+   "fieldname": "housing_advance",
+   "fieldtype": "Currency",
+   "label": "Housing Advance"
+  },
+  {
+   "fieldname": "housing_deduction",
+   "fieldtype": "Currency",
+   "label": "Housing Deduction"
+  },
+  {
+   "fieldname": "column_break_hlvm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transport_deduction",
+   "fieldtype": "Currency",
+   "label": "Transport Deduction"
+  },
+  {
+   "fieldname": "education_deduction",
+   "fieldtype": "Currency",
+   "label": "Education Deduction"
+  },
+  {
+   "fieldname": "retention_deduction",
+   "fieldtype": "Currency",
+   "label": "Retention Deduction"
+  },
+  {
+   "fieldname": "other_deduction",
+   "fieldtype": "Currency",
+   "label": "Other Deduction"
+  },
+  {
+   "fieldname": "section_break_anly",
+   "fieldtype": "Section Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_deduction",
+   "fieldtype": "Currency",
+   "in_standard_filter": 1,
+   "label": "Total Deduction",
+   "read_only": 1
+  },
+  {
+   "fieldname": "net_payable_section",
+   "fieldtype": "Section Break",
+   "label": "Net Payable"
+  },
+  {
+   "bold": 1,
+   "description": "Total Earnings \u2212 Total Deduction",
+   "fieldname": "net_payable",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Net Payable",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nSubmitted\nPaid\nCancelled"
+  },
+  {
+   "fieldname": "column_break_fxjk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cooperheat Payroll Sheet",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-23 20:27:13.270039",
+ "modified_by": "Administrator",
+ "module": "cooperheat",
+ "name": "Cooperheat Payroll Sheet",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
