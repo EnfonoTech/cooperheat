@@ -57,9 +57,34 @@ def days_in_month(year, month_name):
 class PayrollSheet(Document):
 	def validate(self):
 		self.set_days_in_month()
+		self.apply_proration()
 		self.calculate_overtime()
 		self.calculate_gosi()
 		self.calculate_totals()
+
+	def apply_proration(self):
+		"""Re-prorate earnings from the linked Compensation based on worked_days.
+
+		Idempotent: always reads full values from Compensation and writes
+		prorated values, so editing worked_days (or anything else) and saving
+		always produces consistent amounts. Deductions are NOT touched here —
+		they're a mix of Compensation fixed amounts and Excel overrides.
+		"""
+		if not self.compensation:
+			return
+		try:
+			comp = frappe.get_cached_doc("Employee Compensation", self.compensation)
+		except frappe.DoesNotExistError:
+			return
+
+		worked = flt(self.worked_days)
+		dim = flt(self.days_in_month) or 30
+		factor = min(worked, dim) / dim if worked > 0 and dim > 0 else 0.0
+
+		# Basic is fixed (not prorated)
+		self.basic = self.round_amount(flt(comp.basic))
+		for f in PRORATED_EARNING_FIELDS:
+			self.set(f, self.round_amount(flt(comp.get(f)) * factor))
 
 	def before_save(self):
 		self.validate()

@@ -140,12 +140,26 @@ def _process_row(doc, r):
 	if not employee:
 		return "Error", None, "", _("Employee not found for code {0}").format(code)
 
-	existing = frappe.db.exists("Payroll Sheet", {
+	# Submitted sheets are protected — cannot overwrite
+	submitted = frappe.db.get_value("Payroll Sheet", {
 		"employee": employee, "month": doc.month, "year": doc.year,
-		"docstatus": ["<", 2],
-	})
-	if existing:
-		return "Skipped", existing, employee, _("Payroll Sheet already exists for this period")
+		"docstatus": 1,
+	}, "name")
+	if submitted:
+		return "Skipped", submitted, employee, _(
+			"Payroll Sheet already submitted for this period; cancel it first to re-import."
+		)
+
+	# Existing drafts get replaced with fresh data from this import
+	draft = frappe.db.get_value("Payroll Sheet", {
+		"employee": employee, "month": doc.month, "year": doc.year,
+		"docstatus": 0,
+	}, "name")
+	if draft:
+		frappe.delete_doc(
+			"Payroll Sheet", draft,
+			force=True, ignore_permissions=True, delete_permanently=True,
+		)
 
 	comp_data = get_employee_compensation(employee, doc.posting_date)
 	if not comp_data:
@@ -214,11 +228,7 @@ def _make_payroll_sheet(company, employee, month, year, posting_date, row, comp_
 	ps.other_deduction = flt(row.get("otherded")) + flt(ps.other_deduction)
 	ps.housing_deduction = flt(row.get("housingded")) + flt(ps.housing_deduction)
 
-	if ps.worked_days and dim:
-		factor = min(ps.worked_days, dim) / dim
-		for f in PRORATED_EARNING_FIELDS:
-			ps.set(f, flt(ps.get(f)) * factor)
-
+	# Proration is applied in PayrollSheet.validate() — no need to do it here.
 	ps.flags.ignore_permissions = True
 	ps.insert()
 	return ps

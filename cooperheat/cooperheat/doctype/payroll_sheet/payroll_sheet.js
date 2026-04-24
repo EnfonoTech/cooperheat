@@ -8,6 +8,8 @@ const EARNING_FIELDS = [
 	"other_allowance",
 ];
 
+const PRORATED_EARNING_FIELDS = EARNING_FIELDS.filter(f => f !== "basic");
+
 const SPECIAL_EARNINGS = [
 	"others", "bonus", "expenses", "air_fare", "vacation_pay", "gratuity", "retention",
 ];
@@ -76,16 +78,39 @@ function recalc(frm, settings) {
 	frm.set_value("net_payable", earnings - deductions);
 }
 
-async function trigger_recalc(frm) {
+async function trigger_recalc(frm, fieldname) {
 	if (frm.__recalc_in_progress) return;
 	frm.__recalc_in_progress = true;
 	try {
 		const settings = await get_settings();
+		if (REPRORATE_ON_CHANGE.includes(fieldname)) {
+			await apply_proration(frm);
+		}
 		recalc(frm, settings);
 	} finally {
 		frm.__recalc_in_progress = false;
 	}
 }
+
+async function apply_proration(frm) {
+	if (!frm.doc.compensation) return;
+	if (!frm.__comp || frm.__comp.name !== frm.doc.compensation) {
+		frm.__comp = await frappe.db.get_doc("Employee Compensation", frm.doc.compensation);
+	}
+	const comp = frm.__comp;
+	const dim = frm.doc.days_in_month || days_in_month(frm.doc.year, frm.doc.month);
+	const worked = flt(frm.doc.worked_days);
+	const factor = (worked > 0 && dim > 0) ? Math.min(worked, dim) / dim : 0;
+	frm.doc.basic = flt(comp.basic);
+	frm.refresh_field("basic");
+	PRORATED_EARNING_FIELDS.forEach(f => {
+		frm.doc[f] = flt(comp[f]) * factor;
+		frm.refresh_field(f);
+	});
+}
+
+// Fields whose change should trigger re-proration (pull fresh from Compensation)
+const REPRORATE_ON_CHANGE = ["worked_days", "month", "year", "compensation"];
 
 const RECALC_FIELDS = [
 	"worked_days", "month", "year", "employee_category",
@@ -150,7 +175,7 @@ function pull_compensation(frm, explicit) {
 }
 
 RECALC_FIELDS.forEach(f => {
-	handlers[f] = trigger_recalc;
+	handlers[f] = (frm) => trigger_recalc(frm, f);
 });
 
 frappe.ui.form.on("Payroll Sheet", handlers);
