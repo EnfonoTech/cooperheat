@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestCooperheatPayrollSheet(FrappeTestCase):
+class TestPayrollSheet(FrappeTestCase):
 	pass

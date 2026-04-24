@@ -1,18 +1,23 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2026-04-23 19:40:04.732266",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "company",
   "employee",
   "employee_name",
+  "designation",
+  "pay_batch",
   "column_break_cdvx",
   "employee_category",
   "month",
   "year",
   "posting_date",
+  "compensation",
   "employee_details_section",
   "division",
   "location",
@@ -21,6 +26,7 @@
   "currency",
   "bank",
   "worked_days",
+  "days_in_month",
   "earnings_standard_allowances_section",
   "basic",
   "housing_allowance",
@@ -78,6 +84,14 @@
  ],
  "fields": [
   {
+   "default": "PS-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PS-.YYYY.-",
+   "reqd": 1
+  },
+  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -100,11 +114,31 @@
    "label": "Employee Name"
   },
   {
-   "default": "Expat",
    "fieldname": "employee_category",
    "fieldtype": "Select",
    "label": "Employee Category",
-   "options": "Expat\nSaudi\nNational"
+   "options": "\nExpat\nSaudi"
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "pay_batch",
+   "fieldtype": "Link",
+   "label": "Pay Batch",
+   "options": "Pay Batch"
+  },
+  {
+   "description": "Source compensation record. Auto-linked when Employee is set.",
+   "fieldname": "compensation",
+   "fieldtype": "Link",
+   "label": "Compensation",
+   "options": "Employee Compensation",
+   "read_only": 1
   },
   {
    "fieldname": "month",
@@ -167,6 +201,13 @@
    "fieldname": "worked_days",
    "fieldtype": "Int",
    "label": "Worked Days"
+  },
+  {
+   "description": "Calendar days in the selected month. Used for prorating allowances.",
+   "fieldname": "days_in_month",
+   "fieldtype": "Int",
+   "label": "Days in Month",
+   "read_only": 1
   },
   {
    "fieldname": "earnings_standard_allowances_section",
@@ -256,7 +297,8 @@
   {
    "fieldname": "normal_ot_amount",
    "fieldtype": "Currency",
-   "label": "Normal OT Amount"
+   "label": "Normal OT Amount",
+   "read_only": 1
   },
   {
    "fieldname": "holiday_ot_hours",
@@ -266,7 +308,8 @@
   {
    "fieldname": "holiday_ot_amount",
    "fieldtype": "Currency",
-   "label": "Holiday OT Amount"
+   "label": "Holiday OT Amount",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_twjk",
@@ -280,7 +323,8 @@
   {
    "fieldname": "travel_ot_amount",
    "fieldtype": "Currency",
-   "label": "Travel OT Amount"
+   "label": "Travel OT Amount",
+   "read_only": 1
   },
   {
    "bold": 1,
@@ -351,10 +395,11 @@
    "label": "Deductions"
   },
   {
-   "depends_on": "eval:doc.employee_category=='Saudi National'",
+   "depends_on": "eval:doc.employee_category=='Saudi'",
    "fieldname": "gosi",
    "fieldtype": "Currency",
-   "label": "GOSI"
+   "label": "GOSI",
+   "read_only": 1
   },
   {
    "fieldname": "general_advance",
@@ -447,7 +492,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Cooperheat Payroll Sheet",
+   "options": "Payroll Sheet",
    "print_hide": 1,
    "read_only": 1
   }
@@ -456,13 +501,15 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-23 20:27:13.270039",
+ "modified": "2026-04-24 15:01:53.764986",
  "modified_by": "Administrator",
  "module": "cooperheat",
- "name": "Cooperheat Payroll Sheet",
+ "name": "Payroll Sheet",
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -472,11 +519,11 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
  "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

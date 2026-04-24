@@ -1,0 +1,30 @@
+# Copyright (c) 2026, enfonotechnology and contributors
+# For license information, please see license.txt
+
+import frappe
+from frappe import _
+from frappe.model.document import Document
+
+
+class EmployeeCompensation(Document):
+	def validate(self):
+		if not self.employee_category:
+			frappe.throw(_("Employee Category is required."))
+		if not self.from_date:
+			frappe.throw(_("Effective From is required."))
+
+		dup = frappe.db.get_value(
+			"Employee Compensation",
+			filters={
+				"employee": self.employee,
+				"from_date": self.from_date,
+				"name": ["!=", self.name or ""],
+			},
+			fieldname="name",
+		)
+		if dup:
+			frappe.throw(
+				_("Another compensation record exists for {0} from {1}: {2}").format(
+					self.employee, self.from_date, dup
+				)
+			)

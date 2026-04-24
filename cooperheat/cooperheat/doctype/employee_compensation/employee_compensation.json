@@ -1,0 +1,315 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-04-24 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "employee",
+  "employee_name",
+  "designation",
+  "column_break_head",
+  "from_date",
+  "pay_batch",
+  "employee_category",
+  "currency",
+  "is_active",
+  "allowances_section",
+  "basic",
+  "housing_allowance",
+  "transport_allowance",
+  "living_allowance",
+  "service_allowance",
+  "driving_allowance",
+  "merit_award",
+  "column_break_allow",
+  "aramco_certification",
+  "supervisor_allowance",
+  "education_allowance",
+  "rso_allowance",
+  "rpp_allowance",
+  "other_allowance",
+  "deductions_section",
+  "general_advance",
+  "housing_advance",
+  "housing_deduction",
+  "column_break_ded",
+  "transport_deduction",
+  "education_deduction",
+  "retention_deduction",
+  "other_deduction",
+  "notes_section",
+  "notes"
+ ],
+ "fields": [
+  {
+   "default": "EC-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "EC-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_head",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "description": "This compensation applies to Payroll Sheets with posting date on or after this date.",
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Effective From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "pay_batch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Pay Batch",
+   "options": "Pay Batch"
+  },
+  {
+   "fieldname": "employee_category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee Category",
+   "options": "\nExpat\nSaudi",
+   "reqd": 1
+  },
+  {
+   "default": "SAR",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "allowances_section",
+   "fieldtype": "Section Break",
+   "label": "Earnings / Allowances"
+  },
+  {
+   "description": "Full monthly basic. Not prorated by days.",
+   "fieldname": "basic",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Basic",
+   "options": "currency"
+  },
+  {
+   "fieldname": "housing_allowance",
+   "fieldtype": "Currency",
+   "label": "Housing Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "transport_allowance",
+   "fieldtype": "Currency",
+   "label": "Transport Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "living_allowance",
+   "fieldtype": "Currency",
+   "label": "Living Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "service_allowance",
+   "fieldtype": "Currency",
+   "label": "Service Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "driving_allowance",
+   "fieldtype": "Currency",
+   "label": "Driving Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "merit_award",
+   "fieldtype": "Currency",
+   "label": "Merit Award",
+   "options": "currency"
+  },
+  {
+   "fieldname": "column_break_allow",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aramco_certification",
+   "fieldtype": "Currency",
+   "label": "Aramco Certification",
+   "options": "currency"
+  },
+  {
+   "fieldname": "supervisor_allowance",
+   "fieldtype": "Currency",
+   "label": "Supervisor Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "education_allowance",
+   "fieldtype": "Currency",
+   "label": "Education Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "rso_allowance",
+   "fieldtype": "Currency",
+   "label": "RSO Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "rpp_allowance",
+   "fieldtype": "Currency",
+   "label": "RPP Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "other_allowance",
+   "fieldtype": "Currency",
+   "label": "Other Allowance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "deductions_section",
+   "fieldtype": "Section Break",
+   "label": "Fixed Monthly Deductions"
+  },
+  {
+   "fieldname": "general_advance",
+   "fieldtype": "Currency",
+   "label": "General Advance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "housing_advance",
+   "fieldtype": "Currency",
+   "label": "Housing Advance",
+   "options": "currency"
+  },
+  {
+   "fieldname": "housing_deduction",
+   "fieldtype": "Currency",
+   "label": "Housing Deduction",
+   "options": "currency"
+  },
+  {
+   "fieldname": "column_break_ded",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transport_deduction",
+   "fieldtype": "Currency",
+   "label": "Transport Deduction",
+   "options": "currency"
+  },
+  {
+   "fieldname": "education_deduction",
+   "fieldtype": "Currency",
+   "label": "Education Deduction",
+   "options": "currency"
+  },
+  {
+   "fieldname": "retention_deduction",
+   "fieldtype": "Currency",
+   "label": "Retention Deduction",
+   "options": "currency"
+  },
+  {
+   "fieldname": "other_deduction",
+   "fieldtype": "Currency",
+   "label": "Other Deduction",
+   "options": "currency"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-24 15:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "cooperheat",
+ "name": "Employee Compensation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "from_date",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

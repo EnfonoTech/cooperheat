@@ -83,7 +83,11 @@ app_license = "mit"
 # ------------
 
 # before_install = "cooperheat.install.before_install"
-# after_install = "cooperheat.install.after_install"
+after_install = "cooperheat.setup.after_install"
+after_migrate = "cooperheat.setup.after_migrate"
+
+# No custom-field fixtures at this time. Per-employee pay data lives in
+# "Employee Compensation" instead of on the Employee doctype.
 
 # Uninstallation
 # ------------

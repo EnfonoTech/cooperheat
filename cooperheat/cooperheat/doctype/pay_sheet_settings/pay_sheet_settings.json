@@ -1,0 +1,105 @@
+{
+ "actions": [],
+ "creation": "2026-04-24 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "calculation_section",
+  "monthly_working_hours",
+  "normal_ot_multiplier",
+  "holiday_ot_multiplier",
+  "travel_ot_multiplier",
+  "column_break_ot",
+  "gosi_rate_percent",
+  "gosi_applicable_category",
+  "round_amounts"
+ ],
+ "fields": [
+  {
+   "fieldname": "calculation_section",
+   "fieldtype": "Section Break",
+   "label": "Calculation"
+  },
+  {
+   "default": "240",
+   "description": "Used as denominator in OT rate. (8 hours × 30 days)",
+   "fieldname": "monthly_working_hours",
+   "fieldtype": "Float",
+   "label": "Monthly Working Hours",
+   "reqd": 1
+  },
+  {
+   "default": "1.5",
+   "fieldname": "normal_ot_multiplier",
+   "fieldtype": "Float",
+   "label": "Normal OT Multiplier",
+   "reqd": 1
+  },
+  {
+   "default": "2",
+   "fieldname": "holiday_ot_multiplier",
+   "fieldtype": "Float",
+   "label": "Holiday OT Multiplier",
+   "reqd": 1
+  },
+  {
+   "default": "1.5",
+   "fieldname": "travel_ot_multiplier",
+   "fieldtype": "Float",
+   "label": "Travel OT Multiplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ot",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "9.75",
+   "description": "GOSI = (basic + housing_allowance) × rate%. Applies only to employees in the category below.",
+   "fieldname": "gosi_rate_percent",
+   "fieldtype": "Float",
+   "label": "GOSI Rate (%)",
+   "reqd": 1
+  },
+  {
+   "default": "Saudi",
+   "fieldname": "gosi_applicable_category",
+   "fieldtype": "Select",
+   "label": "GOSI Applicable Category",
+   "options": "Saudi\nExpat",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "round_amounts",
+   "fieldtype": "Check",
+   "label": "Round Amounts to 2 decimals"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-04-24 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "cooperheat",
+ "name": "Pay Sheet Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "HR Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

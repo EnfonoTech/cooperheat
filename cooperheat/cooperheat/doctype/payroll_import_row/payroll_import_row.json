@@ -1,0 +1,81 @@
+{
+ "actions": [],
+ "creation": "2026-04-24 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "doc_no",
+  "code",
+  "employee",
+  "employee_name",
+  "payroll_sheet",
+  "row_status",
+  "message"
+ ],
+ "fields": [
+  {
+   "fieldname": "doc_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Doc No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payroll_sheet",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Payroll Sheet",
+   "options": "Payroll Sheet",
+   "read_only": 1
+  },
+  {
+   "fieldname": "row_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nCreated\nSkipped\nError",
+   "read_only": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-24 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "cooperheat",
+ "name": "Payroll Import Row",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}
