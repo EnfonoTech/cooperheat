@@ -1,0 +1,52 @@
+{
+ "actions": [],
+ "creation": "2026-04-24 16:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "payroll_field",
+  "component_type",
+  "salary_component"
+ ],
+ "fields": [
+  {
+   "description": "Field on Payroll Sheet whose amount will go into the mapped Salary Component.",
+   "fieldname": "payroll_field",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payroll Sheet Field",
+   "options": "\nbasic\nhousing_allowance\ntransport_allowance\nliving_allowance\nservice_allowance\ndriving_allowance\nmerit_award\naramco_certification\nsupervisor_allowance\neducation_allowance\nrso_allowance\nrpp_allowance\nother_allowance\nnormal_ot_amount\nholiday_ot_amount\ntravel_ot_amount\ntotal_ot_amount\nothers\nbonus\nexpenses\nair_fare\nvacation_pay\ngratuity\nretention\ngosi\ngeneral_advance\nhousing_advance\nhousing_deduction\ntransport_deduction\neducation_deduction\nretention_deduction\nother_deduction",
+   "reqd": 1
+  },
+  {
+   "fieldname": "component_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Earning\nDeduction",
+   "reqd": 1
+  },
+  {
+   "description": "Salary Component to receive this amount on the Salary Slip. Will be created automatically if it does not exist.",
+   "fieldname": "salary_component",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Salary Component",
+   "options": "Salary Component",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-24 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "cooperheat",
+ "name": "Pay Sheet Component Mapping",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}

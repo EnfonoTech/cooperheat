@@ -197,7 +197,12 @@ def get_employee_compensation(employee, posting_date=None):
 
 @frappe.whitelist()
 def create_salary_slip(payroll_sheet):
-	"""Create an ERPNext Salary Slip from a submitted Payroll Sheet."""
+	"""Create an ERPNext Salary Slip from a submitted Payroll Sheet.
+
+	Uses the Salary Component mapping from Pay Sheet Settings. Auto-creates
+	a Salary Structure Assignment for the employee if none exists yet, so
+	ERPNext's 'Please assign a Salary Structure first' error doesn't block.
+	"""
 	doc = frappe.get_doc("Payroll Sheet", payroll_sheet)
 	if doc.docstatus != 1:
 		frappe.throw(_("Payroll Sheet must be submitted first."))
@@ -209,41 +214,47 @@ def create_salary_slip(payroll_sheet):
 	start_date = date(int(doc.year), month_num, 1)
 	end_date = date(int(doc.year), month_num, dim)
 
+	settings = frappe.get_cached_doc("Pay Sheet Settings")
+	mapping = _mapping_from_settings(settings)
+	if not mapping:
+		frappe.throw(_(
+			"No Salary Component mapping configured. Open Pay Sheet Settings and "
+			"click 'Actions → Setup Defaults' first."
+		))
+
+	ssa_name = _ensure_salary_structure_assignment(
+		employee=doc.employee,
+		company=doc.company,
+		start_date=start_date,
+		settings=settings,
+	)
+	slip_structure = frappe.db.get_value("Salary Structure Assignment", ssa_name, "salary_structure")
+
 	slip = frappe.new_doc("Salary Slip")
 	slip.employee = doc.employee
+	slip.salary_structure = slip_structure
+	slip.payroll_frequency = "Monthly"
 	slip.posting_date = doc.posting_date or end_date
 	slip.start_date = start_date
 	slip.end_date = end_date
 	slip.company = doc.company
-	slip.payment_days = doc.worked_days
+	# We've already prorated amounts ourselves based on worked_days. Setting
+	# payment_days = total_working_days prevents ERPNext from prorating again.
+	slip.payment_days = dim
 	slip.total_working_days = dim
+	slip.leave_without_pay = 0
+	slip.absent_days = 0
 	slip.currency = doc.currency
 	slip.remark = (doc.remarks or "") + f"\nGenerated from Payroll Sheet {doc.name}"
 
-	# Earnings
-	for f in EARNING_FIELDS + SPECIAL_EARNINGS:
-		amount = flt(doc.get(f))
+	for field, (component, ctype) in mapping.items():
+		amount = flt(doc.get(field))
 		if not amount:
 			continue
-		slip.append("earnings", {
-			"salary_component": _label_for(f),
-			"amount": amount,
-		})
-	if flt(doc.total_ot_amount):
-		slip.append("earnings", {
-			"salary_component": "Overtime",
-			"amount": flt(doc.total_ot_amount),
-		})
-
-	# Deductions
-	if flt(doc.gosi):
-		slip.append("deductions", {"salary_component": "GOSI", "amount": flt(doc.gosi)})
-	for f in DEDUCTION_FIELDS:
-		amount = flt(doc.get(f))
-		if not amount:
-			continue
-		slip.append("deductions", {
-			"salary_component": _label_for(f),
+		_ensure_salary_component(component, ctype)
+		table = "earnings" if ctype == "Earning" else "deductions"
+		slip.append(table, {
+			"salary_component": component,
 			"amount": amount,
 		})
 
@@ -252,5 +263,62 @@ def create_salary_slip(payroll_sheet):
 	return slip.name
 
 
-def _label_for(fieldname):
-	return fieldname.replace("_", " ").title()
+def _mapping_from_settings(settings):
+	"""Return {payroll_field: (salary_component, component_type)} from settings."""
+	result = {}
+	for row in (settings.component_mapping or []):
+		if row.payroll_field and row.salary_component and row.component_type:
+			result[row.payroll_field] = (row.salary_component, row.component_type)
+	return result
+
+
+def _ensure_salary_component(name, component_type):
+	if frappe.db.exists("Salary Component", name):
+		return
+	sc = frappe.new_doc("Salary Component")
+	sc.salary_component = name
+	sc.salary_component_abbr = "".join(w[0] for w in name.split() if w).upper()[:10]
+	sc.type = component_type
+	# depends_on_payment_days=0 so HRMS does not re-scale our amounts.
+	# Proration is already applied on the Payroll Sheet based on worked_days.
+	sc.depends_on_payment_days = 0
+	sc.flags.ignore_permissions = True
+	sc.insert()
+
+
+def _ensure_salary_structure_assignment(employee, company, start_date, settings):
+	"""Make sure the employee has a submitted Salary Structure Assignment
+	with from_date <= start_date. Auto-create one using the default structure
+	if needed."""
+	existing = frappe.db.get_value(
+		"Salary Structure Assignment",
+		filters={
+			"employee": employee,
+			"docstatus": 1,
+			"from_date": ["<=", start_date],
+		},
+		fieldname="name",
+		order_by="from_date desc",
+	)
+	if existing:
+		return existing
+
+	structure = settings.default_salary_structure
+	if not structure:
+		frappe.throw(_(
+			"No Default Salary Structure set in Pay Sheet Settings. "
+			"Open Pay Sheet Settings and click 'Actions → Setup Defaults'."
+		))
+
+	ssa = frappe.new_doc("Salary Structure Assignment")
+	ssa.employee = employee
+	ssa.salary_structure = structure
+	ssa.company = company
+	ssa.from_date = start_date
+	ssa.base = flt(frappe.db.get_value("Payroll Sheet", {
+		"employee": employee, "docstatus": 1,
+	}, "basic")) or 0
+	ssa.flags.ignore_permissions = True
+	ssa.insert()
+	ssa.submit()
+	return ssa.name

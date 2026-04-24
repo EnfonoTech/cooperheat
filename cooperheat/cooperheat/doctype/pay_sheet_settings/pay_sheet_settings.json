@@ -12,7 +12,10 @@
   "column_break_ot",
   "gosi_rate_percent",
   "gosi_applicable_category",
-  "round_amounts"
+  "round_amounts",
+  "salary_slip_section",
+  "default_salary_structure",
+  "component_mapping"
  ],
  "fields": [
   {
@@ -74,12 +77,31 @@
    "fieldname": "round_amounts",
    "fieldtype": "Check",
    "label": "Round Amounts to 2 decimals"
+  },
+  {
+   "fieldname": "salary_slip_section",
+   "fieldtype": "Section Break",
+   "label": "Salary Slip Mapping"
+  },
+  {
+   "description": "Structure used when auto-creating a Salary Structure Assignment for employees that don't have one. A placeholder structure is created automatically on first save.",
+   "fieldname": "default_salary_structure",
+   "fieldtype": "Link",
+   "label": "Default Salary Structure",
+   "options": "Salary Structure"
+  },
+  {
+   "description": "Map each Payroll Sheet field to a Salary Component. Only mapped fields appear on the generated Salary Slip. Missing Salary Components are created automatically.",
+   "fieldname": "component_mapping",
+   "fieldtype": "Table",
+   "label": "Component Mapping",
+   "options": "Pay Sheet Component Mapping"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-24 12:00:00.000000",
+ "modified": "2026-04-24 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Pay Sheet Settings",
