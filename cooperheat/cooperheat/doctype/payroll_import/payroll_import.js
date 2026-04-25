@@ -16,16 +16,19 @@ frappe.ui.form.on("Payroll Import", {
 					frappe.msgprint(__("Attach an Excel file first."));
 					return;
 				}
-				frm.save().then(() => {
+				const proceed = () => {
 					frappe.call({
 						method: "cooperheat.cooperheat.doctype.payroll_import.payroll_import.start_import",
 						args: { name: frm.doc.name },
 						freeze: true,
 						freeze_message: __("Processing Excel..."),
-					}).then(() => {
-						frm.reload_doc();
-					});
-				});
+					}).then(() => frm.reload_doc());
+				};
+				if (frm.is_dirty()) {
+					frm.save().then(proceed);
+				} else {
+					proceed();
+				}
 			}).removeClass("btn-default").addClass("btn-primary");
 		}
 

@@ -30,5 +30,9 @@ frappe.query_reports["Pay Sheet Detail"] = {
 		},
 		{ fieldname: "from_date", label: __("From Posting Date"), fieldtype: "Date" },
 		{ fieldname: "to_date", label: __("To Posting Date"), fieldtype: "Date" },
+		{
+			fieldname: "include_draft", label: __("Include Drafts"),
+			fieldtype: "Check", default: 0,
+		},
 	],
 };

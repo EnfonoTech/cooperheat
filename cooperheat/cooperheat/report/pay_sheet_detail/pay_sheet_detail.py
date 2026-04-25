@@ -65,7 +65,7 @@ def get_columns():
 
 
 def get_data(filters):
-	conditions = ["docstatus < 2"]
+	conditions = ["docstatus = 1"] if not filters.get("include_draft") else ["docstatus < 2"]
 	values = {}
 	for f in ("company", "month", "year", "pay_batch", "status", "employee"):
 		if filters.get(f):

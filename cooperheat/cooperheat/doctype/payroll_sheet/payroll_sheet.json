@@ -175,6 +175,7 @@
    "label": "Location"
   },
   {
+   "fetch_from": "employee.department",
    "fieldname": "department",
    "fieldtype": "Data",
    "label": "Department"
