@@ -1,6 +1,16 @@
 ### cooperheat
 
-cooperheat
+Frappe app for monthly payroll processing: Excel-driven import, per-employee
+compensation master with date-versioned records, automatic proration and
+overtime/GOSI calculations, two pay-sheet reports, and ERPNext Salary Slip
+integration.
+
+### Documentation
+
+- [User Guide](docs/USER_GUIDE.md) — for HR / payroll users running the
+  monthly cycle (setup, import, review, reports, slips).
+- [Developer Documentation](docs/DEVELOPER.md) — architecture, data model,
+  calculation flows, extension points.
 
 ### Installation
 
