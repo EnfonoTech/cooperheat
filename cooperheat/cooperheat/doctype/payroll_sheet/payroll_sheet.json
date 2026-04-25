@@ -164,7 +164,7 @@
    "label": "Employee Details"
   },
   {
-   "fetch_from": "employee.custom_division",
+   "fetch_from": "employee.department",
    "fieldname": "division",
    "fieldtype": "Data",
    "label": "Division"
@@ -177,8 +177,9 @@
   {
    "fetch_from": "employee.department",
    "fieldname": "department",
-   "fieldtype": "Data",
-   "label": "Department"
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
   },
   {
    "fieldname": "column_break_nouz",
@@ -502,7 +503,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-24 15:01:53.764986",
+ "modified": "2026-04-25 09:43:49.996362",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Sheet",
