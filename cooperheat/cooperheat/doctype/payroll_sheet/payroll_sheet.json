@@ -164,7 +164,7 @@
    "label": "Employee Details"
   },
   {
-   "fetch_from": "employee.department",
+   "fetch_from": "employee.custom_division",
    "fieldname": "division",
    "fieldtype": "Data",
    "label": "Division"
