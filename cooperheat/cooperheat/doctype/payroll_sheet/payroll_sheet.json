@@ -485,7 +485,6 @@
    "read_only": 1
   },
   {
-   "description": "Set automatically when a Salary Slip is generated from this Payroll Sheet.",
    "fieldname": "salary_slip",
    "fieldtype": "Link",
    "label": "Salary Slip",
@@ -527,7 +526,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-26 17:00:00.000000",
+ "modified": "2026-04-26 13:58:30.551521",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Sheet",
