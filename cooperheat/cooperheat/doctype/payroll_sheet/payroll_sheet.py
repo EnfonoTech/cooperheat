@@ -23,19 +23,19 @@ EARNING_FIELDS = [
 
 PRORATED_EARNING_FIELDS = [f for f in EARNING_FIELDS if f != "basic"]
 
-# Deductions that come from the Compensation master (recurring monthly).
+# Recurring deductions sourced from the Employee Compensation master.
 COMP_DEDUCTION_FIELDS = [
-	"general_advance", "housing_advance", "housing_deduction",
+	"general_advance", "housing_advance",
 	"transport_deduction", "education_deduction", "retention_deduction",
-	"other_deduction",
 ]
 
 # Variable per-month deductions sourced from the Excel import.
-EXCEL_DEDUCTION_FIELDS = [
-	"additional_housing_deduction", "additional_other_deduction",
+# Not prorated by worked_days — they're whatever the Excel says.
+VARIABLE_DEDUCTION_FIELDS = [
+	"housing_deduction", "other_deduction",
 ]
 
-DEDUCTION_FIELDS = COMP_DEDUCTION_FIELDS + EXCEL_DEDUCTION_FIELDS
+DEDUCTION_FIELDS = COMP_DEDUCTION_FIELDS + VARIABLE_DEDUCTION_FIELDS
 
 SPECIAL_EARNINGS = [
 	"others", "bonus", "expenses", "air_fare",

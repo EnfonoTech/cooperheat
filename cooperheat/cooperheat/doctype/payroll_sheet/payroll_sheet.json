@@ -66,14 +66,14 @@
   "gosi",
   "general_advance",
   "housing_advance",
-  "housing_deduction",
   "column_break_hlvm",
   "transport_deduction",
   "education_deduction",
   "retention_deduction",
+  "variable_deductions_section",
+  "housing_deduction",
+  "column_break_var_ded",
   "other_deduction",
-  "additional_housing_deduction",
-  "additional_other_deduction",
   "section_break_anly",
   "total_deduction",
   "net_payable_section",
@@ -420,6 +420,7 @@
    "label": "Housing Advance"
   },
   {
+   "description": "Variable deduction from this period's Excel import (Housingded column). Not prorated by worked days.",
    "fieldname": "housing_deduction",
    "fieldtype": "Currency",
    "label": "Housing Deduction"
@@ -444,21 +445,19 @@
    "label": "Retention Deduction"
   },
   {
+   "description": "Variable deduction from this period's Excel import (Otherded column). Not prorated by worked days.",
    "fieldname": "other_deduction",
    "fieldtype": "Currency",
    "label": "Other Deduction"
   },
   {
-   "description": "Variable deduction from this period's Excel import (Housingded column).",
-   "fieldname": "additional_housing_deduction",
-   "fieldtype": "Currency",
-   "label": "Additional Housing Deduction"
+   "fieldname": "variable_deductions_section",
+   "fieldtype": "Section Break",
+   "label": "Variable Monthly Deductions"
   },
   {
-   "description": "Variable deduction from this period's Excel import (Otherded column).",
-   "fieldname": "additional_other_deduction",
-   "fieldtype": "Currency",
-   "label": "Additional Other Deduction"
+   "fieldname": "column_break_var_ded",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "section_break_anly",
@@ -521,7 +520,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-26 14:30:00.000000",
+ "modified": "2026-04-26 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Sheet",

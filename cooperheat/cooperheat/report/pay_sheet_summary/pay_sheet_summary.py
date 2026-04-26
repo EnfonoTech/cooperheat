@@ -9,8 +9,8 @@ from frappe.utils import flt
 # Variable additions sourced from the Excel import (not from compensation master).
 EXCEL_ADDITION_FIELDS = ["expenses", "others", "vacation_pay", "bonus", "air_fare"]
 
-# Variable deductions sourced from the Excel import.
-EXCEL_DEDUCTION_FIELDS = ["additional_other_deduction", "additional_housing_deduction"]
+# Variable deductions sourced from the Excel import (not from compensation).
+EXCEL_DEDUCTION_FIELDS = ["other_deduction", "housing_deduction"]
 
 
 def execute(filters=None):
@@ -76,7 +76,7 @@ def get_data(filters):
 			other_allowance,
 			normal_ot_amount, travel_ot_amount, holiday_ot_amount,
 			expenses, others, vacation_pay, bonus, air_fare,
-			additional_other_deduction, additional_housing_deduction,
+			other_deduction, housing_deduction,
 			net_payable
 		FROM `tabPayroll Sheet`
 		WHERE {where}

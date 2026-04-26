@@ -35,12 +35,10 @@
   "deductions_section",
   "general_advance",
   "housing_advance",
-  "housing_deduction",
   "column_break_ded",
   "transport_deduction",
   "education_deduction",
   "retention_deduction",
-  "other_deduction",
   "notes_section",
   "notes"
  ],
@@ -231,12 +229,6 @@
    "options": "currency"
   },
   {
-   "fieldname": "housing_deduction",
-   "fieldtype": "Currency",
-   "label": "Housing Deduction",
-   "options": "currency"
-  },
-  {
    "fieldname": "column_break_ded",
    "fieldtype": "Column Break"
   },
@@ -259,12 +251,6 @@
    "options": "currency"
   },
   {
-   "fieldname": "other_deduction",
-   "fieldtype": "Currency",
-   "label": "Other Deduction",
-   "options": "currency"
-  },
-  {
    "fieldname": "notes_section",
    "fieldtype": "Section Break",
    "label": "Notes"
@@ -277,7 +263,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-24 15:00:00.000000",
+ "modified": "2026-04-26 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Employee Compensation",
