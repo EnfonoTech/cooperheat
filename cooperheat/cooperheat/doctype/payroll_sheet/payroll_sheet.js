@@ -18,6 +18,7 @@ const DEDUCTION_FIELDS = [
 	"general_advance", "housing_advance", "housing_deduction",
 	"transport_deduction", "education_deduction", "retention_deduction",
 	"other_deduction",
+	"additional_housing_deduction", "additional_other_deduction",
 ];
 
 const MONTHS = [

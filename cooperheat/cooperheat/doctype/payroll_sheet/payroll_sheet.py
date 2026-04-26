@@ -23,11 +23,19 @@ EARNING_FIELDS = [
 
 PRORATED_EARNING_FIELDS = [f for f in EARNING_FIELDS if f != "basic"]
 
-DEDUCTION_FIELDS = [
+# Deductions that come from the Compensation master (recurring monthly).
+COMP_DEDUCTION_FIELDS = [
 	"general_advance", "housing_advance", "housing_deduction",
 	"transport_deduction", "education_deduction", "retention_deduction",
 	"other_deduction",
 ]
+
+# Variable per-month deductions sourced from the Excel import.
+EXCEL_DEDUCTION_FIELDS = [
+	"additional_housing_deduction", "additional_other_deduction",
+]
+
+DEDUCTION_FIELDS = COMP_DEDUCTION_FIELDS + EXCEL_DEDUCTION_FIELDS
 
 SPECIAL_EARNINGS = [
 	"others", "bonus", "expenses", "air_fare",
@@ -35,7 +43,7 @@ SPECIAL_EARNINGS = [
 ]
 
 # Fields copied from the Compensation record to the Payroll Sheet.
-COMPENSATION_COPY_FIELDS = EARNING_FIELDS + DEDUCTION_FIELDS + [
+COMPENSATION_COPY_FIELDS = EARNING_FIELDS + COMP_DEDUCTION_FIELDS + [
 	"pay_batch", "employee_category", "currency",
 ]
 
@@ -188,7 +196,8 @@ def get_employee_compensation(employee, posting_date=None):
 		return {}
 
 	comp = frappe.get_doc("Employee Compensation", comp_name)
-	values = {f: flt(comp.get(f)) for f in EARNING_FIELDS + DEDUCTION_FIELDS}
+	# Comp only owns its earnings + recurring deductions; Excel deductions stay separate.
+	values = {f: flt(comp.get(f)) for f in EARNING_FIELDS + COMP_DEDUCTION_FIELDS}
 	values["pay_batch"] = comp.pay_batch
 	values["employee_category"] = comp.employee_category
 	values["currency"] = comp.currency

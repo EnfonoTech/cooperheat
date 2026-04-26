@@ -72,6 +72,8 @@
   "education_deduction",
   "retention_deduction",
   "other_deduction",
+  "additional_housing_deduction",
+  "additional_other_deduction",
   "section_break_anly",
   "total_deduction",
   "net_payable_section",
@@ -104,6 +106,8 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Employee",
    "options": "Employee"
   },
@@ -133,7 +137,7 @@
    "options": "Pay Batch"
   },
   {
-   "description": "Source compensation record. Auto-linked when Employee is set.",
+   "description": ".",
    "fieldname": "compensation",
    "fieldtype": "Link",
    "label": "Compensation",
@@ -200,14 +204,14 @@
   },
   {
    "default": "30",
-   "description": "Days worked in the period. Fractions allowed (e.g. 15.5).",
+   "description": "Days worked in the period.",
    "fieldname": "worked_days",
    "fieldtype": "Float",
    "label": "Worked Days",
    "precision": "2"
   },
   {
-   "description": "Calendar days in the selected month. Used for prorating allowances.",
+   "description": "Calendar days in the selected month.",
    "fieldname": "days_in_month",
    "fieldtype": "Int",
    "label": "Days in Month",
@@ -445,6 +449,18 @@
    "label": "Other Deduction"
   },
   {
+   "description": "Variable deduction from this period's Excel import (Housingded column).",
+   "fieldname": "additional_housing_deduction",
+   "fieldtype": "Currency",
+   "label": "Additional Housing Deduction"
+  },
+  {
+   "description": "Variable deduction from this period's Excel import (Otherded column).",
+   "fieldname": "additional_other_deduction",
+   "fieldtype": "Currency",
+   "label": "Additional Other Deduction"
+  },
+  {
    "fieldname": "section_break_anly",
    "fieldtype": "Section Break"
   },
@@ -505,10 +521,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-25 09:43:49.996362",
+ "modified": "2026-04-26 14:30:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Sheet",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {

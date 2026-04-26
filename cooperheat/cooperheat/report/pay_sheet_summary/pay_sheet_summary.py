@@ -5,10 +5,12 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
-from cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet import (
-	EARNING_FIELDS,
-	SPECIAL_EARNINGS,
-)
+
+# Variable additions sourced from the Excel import (not from compensation master).
+EXCEL_ADDITION_FIELDS = ["expenses", "others", "vacation_pay", "bonus", "air_fare"]
+
+# Variable deductions sourced from the Excel import.
+EXCEL_DEDUCTION_FIELDS = ["additional_other_deduction", "additional_housing_deduction"]
 
 
 def execute(filters=None):
@@ -26,7 +28,7 @@ def get_columns():
 		{"label": _("Designation"), "fieldname": "designation", "fieldtype": "Link", "options": "Designation", "width": 150},
 		{"label": _("Division"), "fieldname": "division", "fieldtype": "Data", "width": 120},
 		{"label": _("Department"), "fieldname": "department", "fieldtype": "Data", "width": 120},
-		{"label": _("Worked Days"), "fieldname": "worked_days", "fieldtype": "Int", "width": 90},
+		{"label": _("Worked Days"), "fieldname": "worked_days", "fieldtype": "Float", "precision": "2", "width": 90},
 		{"label": _("Basic"), "fieldname": "basic", "fieldtype": "Currency", "width": 110},
 		{"label": _("Housing A"), "fieldname": "housing_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Transport A"), "fieldname": "transport_allowance", "fieldtype": "Currency", "width": 110},
@@ -44,7 +46,7 @@ def get_columns():
 		{"label": _("Travel OT"), "fieldname": "travel_ot_amount", "fieldtype": "Currency", "width": 110},
 		{"label": _("Holiday OT"), "fieldname": "holiday_ot_amount", "fieldtype": "Currency", "width": 110},
 		{"label": _("Monthly Additions"), "fieldname": "monthly_additions", "fieldtype": "Currency", "width": 130},
-		{"label": _("Monthly Deductions"), "fieldname": "total_deduction", "fieldtype": "Currency", "width": 130},
+		{"label": _("Monthly Deductions"), "fieldname": "monthly_deductions", "fieldtype": "Currency", "width": 130},
 		{"label": _("Net"), "fieldname": "net_payable", "fieldtype": "Currency", "width": 130},
 	]
 
@@ -73,8 +75,9 @@ def get_data(filters):
 			supervisor_allowance, education_allowance, rso_allowance, rpp_allowance,
 			other_allowance,
 			normal_ot_amount, travel_ot_amount, holiday_ot_amount,
-			others, bonus, expenses, air_fare, vacation_pay, gratuity, retention,
-			total_deduction, net_payable
+			expenses, others, vacation_pay, bonus, air_fare,
+			additional_other_deduction, additional_housing_deduction,
+			net_payable
 		FROM `tabPayroll Sheet`
 		WHERE {where}
 		ORDER BY pay_batch, employee
@@ -83,10 +86,7 @@ def get_data(filters):
 		as_dict=True,
 	)
 
-	# Monthly Additions = sum of allowances + special earnings + OT (excluding basic)
-	addition_fields = [f for f in EARNING_FIELDS if f != "basic"] + SPECIAL_EARNINGS
 	for r in rows:
-		additions = sum(flt(r.get(f)) for f in addition_fields)
-		additions += flt(r.get("normal_ot_amount")) + flt(r.get("travel_ot_amount")) + flt(r.get("holiday_ot_amount"))
-		r["monthly_additions"] = additions
+		r["monthly_additions"] = sum(flt(r.get(f)) for f in EXCEL_ADDITION_FIELDS)
+		r["monthly_deductions"] = sum(flt(r.get(f)) for f in EXCEL_DEDUCTION_FIELDS)
 	return rows

@@ -227,8 +227,10 @@ def _make_payroll_sheet(company, employee, month, year, posting_date, row, comp_
 	ps.vacation_pay = flt(row.get("vacation"))
 	ps.bonus = flt(row.get("bonus"))
 	ps.air_fare = flt(row.get("airfare"))
-	ps.other_deduction = flt(row.get("otherded")) + flt(ps.other_deduction)
-	ps.housing_deduction = flt(row.get("housingded")) + flt(ps.housing_deduction)
+	# Excel-only deductions live in their own fields, kept separate from
+	# the recurring monthly deductions sourced from Employee Compensation.
+	ps.additional_other_deduction = flt(row.get("otherded"))
+	ps.additional_housing_deduction = flt(row.get("housingded"))
 
 	# Proration is applied in PayrollSheet.validate() — no need to do it here.
 	ps.flags.ignore_permissions = True
