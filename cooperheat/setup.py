@@ -23,8 +23,8 @@ def setup_custom_fields():
 				"label": "Nationality",
 				"fieldtype": "Link",
 				"options": "Nationality",
-				"insert_after": "department",
-				"description": "Drives Employee Category on Cooperheat Employee Compensation.",
+				"insert_after": "status",
+				"description": "",
 			},
 		],
 	}
