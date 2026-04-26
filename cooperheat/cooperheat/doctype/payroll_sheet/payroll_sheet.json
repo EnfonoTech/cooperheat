@@ -200,9 +200,11 @@
   },
   {
    "default": "30",
+   "description": "Days worked in the period. Fractions allowed (e.g. 15.5).",
    "fieldname": "worked_days",
-   "fieldtype": "Int",
-   "label": "Worked Days"
+   "fieldtype": "Float",
+   "label": "Worked Days",
+   "precision": "2"
   },
   {
    "description": "Calendar days in the selected month. Used for prorating allowances.",

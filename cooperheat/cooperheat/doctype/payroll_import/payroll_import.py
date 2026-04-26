@@ -215,8 +215,8 @@ def _make_payroll_sheet(company, employee, month, year, posting_date, row, comp_
 		ps.set(k, v)
 
 	# Days from the Excel: missing/empty/zero all mean "absent" (worked_days = 0).
-	# Only an explicit positive number is used as the actual worked days.
-	ps.worked_days = int(flt(row.get("days")))
+	# Fractional values are preserved (e.g. 15.5).
+	ps.worked_days = flt(row.get("days"))
 	ps.days_in_month = dim
 
 	ps.normal_ot_hours = flt(row.get("ot"))
