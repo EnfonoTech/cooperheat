@@ -8,7 +8,8 @@ const EARNING_FIELDS = [
 	"other_allowance",
 ];
 
-const PRORATED_EARNING_FIELDS = EARNING_FIELDS.filter(f => f !== "basic");
+// All earnings (including basic) are prorated by worked_days / days_in_month.
+const PRORATED_EARNING_FIELDS = [...EARNING_FIELDS];
 
 const SPECIAL_EARNINGS = [
 	"others", "bonus", "expenses", "air_fare", "vacation_pay", "gratuity", "retention",
@@ -42,6 +43,18 @@ async function get_settings() {
 function recalc(frm, settings) {
 	const dim = frm.doc.days_in_month || days_in_month(frm.doc.year, frm.doc.month);
 	frm.set_value("days_in_month", dim);
+
+	const worked = flt(frm.doc.worked_days);
+
+	// worked_days = 0 → wipe everything; nothing to compute.
+	if (worked <= 0) {
+		[...EARNING_FIELDS, ...SPECIAL_EARNINGS, ...DEDUCTION_FIELDS,
+			"normal_ot_hours", "holiday_ot_hours", "travel_ot_hours",
+			"normal_ot_amount", "holiday_ot_amount", "travel_ot_amount",
+			"total_ot_amount", "gosi", "total_earnings", "total_deduction", "net_payable",
+		].forEach(f => frm.set_value(f, 0));
+		return;
+	}
 
 	const mwh = settings.monthly_working_hours || 240;
 	const basic = flt(frm.doc.basic);
@@ -101,8 +114,6 @@ async function apply_proration(frm) {
 	const dim = frm.doc.days_in_month || days_in_month(frm.doc.year, frm.doc.month);
 	const worked = flt(frm.doc.worked_days);
 	const factor = (worked > 0 && dim > 0) ? Math.min(worked, dim) / dim : 0;
-	frm.doc.basic = flt(comp.basic);
-	frm.refresh_field("basic");
 	PRORATED_EARNING_FIELDS.forEach(f => {
 		frm.doc[f] = flt(comp[f]) * factor;
 		frm.refresh_field(f);

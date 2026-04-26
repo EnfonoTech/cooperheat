@@ -21,7 +21,8 @@ EARNING_FIELDS = [
 	"other_allowance",
 ]
 
-PRORATED_EARNING_FIELDS = [f for f in EARNING_FIELDS if f != "basic"]
+# All earnings (including basic) are prorated by worked_days / days_in_month.
+PRORATED_EARNING_FIELDS = list(EARNING_FIELDS)
 
 # Recurring deductions sourced from the Employee Compensation master.
 COMP_DEDUCTION_FIELDS = [
@@ -65,6 +66,10 @@ def days_in_month(year, month_name):
 class PayrollSheet(Document):
 	def validate(self):
 		self.set_days_in_month()
+		if flt(self.worked_days) <= 0:
+			self.zero_out_amounts()
+			self.calculate_totals()
+			return
 		self.apply_proration()
 		self.calculate_overtime()
 		self.calculate_gosi()
@@ -73,10 +78,9 @@ class PayrollSheet(Document):
 	def apply_proration(self):
 		"""Re-prorate earnings from the linked Compensation based on worked_days.
 
-		Idempotent: always reads full values from Compensation and writes
-		prorated values, so editing worked_days (or anything else) and saving
-		always produces consistent amounts. Deductions are NOT touched here —
-		they're a mix of Compensation fixed amounts and Excel overrides.
+		All earnings — basic + every allowance — are prorated by
+		worked_days / days_in_month. Deductions (recurring + variable) are
+		left untouched; the import sets them and they don't depend on days.
 		"""
 		if not self.compensation:
 			return
@@ -89,10 +93,21 @@ class PayrollSheet(Document):
 		dim = flt(self.days_in_month) or 30
 		factor = min(worked, dim) / dim if worked > 0 and dim > 0 else 0.0
 
-		# Basic is fixed (not prorated)
-		self.basic = self.round_amount(flt(comp.basic))
 		for f in PRORATED_EARNING_FIELDS:
 			self.set(f, self.round_amount(flt(comp.get(f)) * factor))
+
+	def zero_out_amounts(self):
+		"""When worked_days <= 0 the employee was absent the whole period.
+		Wipe every monetary field so net is 0 — even Excel-imported
+		variable values like bonus or housing_deduction don't apply."""
+		for f in EARNING_FIELDS + SPECIAL_EARNINGS + DEDUCTION_FIELDS:
+			self.set(f, 0)
+		for f in (
+			"normal_ot_hours", "holiday_ot_hours", "travel_ot_hours",
+			"normal_ot_amount", "holiday_ot_amount", "travel_ot_amount",
+			"total_ot_amount", "gosi",
+		):
+			self.set(f, 0)
 
 	def before_save(self):
 		self.validate()
@@ -274,6 +289,9 @@ def create_salary_slip(payroll_sheet):
 
 	slip.flags.ignore_permissions = True
 	slip.insert()
+
+	# Backlink the slip on the Payroll Sheet so the user can navigate.
+	frappe.db.set_value("Payroll Sheet", payroll_sheet, "salary_slip", slip.name, update_modified=False)
 	return slip.name
 
 

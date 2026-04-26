@@ -9,8 +9,8 @@ from frappe.utils import flt
 # Variable additions sourced from the Excel import (not from compensation master).
 EXCEL_ADDITION_FIELDS = ["expenses", "others", "vacation_pay", "bonus", "air_fare"]
 
-# Variable deductions sourced from the Excel import (not from compensation).
-EXCEL_DEDUCTION_FIELDS = ["other_deduction", "housing_deduction"]
+# Variable monthly deductions: Excel-imported other/housing + calculated GOSI.
+VARIABLE_DEDUCTION_FIELDS = ["other_deduction", "housing_deduction", "gosi"]
 
 
 def execute(filters=None):
@@ -76,7 +76,7 @@ def get_data(filters):
 			other_allowance,
 			normal_ot_amount, travel_ot_amount, holiday_ot_amount,
 			expenses, others, vacation_pay, bonus, air_fare,
-			other_deduction, housing_deduction,
+			other_deduction, housing_deduction, gosi,
 			net_payable
 		FROM `tabPayroll Sheet`
 		WHERE {where}
@@ -88,5 +88,5 @@ def get_data(filters):
 
 	for r in rows:
 		r["monthly_additions"] = sum(flt(r.get(f)) for f in EXCEL_ADDITION_FIELDS)
-		r["monthly_deductions"] = sum(flt(r.get(f)) for f in EXCEL_DEDUCTION_FIELDS)
+		r["monthly_deductions"] = sum(flt(r.get(f)) for f in VARIABLE_DEDUCTION_FIELDS)
 	return rows

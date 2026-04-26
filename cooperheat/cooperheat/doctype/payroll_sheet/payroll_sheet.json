@@ -78,6 +78,7 @@
   "total_deduction",
   "net_payable_section",
   "net_payable",
+  "salary_slip",
   "notes_section",
   "remarks",
   "status",
@@ -484,6 +485,14 @@
    "read_only": 1
   },
   {
+   "description": "Set automatically when a Salary Slip is generated from this Payroll Sheet.",
+   "fieldname": "salary_slip",
+   "fieldtype": "Link",
+   "label": "Salary Slip",
+   "options": "Salary Slip",
+   "read_only": 1
+  },
+  {
    "fieldname": "notes_section",
    "fieldtype": "Section Break",
    "label": "Notes"
@@ -518,7 +527,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-26 11:32:43.087766",
+ "modified": "2026-04-26 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Sheet",
