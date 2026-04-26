@@ -267,6 +267,11 @@ def create_salary_slip(payroll_sheet):
 			"amount": amount,
 		})
 
+	# HRMS builds self.series in __init__ using self.employee (None at that
+	# point since we just called new_doc). Refresh it before insert so the
+	# generated name is "Sal Slip/<employee>/####" instead of "Sal Slip/None/####".
+	slip.series = f"Sal Slip/{slip.employee}/.#####"
+
 	slip.flags.ignore_permissions = True
 	slip.insert()
 	return slip.name
