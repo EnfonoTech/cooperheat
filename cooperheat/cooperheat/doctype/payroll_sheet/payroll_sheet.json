@@ -420,7 +420,6 @@
    "label": "Housing Advance"
   },
   {
-   "description": "Variable deduction from this period's Excel import (Housingded column). Not prorated by worked days.",
    "fieldname": "housing_deduction",
    "fieldtype": "Currency",
    "label": "Housing Deduction"
@@ -445,7 +444,6 @@
    "label": "Retention Deduction"
   },
   {
-   "description": "Variable deduction from this period's Excel import (Otherded column). Not prorated by worked days.",
    "fieldname": "other_deduction",
    "fieldtype": "Currency",
    "label": "Other Deduction"
@@ -520,7 +518,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-26 15:00:00.000000",
+ "modified": "2026-04-26 11:32:43.087766",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Sheet",

@@ -16,10 +16,46 @@ EMPLOYEE_CUSTOM_FIELD_OWNED = {
 
 
 def setup_custom_fields():
-	# Currently nothing to install on Employee — kept as a hook point for future additions.
-	custom_fields = {}
-	if custom_fields:
-		create_custom_fields(custom_fields, update=True)
+	custom_fields = {
+		"Employee": [
+			{
+				"fieldname": "nationality",
+				"label": "Nationality",
+				"fieldtype": "Link",
+				"options": "Nationality",
+				"insert_after": "department",
+				"description": "Drives Employee Category on Cooperheat Employee Compensation.",
+			},
+		],
+	}
+	create_custom_fields(custom_fields, update=True)
+
+
+DEFAULT_NATIONALITIES = [
+	("Saudi", 1),
+	("Indian", 0),
+	("Pakistani", 0),
+	("Bangladeshi", 0),
+	("Nepali", 0),
+	("Filipino", 0),
+	("Egyptian", 0),
+	("Yemeni", 0),
+	("Sudanese", 0),
+	("Sri Lankan", 0),
+	("Other", 0),
+]
+
+
+def seed_nationalities():
+	if not frappe.db.exists("DocType", "Nationality"):
+		return
+	for name, is_local in DEFAULT_NATIONALITIES:
+		if not frappe.db.exists("Nationality", name):
+			doc = frappe.new_doc("Nationality")
+			doc.nationality_name = name
+			doc.is_local = is_local
+			doc.flags.ignore_permissions = True
+			doc.insert()
 
 
 def cleanup_legacy_employee_fields():
@@ -61,6 +97,7 @@ def seed_settings():
 
 
 def after_install():
+	seed_nationalities()
 	setup_custom_fields()
 	seed_settings()
 
@@ -79,6 +116,7 @@ def backfill_compensation_from_date():
 
 def after_migrate():
 	cleanup_legacy_employee_fields()
+	seed_nationalities()
 	setup_custom_fields()
 	seed_settings()
 	backfill_compensation_from_date()
