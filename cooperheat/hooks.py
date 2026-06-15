@@ -86,8 +86,86 @@ app_license = "mit"
 after_install = "cooperheat.setup.after_install"
 after_migrate = "cooperheat.setup.after_migrate"
 
-# No custom-field fixtures at this time. Per-employee pay data lives in
-# "Employee Compensation" instead of on the Employee doctype.
+fixtures = [
+	{
+		"dt": "Custom Field",
+		"filters": [
+			[
+				"name",
+				"in",
+				[
+					# Attendance
+					"Attendance-approval_details_section",
+					"Attendance-approval_window_hours",
+					"Attendance-current_approval_level",
+					"Attendance-current_approver",
+					"Attendance-current_approver_name",
+					"Attendance-level_assigned_at",
+					"Attendance-window_expires_at",
+					"Attendance-window_reminder_sent",
+					# Department
+					"Department-approval_matrix",
+					"Department-approval_matrix_section",
+					# Employee
+					"Employee-custom_section_break_ujd19",
+					"Employee-custom_site_id",
+					# Employee Checkin
+					"Employee Checkin-activity_log",
+					"Employee Checkin-activity_log_section",
+					# Project
+					"Project-custom_crm_no",
+					"Project-custom_estimated_no_of_technicians",
+					"Project-custom_is_vehicle_required",
+					"Project-custom_location",
+					"Project-custom_max_overtime_hours__day",
+					"Project-custom_overtime_allowed",
+					"Project-custom_project_code",
+					"Project-custom_project_status",
+					"Project-custom_regular_working_hours__day",
+					"Project-geo_fence_radius",
+					"Project-geo_location_rule",
+					"Project-manager_payroll_final_approval_window",
+					"Project-site_work_section",
+					"Project-special_site_id_required",
+					"Project-supervisor_approval_window",
+					"Project-total_expense_claim",
+					# Shift Assignment
+					"Shift Assignment-custom_project_",
+					"Shift Assignment-custom_project_code",
+				],
+			]
+		],
+	},
+	"Client Script",
+	{
+		"dt": "Property Setter",
+		"filters": [
+			["doc_type", "=", "Attendance"],
+			["field_name", "in", ["in_time", "out_time", "working_hours", "status"]],
+			["property", "in", ["allow_on_submit", "read_only", "depends_on"]],
+		],
+	},
+	{
+		"dt": "Workflow State",
+		"filters": [
+			[
+				"name",
+				"in",
+				[
+					"Draft",
+					"Pending Level 1 Approval",
+					"Pending Level 2 Approval",
+					"Approved",
+					"Rejected",
+				],
+			]
+		],
+	},
+	{
+		"dt": "Workflow",
+		"filters": [["name", "=", "Attendance Approval"]],
+	},
+]
 
 # Uninstallation
 # ------------
@@ -141,34 +219,22 @@ after_migrate = "cooperheat.setup.after_migrate"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Attendance": {
+		"on_submit": "cooperheat.cooperheat.overrides.attendance.on_submit",
+		"validate": "cooperheat.cooperheat.overrides.attendance.validate",
+		"on_update_after_submit": "cooperheat.cooperheat.overrides.attendance.on_update_after_submit",
+	}
+}
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"cooperheat.tasks.all"
-# 	],
-# 	"daily": [
-# 		"cooperheat.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"cooperheat.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"cooperheat.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"cooperheat.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"hourly": [
+		"cooperheat.cooperheat.api.tasks.process_attendance_approval_windows",
+	],
+}
 
 # Testing
 # -------

@@ -1,0 +1,83 @@
+[
+ {
+  "name": "Department-approval_matrix_section",
+  "creation": "2026-06-12 00:00:00.000000",
+  "modified": "2026-06-12 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Department",
+  "fieldname": "approval_matrix_section",
+  "fieldtype": "Section Break",
+  "label": "Approval Matrix",
+  "insert_after": "shift_request_approver",
+  "module": "cooperheat"
+ },
+ {
+  "name": "Department-approval_matrix",
+  "creation": "2026-06-12 00:00:00.000000",
+  "modified": "2026-06-12 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Department",
+  "fieldname": "approval_matrix",
+  "fieldtype": "Table",
+  "label": "Approval Matrix",
+  "options": "Department Approval Matrix",
+  "insert_after": "approval_matrix_section",
+  "module": "cooperheat"
+ },
+ {
+  "name": "Shift Assignment-approval_details_section",
+  "creation": "2026-06-12 00:00:00.000000",
+  "modified": "2026-06-12 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Shift Assignment",
+  "fieldname": "approval_details_section",
+  "fieldtype": "Section Break",
+  "label": "Approval Details",
+  "insert_after": "amended_from",
+  "module": "cooperheat"
+ },
+ {
+  "name": "Shift Assignment-current_approval_level",
+  "creation": "2026-06-12 00:00:00.000000",
+  "modified": "2026-06-12 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Shift Assignment",
+  "fieldname": "current_approval_level",
+  "fieldtype": "Int",
+  "label": "Current Approval Level",
+  "insert_after": "approval_details_section",
+  "read_only": 1,
+  "allow_on_submit": 1,
+  "module": "cooperheat"
+ },
+ {
+  "name": "Shift Assignment-current_approver",
+  "creation": "2026-06-12 00:00:00.000000",
+  "modified": "2026-06-12 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Shift Assignment",
+  "fieldname": "current_approver",
+  "fieldtype": "Link",
+  "label": "Current Approver",
+  "options": "Employee",
+  "insert_after": "current_approval_level",
+  "read_only": 1,
+  "allow_on_submit": 1,
+  "module": "cooperheat"
+ },
+ {
+  "name": "Shift Assignment-current_approver_name",
+  "creation": "2026-06-12 00:00:00.000000",
+  "modified": "2026-06-12 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Shift Assignment",
+  "fieldname": "current_approver_name",
+  "fieldtype": "Data",
+  "label": "Current Approver Name",
+  "fetch_from": "current_approver.employee_name",
+  "insert_after": "current_approver",
+  "read_only": 1,
+  "allow_on_submit": 1,
+  "module": "cooperheat"
+ }
+]
