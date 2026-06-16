@@ -42,6 +42,22 @@
     "workflow_builder_id": null
    },
    {
+    "allow_edit": "All",
+    "avoid_status_override": 0,
+    "doc_status": "1",
+    "is_optional_state": 0,
+    "message": null,
+    "next_action_email_template": null,
+    "parent": "Attendance Approval",
+    "parentfield": "states",
+    "parenttype": "Workflow",
+    "send_email": 0,
+    "state": "Pending Level 3 Approval",
+    "update_field": null,
+    "update_value": null,
+    "workflow_builder_id": null
+   },
+   {
     "allow_edit": "HR Manager",
     "avoid_status_override": 0,
     "doc_status": "1",
@@ -106,7 +122,7 @@
     "allow_self_approval": 1,
     "allowed": "All",
     "condition": null,
-    "next_state": "Approved",
+    "next_state": "Pending Level 3 Approval",
     "parent": "Attendance Approval",
     "parentfield": "transitions",
     "parenttype": "Workflow",
@@ -125,6 +141,32 @@
     "parenttype": "Workflow",
     "send_email_to_creator": 0,
     "state": "Pending Level 2 Approval",
+    "workflow_builder_id": null
+   },
+   {
+    "action": "Level 3 Approve",
+    "allow_self_approval": 1,
+    "allowed": "All",
+    "condition": null,
+    "next_state": "Approved",
+    "parent": "Attendance Approval",
+    "parentfield": "transitions",
+    "parenttype": "Workflow",
+    "send_email_to_creator": 0,
+    "state": "Pending Level 3 Approval",
+    "workflow_builder_id": null
+   },
+   {
+    "action": "Reject",
+    "allow_self_approval": 1,
+    "allowed": "All",
+    "condition": null,
+    "next_state": "Rejected",
+    "parent": "Attendance Approval",
+    "parentfield": "transitions",
+    "parenttype": "Workflow",
+    "send_email_to_creator": 0,
+    "state": "Pending Level 3 Approval",
     "workflow_builder_id": null
    },
    {
