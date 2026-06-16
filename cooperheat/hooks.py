@@ -142,9 +142,28 @@ fixtures = [
 	{
 		"dt": "Property Setter",
 		"filters": [
-			["doc_type", "=", "Attendance"],
-			["field_name", "in", ["in_time", "out_time", "working_hours", "status"]],
-			["property", "in", ["allow_on_submit", "read_only", "depends_on"]],
+			["name", "in", [
+				# Attendance
+				"Attendance-in_time-allow_on_submit",
+				"Attendance-in_time-read_only",
+				"Attendance-in_time-depends_on",
+				"Attendance-out_time-allow_on_submit",
+				"Attendance-out_time-read_only",
+				"Attendance-out_time-depends_on",
+				"Attendance-working_hours-allow_on_submit",
+				"Attendance-working_hours-read_only",
+				"Attendance-working_hours-depends_on",
+				"Attendance-status-allow_on_submit",
+				"Attendance-status-read_only",
+				# Project
+				"Project-main-field_order",
+				"Project-customer-label",
+				"Project-naming_series-options",
+				"Project-status-hidden",
+				# Shift Assignment
+				"Shift Assignment-main-field_order",
+				"Shift Assignment-shift_location-fetch_from",
+			]],
 		],
 	},
 	{
