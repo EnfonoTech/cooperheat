@@ -1,15 +1,15 @@
 import frappe
 from frappe import _
-from frappe.utils import cint, now_datetime
+from frappe.utils import now_datetime
 
 
 def process_attendance_approval_windows():
-	"""Hourly task: auto-approve attendance when the approval window expires."""
+	"""Hourly task: auto-approve attendance when the Level 3 approval window expires."""
 	expired = frappe.get_all(
 		"Attendance",
 		filters={
 			"docstatus": 1,
-			"workflow_state": ["in", ["Pending Level 1 Approval", "Pending Level 2 Approval"]],
+			"workflow_state": "Pending Level 3 Approval",
 			"window_expires_at": ["<", now_datetime()],
 		},
 		fields=[

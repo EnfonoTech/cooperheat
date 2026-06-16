@@ -8,13 +8,16 @@ from frappe.utils import cint, flt, get_url_to_form, now, now_datetime, get_date
 _LEVEL_REQUIRED: dict[tuple[str, str], int] = {
 	("Pending Level 1 Approval", "Pending Level 2 Approval"): 1,
 	("Pending Level 1 Approval", "Rejected"): 1,
-	("Pending Level 2 Approval", "Approved"): 2,
+	("Pending Level 2 Approval", "Pending Level 3 Approval"): 2,
 	("Pending Level 2 Approval", "Rejected"): 2,
+	("Pending Level 3 Approval", "Approved"): 3,
+	("Pending Level 3 Approval", "Rejected"): 3,
 }
 
 _NOTIFY_LEVEL: dict[str, int] = {
 	"Pending Level 1 Approval": 1,
 	"Pending Level 2 Approval": 2,
+	"Pending Level 3 Approval": 3,
 }
 
 _INITIAL_WORKFLOW_STATE = "Pending Level 1 Approval"
@@ -48,6 +51,7 @@ def validate(doc, method):
 	_validate_approver_authorization(doc)
 	_validate_hours_edit_authorization(doc)
 	_recalculate_working_hours(doc)
+	_sync_current_approver(doc)
 
 
 def on_update_after_submit(doc, method):
@@ -108,6 +112,38 @@ def _state_changed(doc) -> tuple[str | None, str | None]:
 # ---------------------------------------------------------------------------
 
 
+def _sync_current_approver(doc):
+	"""Keep current_approver in sync with the Department Approval Matrix.
+
+	If the matrix is changed after an attendance record is already pending,
+	this ensures the stored approver is refreshed on the next save.
+	"""
+	if doc.docstatus != 1:
+		return
+	level_map = {
+		"Pending Level 1 Approval": 1,
+		"Pending Level 2 Approval": 2,
+		"Pending Level 3 Approval": 3,
+	}
+	level = level_map.get(doc.get("workflow_state") or "")
+	if not level or not doc.department:
+		return
+	matrix = _get_matrix(doc.department)
+	row = _row_for_level(matrix, level)
+	if not row:
+		return
+	if doc.get("current_approver") != row.approver:
+		approver_name = frappe.db.get_value("Employee", row.approver, "employee_name") or row.approver
+		frappe.db.set_value(
+			"Attendance", doc.name,
+			{
+				"current_approver": row.approver,
+				"current_approver_name": approver_name,
+			},
+			update_modified=False,
+		)
+
+
 def _validate_hours_edit_authorization(doc):
 	"""Only the current level's approver may edit status / in_time / out_time."""
 	if doc.docstatus != 1:
@@ -134,7 +170,11 @@ def _validate_hours_edit_authorization(doc):
 		frappe.throw(_("The approval window has expired. Attendance fields can no longer be edited."))
 
 	workflow_state = doc.get("workflow_state") or ""
-	level_map = {"Pending Level 1 Approval": 1, "Pending Level 2 Approval": 2}
+	level_map = {
+		"Pending Level 1 Approval": 1,
+		"Pending Level 2 Approval": 2,
+		"Pending Level 3 Approval": 3,
+	}
 	level = level_map.get(workflow_state)
 
 	if not level:
@@ -307,7 +347,8 @@ def _get_project_window_hours(project: str, level: int) -> float:
 	"""Return the project-level approval window hours for the given level, or 0 if not set."""
 	field_map = {
 		1: "supervisor_approval_window",
-		2: "manager_payroll_final_approval_window",
+		2: "level_2_approval_window",
+		3: "manager_payroll_final_approval_window",
 	}
 	field = field_map.get(level)
 	if not field or not project:
@@ -332,12 +373,15 @@ def _stamp_tracking_fields(doc, level: int):
 
 	expires_at = add_to_date(now(), hours=window_hours) if window_hours else None
 
+	approver_name = frappe.db.get_value("Employee", row.approver, "employee_name") or row.approver
+
 	frappe.db.set_value(
 		"Attendance",
 		doc.name,
 		{
 			"current_approval_level": level,
 			"current_approver": row.approver,
+			"current_approver_name": approver_name,
 			"level_assigned_at": now(),
 			"approval_window_hours": window_hours,
 			"window_expires_at": expires_at,

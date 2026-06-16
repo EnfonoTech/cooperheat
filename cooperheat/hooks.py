@@ -132,6 +132,8 @@ fixtures = [
 					# Shift Assignment
 					"Shift Assignment-custom_project_",
 					"Shift Assignment-custom_project_code",
+					# Project (Level 2 window)
+					"Project-level_2_approval_window",
 				],
 			]
 		],
@@ -155,6 +157,7 @@ fixtures = [
 					"Draft",
 					"Pending Level 1 Approval",
 					"Pending Level 2 Approval",
+					"Pending Level 3 Approval",
 					"Approved",
 					"Rejected",
 				],
