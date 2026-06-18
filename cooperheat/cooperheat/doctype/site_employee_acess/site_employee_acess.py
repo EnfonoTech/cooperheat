@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class EmployeeSiteAccess(Document):
+class SiteEmployeeAcess(Document):
 	pass
