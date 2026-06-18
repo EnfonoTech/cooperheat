@@ -292,11 +292,12 @@ def _send_notification_for_level(doc, level: int):
 	approver_name = frappe.db.get_value("Employee", row.approver, "employee_name") or row.approver
 	doc_url = get_url_to_form("Attendance", doc.name)
 
-	frappe.sendmail(
-		recipients=[recipient],
-		subject=_("Action Required – Attendance Level {0} Approval: {1}").format(level, doc.name),
-		message=_(
-			"""<p>Dear {approver_name},</p>
+	try:
+		frappe.sendmail(
+			recipients=[recipient],
+			subject=_("Action Required – Attendance Level {0} Approval: {1}").format(level, doc.name),
+			message=_(
+				"""<p>Dear {approver_name},</p>
 <p>An Attendance record requires your <strong>Level {level} approval</strong>.</p>
 <table border="0" cellpadding="6" style="border-collapse:collapse;">
   <tr><td><strong>Document</strong></td><td>{doc_name}</td></tr>
@@ -307,19 +308,24 @@ def _send_notification_for_level(doc, level: int):
   <tr><td><strong>Approval Window</strong></td><td>{window} hours</td></tr>
 </table>
 <p><a href="{url}">Open in ERPNext</a></p>"""
-		).format(
-			approver_name=approver_name,
-			level=level,
-			doc_name=doc.name,
-			employee_name=doc.employee_name or doc.employee,
-			department=department,
-			attendance_date=doc.attendance_date,
-			status=doc.status,
-			window=flt(row.approval_window_hours),
-			url=doc_url,
-		),
-		now=False,
-	)
+			).format(
+				approver_name=approver_name,
+				level=level,
+				doc_name=doc.name,
+				employee_name=doc.employee_name or doc.employee,
+				department=department,
+				attendance_date=doc.attendance_date,
+				status=doc.status,
+				window=flt(row.approval_window_hours),
+				url=doc_url,
+			),
+			now=False,
+		)
+	except Exception:
+		frappe.log_error(
+			title="Attendance Approval: email send failed",
+			message=frappe.get_traceback(),
+		)
 
 
 # ---------------------------------------------------------------------------
