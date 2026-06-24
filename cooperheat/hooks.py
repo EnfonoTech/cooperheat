@@ -103,6 +103,8 @@ fixtures = [
 					"Attendance-level_assigned_at",
 					"Attendance-window_expires_at",
 					"Attendance-window_reminder_sent",
+					"Attendance-checkin_log_section",
+					"Attendance-checkin_log_html",
 					# Department
 					"Department-approval_matrix",
 					"Department-approval_matrix_section",
@@ -112,6 +114,7 @@ fixtures = [
 					# Employee Checkin
 					"Employee Checkin-activity_log",
 					"Employee Checkin-activity_log_section",
+					"Employee Checkin-custom_project",
 					# Project
 					"Project-custom_crm_no",
 					"Project-custom_estimated_no_of_technicians",
@@ -132,8 +135,17 @@ fixtures = [
 					# Shift Assignment
 					"Shift Assignment-custom_project_",
 					"Shift Assignment-custom_project_code",
-					# Project (Level 2 window)
+					"Shift Assignment-custom_section_break_hu5yo",
+					"Shift Assignment-custom_project_sites",
+					# Attendance Request
+					"Attendance Request-custom_sites_section",
+					"Attendance Request-custom_assigned_sites",
+
 					"Project-level_2_approval_window",
+                   	"Employee-custom_id_type",
+                    "Employee-custom_site_id",
+                    "Employee-custom_column_break_z4stf",
+                    "Employee-custom_expairy_date"
 				],
 			]
 		],
@@ -243,10 +255,19 @@ fixtures = [
 
 doc_events = {
 	"Attendance": {
+		"before_validate": "cooperheat.cooperheat.overrides.attendance.before_validate",
 		"on_submit": "cooperheat.cooperheat.overrides.attendance.on_submit",
 		"validate": "cooperheat.cooperheat.overrides.attendance.validate",
 		"on_update_after_submit": "cooperheat.cooperheat.overrides.attendance.on_update_after_submit",
-	}
+	},
+	"Department": {
+		"on_update": "cooperheat.cooperheat.overrides.department.on_update",
+	},
+	"Employee Checkin": {
+		"validate": "cooperheat.cooperheat.overrides.employee_checkin.validate",
+		"after_insert": "cooperheat.cooperheat.overrides.employee_checkin.after_insert",
+		"on_update": "cooperheat.cooperheat.overrides.employee_checkin.on_update",
+	},
 }
 
 # Scheduled Tasks

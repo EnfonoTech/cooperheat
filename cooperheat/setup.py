@@ -114,9 +114,103 @@ def backfill_compensation_from_date():
 	)
 
 
+_CHECKIN_PROJECT_FILTER_SCRIPT = """\
+frappe.ui.form.on("Employee Checkin", {
+    refresh(frm) {
+        _set_project_filter(frm);
+    },
+    employee(frm) {
+        _set_project_filter(frm);
+        frm.set_value("custom_project", "");
+    },
+    time(frm) {
+        _set_project_filter(frm);
+    }
+});
+
+function _set_project_filter(frm) {
+    const employee = frm.doc.employee;
+    if (!employee) return;
+    const date = frm.doc.time
+        ? frappe.datetime.str_to_obj(frm.doc.time).toISOString().slice(0, 10)
+        : frappe.datetime.get_today();
+
+    frappe.call({
+        method: "cooperheat.cooperheat.api.api.get_assigned_projects",
+        args: { employee, date },
+        callback(r) {
+            const projects = r.message || [];
+            if (!projects.length) {
+                frm.set_query("custom_project", () => ({}));
+                return;
+            }
+            frm.set_query("custom_project", () => ({
+                filters: [["Project", "name", "in", projects]]
+            }));
+        }
+    });
+}
+"""
+
+_ATTENDANCE_RECALC_SCRIPT = """\
+frappe.ui.form.on("Attendance", {
+    refresh(frm) {
+        if (frm.doc.docstatus === 1 && frappe.user.has_role("HR Manager")) {
+            frm.add_custom_button(__("Recalculate Site Hours"), () => {
+                frappe.call({
+                    method: "cooperheat.cooperheat.api.api.recalculate_site_hours",
+                    args: { attendance_name: frm.docname },
+                    callback(r) {
+                        if (r.message && r.message.status === "ok") {
+                            frappe.msgprint(__("Site hours recalculated."));
+                            frm.reload_doc();
+                        }
+                    }
+                });
+            }, __("Actions"));
+        }
+    }
+});
+"""
+
+
+def setup_client_scripts():
+	scripts = [
+		{
+			"name": "Employee Checkin – Assigned Sites Filter",
+			"dt": "Employee Checkin",
+			"view": "Form",
+			"script": _CHECKIN_PROJECT_FILTER_SCRIPT,
+		},
+		{
+			"name": "Attendance – Recalculate Site Hours Button",
+			"dt": "Attendance",
+			"view": "Form",
+			"script": _ATTENDANCE_RECALC_SCRIPT,
+		},
+	]
+	for meta in scripts:
+		if frappe.db.exists("Client Script", meta["name"]):
+			doc = frappe.get_doc("Client Script", meta["name"])
+			doc.script = meta["script"]
+			doc.enabled = 1
+			doc.flags.ignore_permissions = True
+			doc.save()
+		else:
+			doc = frappe.new_doc("Client Script")
+			doc.name = meta["name"]
+			doc.dt = meta["dt"]
+			doc.view = meta["view"]
+			doc.enabled = 1
+			doc.script = meta["script"]
+			doc.flags.ignore_permissions = True
+			doc.insert()
+
+
 def after_migrate():
 	cleanup_legacy_employee_fields()
 	seed_nationalities()
 	setup_custom_fields()
 	seed_settings()
 	backfill_compensation_from_date()
+	setup_client_scripts()
