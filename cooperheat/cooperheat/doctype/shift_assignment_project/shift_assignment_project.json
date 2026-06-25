@@ -6,61 +6,51 @@
  "engine": "InnoDB",
  "field_order": [
   "project",
-  "project_name",
   "project_code",
   "location"
  ],
  "fields": [
   {
+   "columns": 4,
    "fieldname": "project",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1,
-   "columns": 4
+   "reqd": 1
   },
   {
-   "fieldname": "project_name",
-   "fieldtype": "Data",
-   "fetch_from": "project.project_name",
-   "fetch_if_empty": 1,
-   "in_list_view": 1,
-   "label": "Project Name",
-   "read_only": 1,
-   "columns": 3
-  },
-  {
-   "fieldname": "project_code",
-   "fieldtype": "Data",
+   "columns": 2,
    "fetch_from": "project.custom_project_code",
    "fetch_if_empty": 1,
+   "fieldname": "project_code",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Project Code",
-   "read_only": 1,
-   "columns": 2
+   "read_only": 1
   },
   {
-   "fieldname": "location",
-   "fieldtype": "Link",
+   "columns": 2,
    "fetch_from": "project.custom_location",
    "fetch_if_empty": 1,
+   "fieldname": "location",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Location",
    "options": "Shift Location",
-   "read_only": 1,
-   "columns": 2
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-24 00:00:00",
+ "modified": "2026-06-25 11:25:19.486989",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Shift Assignment Project",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

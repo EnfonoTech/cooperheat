@@ -103,8 +103,8 @@ fixtures = [
 					"Attendance-level_assigned_at",
 					"Attendance-window_expires_at",
 					"Attendance-window_reminder_sent",
-					"Attendance-checkin_log_section",
-					"Attendance-checkin_log_html",
+					"Attendance-custom_site_hours_section",
+					"Attendance-custom_site_hours",
 					# Department
 					"Department-approval_matrix",
 					"Department-approval_matrix_section",
@@ -133,8 +133,7 @@ fixtures = [
 					"Project-supervisor_approval_window",
 					"Project-total_expense_claim",
 					# Shift Assignment
-					"Shift Assignment-custom_project_",
-					"Shift Assignment-custom_project_code",
+			
 					"Shift Assignment-custom_section_break_hu5yo",
 					"Shift Assignment-custom_project_sites",
 					# Attendance Request
