@@ -56,8 +56,11 @@ def get_assigned_projects(employee, date):
 
 	shift_assignment = rows[0].name
 
-	legacy_project = frappe.db.get_value("Shift Assignment", shift_assignment, "custom_project_")
-	return [legacy_project] if legacy_project else []
+	return frappe.get_all(
+		"Shift Assignment Project",
+		filters={"parent": shift_assignment, "parentfield": "custom_project_sites"},
+		pluck="project",
+	)
 
 
 @frappe.whitelist()

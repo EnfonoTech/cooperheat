@@ -2,6 +2,12 @@
 // For license information, please see license.txt
 
 frappe.query_reports["Payroll Hourss"] = {
+	formatter: function (value, row, column, data, default_formatter) {
+		if (column.fieldname === "employee" && value) {
+			return `<a href="/app/employee/${value}">${value}</a>`;
+		}
+		return default_formatter(value, row, column, data);
+	},
 	filters: [
 		{
 			fieldname: "from_date",
