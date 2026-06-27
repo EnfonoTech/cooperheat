@@ -35,8 +35,9 @@ def get_data(filters):
 
     days_map = {r.employee: r for r in _get_days(from_date, to_date)}
     ot_map = _get_ot(from_date, to_date)
+    hot_map = _get_hot(from_date, to_date)
 
-    all_employees = set(days_map) | set(ot_map)
+    all_employees = set(days_map) | set(ot_map) | set(hot_map)
 
     rows = []
     for emp in sorted(all_employees):
@@ -46,7 +47,7 @@ def get_data(filters):
             "month":      month_label,
             "days":       round(float(d.days or 0), 1) if d else 0,
             "ot":         round(float(ot_map.get(emp) or 0), 2),
-            "hot":        0,
+            "hot":        round(float(hot_map.get(emp) or 0), 2),
             "travel_ot":  0,
             "expenses":   0,
             "other":      0,
@@ -99,7 +100,11 @@ def _get_ot(from_date, to_date):
                 , 0), 2) AS ot_hours
             FROM `tabEmployee Checkin` ec
             LEFT JOIN `tabProject` p ON p.name = ec.custom_project
+            LEFT JOIN `tabEmployee` emp ON emp.name = ec.employee
+            LEFT JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+                AND hol.holiday_date = DATE(ec.time)
             WHERE DATE(ec.time) BETWEEN %(from_date)s AND %(to_date)s
+              AND hol.holiday_date IS NULL
             GROUP BY ec.employee, DATE(ec.time), ec.custom_project
 
             UNION ALL
@@ -114,8 +119,12 @@ def _get_ot(from_date, to_date):
             JOIN `tabAttendance Site Hours` ash
                 ON ash.parent = att.name AND ash.parentfield = 'custom_site_hours'
             LEFT JOIN `tabProject` p ON p.name = ash.project
+            LEFT JOIN `tabEmployee` emp ON emp.name = att.employee
+            LEFT JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+                AND hol.holiday_date = att.attendance_date
             WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
               AND att.docstatus = 1
+              AND hol.holiday_date IS NULL
               AND NOT EXISTS (
                   SELECT 1 FROM `tabEmployee Checkin` ec2
                   WHERE ec2.employee = att.employee
@@ -125,3 +134,54 @@ def _get_ot(from_date, to_date):
     """, {"from_date": from_date, "to_date": to_date}, as_dict=True)
 
     return {r.employee: r.ot_hours or 0 for r in rows}
+
+
+def _get_hot(from_date, to_date):
+    rows = frappe.db.sql("""
+        SELECT employee, ROUND(SUM(hot_hours), 2) AS hot_hours
+        FROM (
+            SELECT
+                ec.employee,
+                ROUND(GREATEST(
+                    ROUND(TIMESTAMPDIFF(MINUTE,
+                        MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
+                        MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2)
+                    - COALESCE(NULLIF(p.custom_regular_working_hours__day, 0),
+                        ROUND(TIMESTAMPDIFF(MINUTE,
+                            MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
+                            MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2))
+                , 0), 2) AS hot_hours
+            FROM `tabEmployee Checkin` ec
+            LEFT JOIN `tabProject` p ON p.name = ec.custom_project
+            LEFT JOIN `tabEmployee` emp ON emp.name = ec.employee
+            JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+                AND hol.holiday_date = DATE(ec.time)
+            WHERE DATE(ec.time) BETWEEN %(from_date)s AND %(to_date)s
+            GROUP BY ec.employee, DATE(ec.time), ec.custom_project
+
+            UNION ALL
+
+            SELECT
+                att.employee,
+                ROUND(GREATEST(
+                    COALESCE(ash.hours, 0)
+                    - COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), COALESCE(ash.hours, 0))
+                , 0), 2) AS hot_hours
+            FROM `tabAttendance` att
+            JOIN `tabAttendance Site Hours` ash
+                ON ash.parent = att.name AND ash.parentfield = 'custom_site_hours'
+            LEFT JOIN `tabProject` p ON p.name = ash.project
+            LEFT JOIN `tabEmployee` emp ON emp.name = att.employee
+            JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+                AND hol.holiday_date = att.attendance_date
+            WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
+              AND att.docstatus = 1
+              AND NOT EXISTS (
+                  SELECT 1 FROM `tabEmployee Checkin` ec2
+                  WHERE ec2.employee = att.employee
+                    AND DATE(ec2.time) = att.attendance_date)
+        ) hot_union
+        GROUP BY employee
+    """, {"from_date": from_date, "to_date": to_date}, as_dict=True)
+
+    return {r.employee: r.hot_hours or 0 for r in rows}
