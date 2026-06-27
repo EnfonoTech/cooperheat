@@ -101,7 +101,8 @@ def _get_ot(from_date, to_date):
             FROM `tabEmployee Checkin` ec
             LEFT JOIN `tabProject` p ON p.name = ec.custom_project
             LEFT JOIN `tabEmployee` emp ON emp.name = ec.employee
-            LEFT JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+            LEFT JOIN `tabCompany` comp ON comp.name = emp.company
+            LEFT JOIN `tabHoliday` hol ON hol.parent = COALESCE(NULLIF(emp.holiday_list, ''), comp.default_holiday_list)
                 AND hol.holiday_date = DATE(ec.time)
             WHERE DATE(ec.time) BETWEEN %(from_date)s AND %(to_date)s
               AND hol.holiday_date IS NULL
@@ -120,7 +121,8 @@ def _get_ot(from_date, to_date):
                 ON ash.parent = att.name AND ash.parentfield = 'custom_site_hours'
             LEFT JOIN `tabProject` p ON p.name = ash.project
             LEFT JOIN `tabEmployee` emp ON emp.name = att.employee
-            LEFT JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+            LEFT JOIN `tabCompany` comp ON comp.name = emp.company
+            LEFT JOIN `tabHoliday` hol ON hol.parent = COALESCE(NULLIF(emp.holiday_list, ''), comp.default_holiday_list)
                 AND hol.holiday_date = att.attendance_date
             WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
               AND att.docstatus = 1
@@ -142,19 +144,13 @@ def _get_hot(from_date, to_date):
         FROM (
             SELECT
                 ec.employee,
-                ROUND(GREATEST(
-                    ROUND(TIMESTAMPDIFF(MINUTE,
-                        MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
-                        MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2)
-                    - COALESCE(NULLIF(p.custom_regular_working_hours__day, 0),
-                        ROUND(TIMESTAMPDIFF(MINUTE,
-                            MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
-                            MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2))
-                , 0), 2) AS hot_hours
+                ROUND(TIMESTAMPDIFF(MINUTE,
+                    MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
+                    MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2) AS hot_hours
             FROM `tabEmployee Checkin` ec
-            LEFT JOIN `tabProject` p ON p.name = ec.custom_project
             LEFT JOIN `tabEmployee` emp ON emp.name = ec.employee
-            JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+            LEFT JOIN `tabCompany` comp ON comp.name = emp.company
+            JOIN `tabHoliday` hol ON hol.parent = COALESCE(NULLIF(emp.holiday_list, ''), comp.default_holiday_list)
                 AND hol.holiday_date = DATE(ec.time)
             WHERE DATE(ec.time) BETWEEN %(from_date)s AND %(to_date)s
             GROUP BY ec.employee, DATE(ec.time), ec.custom_project
@@ -163,16 +159,13 @@ def _get_hot(from_date, to_date):
 
             SELECT
                 att.employee,
-                ROUND(GREATEST(
-                    COALESCE(ash.hours, 0)
-                    - COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), COALESCE(ash.hours, 0))
-                , 0), 2) AS hot_hours
+                COALESCE(ash.hours, 0) AS hot_hours
             FROM `tabAttendance` att
             JOIN `tabAttendance Site Hours` ash
                 ON ash.parent = att.name AND ash.parentfield = 'custom_site_hours'
-            LEFT JOIN `tabProject` p ON p.name = ash.project
             LEFT JOIN `tabEmployee` emp ON emp.name = att.employee
-            JOIN `tabHoliday` hol ON hol.parent = emp.holiday_list
+            LEFT JOIN `tabCompany` comp ON comp.name = emp.company
+            JOIN `tabHoliday` hol ON hol.parent = COALESCE(NULLIF(emp.holiday_list, ''), comp.default_holiday_list)
                 AND hol.holiday_date = att.attendance_date
             WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
               AND att.docstatus = 1
