@@ -110,18 +110,18 @@ def get_data(filters):
 			p.custom_project_code  AS project_code,
 			base.in_time,
 			base.out_time,
-			ROUND(LEAST(base.working_hours,
-						COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours)), 2)
-				AS normal_hours,
+			CASE
+				WHEN hol.holiday_date IS NOT NULL THEN 0
+				ELSE ROUND(LEAST(base.working_hours,
+							COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours)), 2)
+			END AS normal_hours,
 			CASE
 				WHEN hol.holiday_date IS NOT NULL THEN 0
 				ELSE ROUND(GREATEST(base.working_hours
 							- COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours), 0), 2)
 			END AS ot_hours,
 			CASE
-				WHEN hol.holiday_date IS NOT NULL
-				THEN ROUND(GREATEST(base.working_hours
-							- COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours), 0), 2)
+				WHEN hol.holiday_date IS NOT NULL THEN ROUND(base.working_hours, 2)
 				ELSE 0
 			END AS hot_hours,
 			ROUND(base.working_hours, 2) AS total_hours,
@@ -200,10 +200,11 @@ def get_data(filters):
 				SELECT 1 FROM `tabAttendance Site Hours` ash2
 				WHERE ash2.parent = att.name AND ash2.parentfield = 'custom_site_hours')
 		) base
-		LEFT JOIN `tabEmployee`   emp ON emp.name  = base.employee
-		LEFT JOIN `tabProject`    p   ON p.name    = base.project
-		LEFT JOIN `tabShift Type` st  ON st.name   = base.shift_type
-		LEFT JOIN `tabHoliday`    hol ON hol.parent = emp.holiday_list
+		LEFT JOIN `tabEmployee`   emp  ON emp.name  = base.employee
+		LEFT JOIN `tabProject`    p    ON p.name    = base.project
+		LEFT JOIN `tabShift Type` st   ON st.name   = base.shift_type
+		LEFT JOIN `tabCompany`    comp ON comp.name = emp.company
+		LEFT JOIN `tabHoliday`    hol  ON hol.parent = COALESCE(NULLIF(emp.holiday_list, ''), comp.default_holiday_list)
 			AND hol.holiday_date = base.att_date
 		WHERE 1 = 1
 		{dept_cond}
