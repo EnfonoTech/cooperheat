@@ -254,12 +254,14 @@ def _auto_approve_if_no_level3(doc):
 	if _row_for_level(matrix, 3):
 		return  # Level 3 approver exists — normal flow, do nothing
 
-	from frappe.model.workflow import apply_workflow
 	try:
+		current_state = frappe.db.get_value("Attendance", doc.name, "workflow_state")
+		if current_state != "Pending Level 3 Approval":
+			return  # already moved on, nothing to do
+		# apply_workflow internally reloads and saves — do NOT call doc2.save() after
+		from frappe.model.workflow import apply_workflow
 		doc2 = frappe.get_doc("Attendance", doc.name)
 		apply_workflow(doc2, "Level 3 Approve")
-		doc2.save(ignore_permissions=True)
-		frappe.db.commit()
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), "Auto Level 3 Approve failed: " + doc.name)
 
@@ -561,8 +563,8 @@ def _validate_approver_authorization(doc):
 			)
 		)
 
-	# HR Managers can always override
-	if "HR Manager" in frappe.get_roles(frappe.session.user):
+	# Only Administrator can bypass the approver restriction
+	if frappe.session.user == "Administrator":
 		return
 
 	if frappe.session.user != approver_user:

@@ -24,10 +24,39 @@ def get_columns():
 		{"label": _("Check Out"), "fieldname": "out_time", "fieldtype": "Datetime", "width": 150},
 		{"label": _("Normal Hours"), "fieldname": "normal_hours", "fieldtype": "Float", "precision": 2, "width": 110},
 		{"label": _("OT Hours"), "fieldname": "ot_hours", "fieldtype": "Float", "precision": 2, "width": 100},
+		{"label": _("HOT Hours"), "fieldname": "hot_hours", "fieldtype": "Float", "precision": 2, "width": 100},
 		{"label": _("Total Hours"), "fieldname": "total_hours", "fieldtype": "Float", "precision": 2, "width": 100},
 		{"label": _("Max OT/Day"), "fieldname": "max_ot_day", "fieldtype": "Float", "precision": 2, "width": 110},
 		{"label": _("Status"), "fieldname": "status", "fieldtype": "HTML", "width": 130},
 	]
+
+
+def _get_access_scope():
+	"""Return (scope, employee_or_depts) based on the current user's role.
+
+	Returns:
+	  ("all",   None)              — HR Manager, sees everything
+	  ("depts", [dept1, dept2, …]) — user is a dept approver, sees those depts
+	  ("self",  employee_id)       — everyone else, sees only their own records
+	"""
+	if frappe.session.user == "Administrator" or "System Manager" in frappe.get_roles(frappe.session.user):
+		return "all", None
+
+	linked_emp = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+	if linked_emp:
+		approved_depts = frappe.get_all(
+			"Department Approval Matrix",
+			filters={"approver": linked_emp},
+			pluck="parent",
+		)
+		if approved_depts:
+			return "depts", list(set(approved_depts))
+
+	if linked_emp:
+		return "self", linked_emp
+
+	# No linked employee and no special role — return nothing
+	return "self", None
 
 
 def get_data(filters):
@@ -36,16 +65,40 @@ def get_data(filters):
 	employee = filters.get("employee") or None
 	department = filters.get("department") or None
 
+	scope, scope_val = _get_access_scope()
+
+	# Enforce access scope on top of any explicit filters
+	if scope == "self":
+		if not scope_val:
+			return []
+		employee = scope_val  # override — can only see own records
+	elif scope == "depts":
+		if department and department not in scope_val:
+			return []  # requested dept outside their approved set
+		if not department:
+			# restrict to approved departments
+			pass  # handled via dept_scope_cond below
+
 	# Build optional filter snippets so missing keys never reach the SQL engine
 	emp_checkin_cond = "AND ec.employee = %(employee)s" if employee else ""
 	emp_att_cond = "AND att.employee = %(employee)s" if employee else ""
 	dept_cond = "AND emp.department = %(department)s" if department else ""
+
+	# Department scope restriction for approvers
+	if scope == "depts" and not department:
+		placeholders = ", ".join([f"%(scope_dept_{i})s" for i in range(len(scope_val))])
+		dept_scope_cond = f"AND emp.department IN ({placeholders})"
+	else:
+		dept_scope_cond = ""
 
 	values = {"from_date": from_date, "to_date": to_date}
 	if employee:
 		values["employee"] = employee
 	if department:
 		values["department"] = department
+	if scope == "depts" and not department:
+		for i, d in enumerate(scope_val):
+			values[f"scope_dept_{i}"] = d
 
 	sql = f"""
 		SELECT
@@ -60,9 +113,17 @@ def get_data(filters):
 			ROUND(LEAST(base.working_hours,
 						COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours)), 2)
 				AS normal_hours,
-			ROUND(GREATEST(base.working_hours
-						- COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours), 0), 2)
-				AS ot_hours,
+			CASE
+				WHEN hol.holiday_date IS NOT NULL THEN 0
+				ELSE ROUND(GREATEST(base.working_hours
+							- COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours), 0), 2)
+			END AS ot_hours,
+			CASE
+				WHEN hol.holiday_date IS NOT NULL
+				THEN ROUND(GREATEST(base.working_hours
+							- COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours), 0), 2)
+				ELSE 0
+			END AS hot_hours,
 			ROUND(base.working_hours, 2) AS total_hours,
 			ROUND(p.custom_max_overtime_hours__day, 2) AS max_ot_day,
 			CASE
@@ -142,8 +203,11 @@ def get_data(filters):
 		LEFT JOIN `tabEmployee`   emp ON emp.name  = base.employee
 		LEFT JOIN `tabProject`    p   ON p.name    = base.project
 		LEFT JOIN `tabShift Type` st  ON st.name   = base.shift_type
+		LEFT JOIN `tabHoliday`    hol ON hol.parent = emp.holiday_list
+			AND hol.holiday_date = base.att_date
 		WHERE 1 = 1
 		{dept_cond}
+		{dept_scope_cond}
 		ORDER BY base.att_date DESC, emp.employee_name, base.project
 	"""
 
