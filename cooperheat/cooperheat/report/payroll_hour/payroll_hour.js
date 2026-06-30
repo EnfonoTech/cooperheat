@@ -1,7 +1,7 @@
 // Copyright (c) 2026, enfonotechnology and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Payroll Hourss"] = {
+frappe.query_reports["Payroll Hour"] = {
 	formatter: function (value, row, column, data, default_formatter) {
 		if (column.fieldname === "employee" && value) {
 			return `<a href="/app/employee/${value}">${value}</a>`;
