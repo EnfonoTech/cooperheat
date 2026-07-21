@@ -10,12 +10,15 @@
   "check_in_time",
   "check_out_time",
   "hours",
+  "payroll_hours",
   "activity_log"
  ],
  "fields": [
   {
    "allow_on_submit": 1,
    "columns": 2,
+   "depends_on": "eval:doc.project",
+   "description": "Only shown for rows derived from checkins that had a Project Site selected - rows from department-only checkins have no project.",
    "fieldname": "project",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -53,7 +56,16 @@
    "fieldname": "hours",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Hours"
+   "label": "Billable Hours"
+  },
+  {
+   "allow_on_submit": 1,
+   "columns": 1,
+   "description": "Editable by the approver during Attendance approval - the hours actually used for payroll, may differ from the calculated Hours.",
+   "fieldname": "payroll_hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Payable Hours"
   },
   {
    "allow_on_submit": 1,
