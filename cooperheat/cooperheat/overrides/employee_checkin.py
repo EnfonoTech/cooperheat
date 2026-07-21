@@ -5,6 +5,7 @@ from frappe.utils import getdate
 
 def validate(doc, method):
 	_auto_set_project(doc)
+	_auto_set_department(doc)
 	_validate_no_open_checkin(doc)
 	_validate_no_overlap(doc)
 
@@ -64,6 +65,24 @@ def _auto_set_project(doc):
 	)
 	if project:
 		doc.custom_project = project
+
+
+def _auto_set_department(doc):
+	"""Resolve custom_department, always server-side so it's correct regardless
+	of how the checkin was created (form, mobile app, API).
+
+	Project Site selected → department comes from that Project (the field is
+	hidden on the form in this case, but the value must still be populated for
+	attendance approval routing and reporting).
+	No Project Site → department comes from the Employee master record.
+	"""
+	department = None
+	if doc.custom_project:
+		department = frappe.db.get_value("Project", doc.custom_project, "department")
+	elif doc.employee:
+		department = frappe.db.get_value("Employee", doc.employee, "department")
+
+	doc.custom_department = department
 
 
 def _validate_no_open_checkin(doc):

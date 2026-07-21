@@ -19,5 +19,12 @@ function recalc_hours(cdt, cdn) {
 		"hours",
 		true
 	);
-	frappe.model.set_value(cdt, cdn, "hours", diff > 0 ? flt(diff, 2) : 0);
+	const hours = diff > 0 ? flt(diff, 2) : 0;
+
+	// Billable Hours is set once, from the first calculation, and then stays
+	// constant - later check-in/check-out edits only affect Payable Hours.
+	if (!row.hours) {
+		frappe.model.set_value(cdt, cdn, "hours", hours);
+	}
+	frappe.model.set_value(cdt, cdn, "payroll_hours", hours);
 }
