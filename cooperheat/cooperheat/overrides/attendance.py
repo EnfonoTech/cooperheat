@@ -339,14 +339,15 @@ def _sync_current_approver(doc):
 		)
 
 
-def _child_table_changed(doc) -> bool:
-	"""Return True if custom_site_hours rows differ from what is stored in the DB."""
+def _checkin_times_changed(doc) -> bool:
+	"""Return True if any Attendance Site Hours row's check_in_time / check_out_time
+	differs from what is currently stored in the DB."""
 	if not doc.name:
 		return False
 	db_rows = frappe.get_all(
 		"Attendance Site Hours",
 		filters={"parent": doc.name, "parentfield": "custom_site_hours"},
-		fields=["project", "hours", "check_in_time", "check_out_time"],
+		fields=["check_in_time", "check_out_time"],
 		order_by="idx asc",
 	)
 	doc_rows = doc.get("custom_site_hours") or []
@@ -354,9 +355,7 @@ def _child_table_changed(doc) -> bool:
 		return True
 	for db_row, doc_row in zip(db_rows, doc_rows):
 		if (
-			(db_row.project or "") != (doc_row.get("project") or "")
-			or flt(db_row.hours) != flt(doc_row.get("hours") or 0)
-			or str(db_row.check_in_time or "") != str(doc_row.get("check_in_time") or "")
+			str(db_row.check_in_time or "") != str(doc_row.get("check_in_time") or "")
 			or str(db_row.check_out_time or "") != str(doc_row.get("check_out_time") or "")
 		):
 			return True
@@ -394,7 +393,11 @@ def _recalculate_site_hours_from_times(doc):
 
 
 def _validate_hours_edit_authorization(doc):
-	"""Only the current level's approver may edit status / in_time / out_time / site hours."""
+	"""Check In / Check Out times are locked once submitted — nobody may edit them,
+	not even the assigned approver. Only Payable Hours may be corrected manually.
+
+	Status changes may still be corrected by the current level's approver.
+	"""
 	if doc.docstatus != 1:
 		return
 	# Skip during internal saves (auto-approve, system corrections, etc.)
@@ -408,12 +411,14 @@ def _validate_hours_edit_authorization(doc):
 	if not db_vals:
 		return
 
-	fields_changed = (
+	if (
 		str(doc.get("in_time")) != str(db_vals.in_time)
 		or str(doc.get("out_time")) != str(db_vals.out_time)
-		or str(doc.get("status") or "") != str(db_vals.status or "")
-		or _child_table_changed(doc)
-	)
+		or _checkin_times_changed(doc)
+	):
+		frappe.throw(_("Check In and Check Out times cannot be edited after submission."))
+
+	fields_changed = str(doc.get("status") or "") != str(db_vals.status or "")
 	if not fields_changed:
 		return
 
