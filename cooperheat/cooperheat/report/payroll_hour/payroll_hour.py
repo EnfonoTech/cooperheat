@@ -26,6 +26,8 @@ def get_columns():
 		{"label": _("OT Hours"), "fieldname": "ot_hours", "fieldtype": "Float", "precision": 2, "width": 100},
 		{"label": _("HOT Hours"), "fieldname": "hot_hours", "fieldtype": "Float", "precision": 2, "width": 100},
 		{"label": _("Total Hours"), "fieldname": "total_hours", "fieldtype": "Float", "precision": 2, "width": 100},
+		{"label": _("Billable Hours"), "fieldname": "billable_hours", "fieldtype": "Float", "precision": 2, "width": 110},
+		{"label": _("Payable Hours"), "fieldname": "payable_hours", "fieldtype": "Float", "precision": 2, "width": 110},
 		{"label": _("Max OT/Day"), "fieldname": "max_ot_day", "fieldtype": "Float", "precision": 2, "width": 110},
 		{"label": _("Status"), "fieldname": "status", "fieldtype": "HTML", "width": 130},
 	]
@@ -125,6 +127,8 @@ def get_data(filters):
 				ELSE 0
 			END AS hot_hours,
 			ROUND(base.working_hours, 2) AS total_hours,
+			ROUND(base.billable_hours, 2) AS billable_hours,
+			ROUND(base.payable_hours, 2) AS payable_hours,
 			ROUND(p.custom_max_overtime_hours__day, 2) AS max_ot_day,
 			CASE
 				WHEN COALESCE(st.working_hours_threshold_for_half_day, 0) > 0
@@ -148,6 +152,12 @@ def get_data(filters):
 				ROUND(TIMESTAMPDIFF(MINUTE,
 					MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
 					MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2) AS working_hours,
+				ROUND(TIMESTAMPDIFF(MINUTE,
+					MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
+					MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2) AS billable_hours,
+				ROUND(TIMESTAMPDIFF(MINUTE,
+					MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
+					MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2) AS payable_hours,
 				(SELECT a1.status FROM `tabAttendance` a1
 				 WHERE a1.employee = ec.employee AND a1.attendance_date = DATE(ec.time)
 				 ORDER BY a1.docstatus DESC, a1.modified DESC LIMIT 1) AS status,
@@ -157,6 +167,9 @@ def get_data(filters):
 			FROM `tabEmployee Checkin` ec
 			WHERE DATE(ec.time) BETWEEN %(from_date)s AND %(to_date)s
 			{emp_checkin_cond}
+			AND NOT EXISTS (
+				SELECT 1 FROM `tabAttendance` att3
+				WHERE att3.employee = ec.employee AND att3.attendance_date = DATE(ec.time))
 			GROUP BY ec.employee, DATE(ec.time), ec.custom_project
 
 			UNION ALL
@@ -168,6 +181,8 @@ def get_data(filters):
 				att.in_time,
 				att.out_time,
 				ash.hours           AS working_hours,
+				ash.hours           AS billable_hours,
+				COALESCE(ash.payroll_hours, ash.hours) AS payable_hours,
 				att.status,
 				att.shift
 			FROM `tabAttendance` att
@@ -175,9 +190,6 @@ def get_data(filters):
 				ON ash.parent = att.name AND ash.parentfield = 'custom_site_hours'
 			WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
 			{emp_att_cond}
-			AND NOT EXISTS (
-				SELECT 1 FROM `tabEmployee Checkin` ec2
-				WHERE ec2.employee = att.employee AND DATE(ec2.time) = att.attendance_date)
 
 			UNION ALL
 
@@ -188,14 +200,13 @@ def get_data(filters):
 				att.in_time,
 				att.out_time,
 				COALESCE(att.working_hours, 0) AS working_hours,
+				COALESCE(att.working_hours, 0) AS billable_hours,
+				COALESCE(att.working_hours, 0) AS payable_hours,
 				att.status,
 				att.shift
 			FROM `tabAttendance` att
 			WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
 			{emp_att_cond}
-			AND NOT EXISTS (
-				SELECT 1 FROM `tabEmployee Checkin` ec2
-				WHERE ec2.employee = att.employee AND DATE(ec2.time) = att.attendance_date)
 			AND NOT EXISTS (
 				SELECT 1 FROM `tabAttendance Site Hours` ash2
 				WHERE ash2.parent = att.name AND ash2.parentfield = 'custom_site_hours')
