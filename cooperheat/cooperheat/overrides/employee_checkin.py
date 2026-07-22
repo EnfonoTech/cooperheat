@@ -21,50 +21,37 @@ def on_update(doc, method):
 def _auto_set_project(doc):
 	"""Set custom_project automatically if not already set.
 
-	IN  → read from the employee's active Shift Assignment.
-	OUT → copy from the most recent open IN log on the same day,
-	      so the OUT is always paired with the right project.
+	OUT → copy from the most recent open IN log on the same day, so the OUT is
+	      always paired with the right project.
+	IN  → intentionally left alone. Leaving Project Site blank on an IN log is
+	      a deliberate choice (department-only checkin) and must not be
+	      silently overridden from the employee's Shift Assignment.
 	"""
 	if doc.custom_project:
 		return
 	if not doc.employee or not doc.time:
 		return
+	if doc.log_type != "OUT":
+		return
 
 	checkin_date = getdate(doc.time)
 	date_str = str(checkin_date)
 
-	if doc.log_type == "OUT":
-		# Find the last IN that has no matching OUT yet (open checkin)
-		last_in = frappe.db.get_value(
-			"Employee Checkin",
-			{
-				"employee": doc.employee,
-				"log_type": "IN",
-				"time": ["between", [date_str + " 00:00:00", date_str + " 23:59:59"]],
-				"name": ["!=", doc.name],
-			},
-			["custom_project", "time"],
-			as_dict=True,
-			order_by="time desc",
-		)
-		if last_in and last_in.custom_project:
-			doc.custom_project = last_in.custom_project
-		return
-
-	# IN log → read from active Shift Assignment
-	project = frappe.db.get_value(
-		"Shift Assignment",
+	# Find the last IN that has no matching OUT yet (open checkin)
+	last_in = frappe.db.get_value(
+		"Employee Checkin",
 		{
 			"employee": doc.employee,
-			"docstatus": 1,
-			"status": "Active",
-			"start_date": ["<=", checkin_date],
+			"log_type": "IN",
+			"time": ["between", [date_str + " 00:00:00", date_str + " 23:59:59"]],
+			"name": ["!=", doc.name],
 		},
-		"custom_project_",
-		order_by="start_date desc",
+		["custom_project", "time"],
+		as_dict=True,
+		order_by="time desc",
 	)
-	if project:
-		doc.custom_project = project
+	if last_in and last_in.custom_project:
+		doc.custom_project = last_in.custom_project
 
 
 def _auto_set_department(doc):
