@@ -114,16 +114,16 @@ def get_data(filters):
 			base.out_time,
 			CASE
 				WHEN hol.holiday_date IS NOT NULL THEN 0
-				ELSE ROUND(LEAST(base.working_hours,
-							COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours)), 2)
+				ELSE ROUND(LEAST(base.payable_hours,
+							COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.payable_hours)), 2)
 			END AS normal_hours,
 			CASE
 				WHEN hol.holiday_date IS NOT NULL THEN 0
-				ELSE ROUND(GREATEST(base.working_hours
-							- COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.working_hours), 0), 2)
+				ELSE ROUND(GREATEST(base.payable_hours
+							- COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), base.payable_hours), 0), 2)
 			END AS ot_hours,
 			CASE
-				WHEN hol.holiday_date IS NOT NULL THEN ROUND(base.working_hours, 2)
+				WHEN hol.holiday_date IS NOT NULL THEN ROUND(base.payable_hours, 2)
 				ELSE 0
 			END AS hot_hours,
 			ROUND(base.working_hours, 2) AS total_hours,
