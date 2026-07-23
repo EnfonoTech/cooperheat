@@ -19,16 +19,17 @@ def on_update(doc, method):
 
 
 def _auto_set_project(doc):
-	"""Set custom_project automatically if not already set.
+	"""Set custom_project automatically.
 
-	OUT → copy from the most recent open IN log on the same day, so the OUT is
-	      always paired with the right project.
+	OUT → always resynced from the most recent open IN log on the same day, so the
+	      OUT is always paired with the right project - this also corrects a stale
+	      value already sitting on the field (e.g. carried over from an active
+	      list view filter when the record was created via "New" from a filtered
+	      list). If that IN had no project, the OUT is cleared too.
 	IN  → intentionally left alone. Leaving Project Site blank on an IN log is
 	      a deliberate choice (department-only checkin) and must not be
 	      silently overridden from the employee's Shift Assignment.
 	"""
-	if doc.custom_project:
-		return
 	if not doc.employee or not doc.time:
 		return
 	if doc.log_type != "OUT":
@@ -50,8 +51,7 @@ def _auto_set_project(doc):
 		as_dict=True,
 		order_by="time desc",
 	)
-	if last_in and last_in.custom_project:
-		doc.custom_project = last_in.custom_project
+	doc.custom_project = last_in.custom_project if last_in else None
 
 
 def _auto_set_department(doc):
