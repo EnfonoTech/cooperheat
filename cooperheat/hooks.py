@@ -257,6 +257,7 @@ doc_events = {
 		"before_validate": "cooperheat.cooperheat.overrides.attendance.before_validate",
 		"on_submit": "cooperheat.cooperheat.overrides.attendance.on_submit",
 		"validate": "cooperheat.cooperheat.overrides.attendance.validate",
+		"before_update_after_submit": "cooperheat.cooperheat.overrides.attendance.before_update_after_submit",
 		"on_update_after_submit": "cooperheat.cooperheat.overrides.attendance.on_update_after_submit",
 	},
 	"Department": {

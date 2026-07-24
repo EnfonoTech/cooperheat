@@ -53,13 +53,32 @@ def on_submit(doc, method):
 
 
 def validate(doc, method):
-	"""Block unauthorised workflow state transitions and hours edits."""
+	"""Runs on the initial draft save / submit only - Frappe does NOT fire
+	`validate` when saving an already-submitted doc (see before_update_after_submit
+	below), so nothing here can assume it also covers approver corrections.
+	"""
 	_validate_approver_authorization(doc)
 	_validate_hours_edit_authorization(doc)
 	_recalculate_site_hours_from_times(doc)  # recalc row hours and sync parent times from child table
+	_validate_payable_vs_billable_hours(doc)
 	_fill_checkin_times(doc)                 # fill in_time/out_time from checkins (draft only)
 	_recalculate_working_hours(doc)          # recalc parent working_hours (skipped if site hours exist)
 	_set_status_from_thresholds(doc)
+	_sync_current_approver(doc)
+
+
+def before_update_after_submit(doc, method):
+	"""Runs for every save of an already-submitted Attendance - approver
+	corrections, workflow-state transitions (Level 1/2/3 Approve, Reject), etc.
+
+	Frappe fires `before_update_after_submit` instead of `validate` for these
+	saves, so the same gating/recalculation logic used on initial submit must
+	also run here, or it silently never executes.
+	"""
+	_validate_approver_authorization(doc)
+	_validate_hours_edit_authorization(doc)
+	_recalculate_site_hours_from_times(doc)
+	_validate_payable_vs_billable_hours(doc)
 	_sync_current_approver(doc)
 
 
@@ -390,6 +409,42 @@ def _recalculate_site_hours_from_times(doc):
 		doc.in_time = min(all_in_times)
 	if all_out_times:
 		doc.out_time = max(all_out_times)
+
+
+def _validate_payable_vs_billable_hours(doc):
+	"""Enforce the Payable vs Billable Hours relationship on each Site Hours row,
+	based on whether the Project Site linked on the row has a Customer set.
+
+	No Project Site, or a Project Site with no Customer → Payable Hours must be
+	strictly greater than Billable Hours.
+	Project Site with a Customer → Billable Hours must be greater than or equal
+	to Payable Hours.
+
+	Only enforced once an approver has actually entered a Payable Hours value -
+	a freshly created row (Payable Hours still 0) is left alone.
+	"""
+	if doc.docstatus != 1:
+		return
+	for row in doc.get("custom_site_hours") or []:
+		payroll_hours = flt(row.payroll_hours)
+		if not payroll_hours:
+			continue
+		hours = flt(row.hours)
+		has_customer = bool(row.project and frappe.db.get_value("Project", row.project, "customer"))
+		if has_customer:
+			if hours < payroll_hours:
+				frappe.throw(
+					_("Row #{0}: Payable Hours ({1}) cannot exceed Billable Hours ({2}) when the Project Site.").format(
+						row.idx, payroll_hours, hours
+					)
+				)
+		else:
+			if payroll_hours <= hours:
+				frappe.throw(
+					_("Row #{0}: Payable Hours ({1}) must be greater than Billable Hours ({2}) when the Project Site").format(
+						row.idx, payroll_hours, hours
+					)
+				)
 
 
 def _validate_hours_edit_authorization(doc):
@@ -758,18 +813,19 @@ def _populate_site_hours(doc) -> None:
 
 
 def _calculate_hours_from_pairs(logs: list) -> float:
-	"""Sum hours from consecutive IN/OUT pairs in a list of checkin logs."""
-	from frappe.utils import get_datetime, time_diff_in_hours
+	"""Total worked hours for a project on a day: earliest IN to latest OUT.
 
-	total = 0.0
-	in_time = None
-	for log in sorted(logs, key=lambda x: x.time):
-		if log.log_type == "IN":
-			in_time = get_datetime(log.time)
-		elif log.log_type == "OUT" and in_time is not None:
-			total += flt(time_diff_in_hours(log.time, in_time), 4)
-			in_time = None
-	return total
+	Uses the overall span rather than summing individual IN/OUT pairs so this
+	stays in sync with how check_in_time/check_out_time are derived for the
+	same row (min IN, max OUT) and so a stray duplicate punch in the middle of
+	a shift can't silently zero out the whole day's hours.
+	"""
+	in_times = [get_datetime(log.time) for log in logs if log.log_type == "IN"]
+	out_times = [get_datetime(log.time) for log in logs if log.log_type == "OUT"]
+	if not in_times or not out_times:
+		return 0.0
+	span = flt(time_diff_in_hours(max(out_times), min(in_times)), 4)
+	return span if span > 0 else 0.0
 
 
 def _get_project_window_hours(project: str, level: int) -> float:
