@@ -28,6 +28,7 @@ from frappe.utils import (
 	cint,
 	cstr,
 	escape_html,
+	flt,
 	getdate,
 	now_datetime,
 	strip_html,
@@ -617,15 +618,34 @@ def _mailing_is_separate():
 		frappe.flags.via_payroll_entry = previous
 
 
+def assert_slip_matches_sheet(slip_name, sheet_name):
+	"""Refuse a slip whose net pay is not what the Payroll Sheet worked out.
+
+	HRMS fills in the Salary Structure's own default amounts when none of the mapped components
+	has a value (e.g. an employee with zero worked days), so a slip can quietly come out with a
+	different - non-zero - net than the sheet. In a bulk run that would be emailed to the employee."""
+	sheet_net = flt(frappe.db.get_value("Payroll Sheet", sheet_name, "net_payable"), 2)
+	slip_net = flt(frappe.db.get_value(SLIP_DT, slip_name, "net_pay"), 2)
+	if abs(slip_net - sheet_net) > 0.01:
+		frappe.throw(
+			_(
+				"Net pay on the Salary Slip ({0}) does not match the Payroll Sheet ({1}). "
+				"Check the Salary Structure and the Component Mapping, then create or submit this one individually."
+			).format(f"{slip_net:,.2f}", f"{sheet_net:,.2f}")
+		)
+
+
 def _step_create(r, state, options):
 	if state["slip_status"] == "Sheet Draft":
 		sheet = frappe.get_doc("Payroll Sheet", r.payroll_sheet)
 		sheet.flags.ignore_permissions = True
 		sheet.submit()
-	create_salary_slip(r.payroll_sheet)
+	slip_name = create_salary_slip(r.payroll_sheet)
+	assert_slip_matches_sheet(slip_name, r.payroll_sheet)  # raises -> this employee's work is rolled back
 
 
 def _step_submit(r, state, options):
+	assert_slip_matches_sheet(state["salary_slip"], r.payroll_sheet)
 	slip = frappe.get_doc(SLIP_DT, state["salary_slip"])
 	slip.flags.ignore_permissions = True
 	with _mailing_is_separate():
