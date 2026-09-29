@@ -644,18 +644,22 @@ def _explain_mismatch(slip_name, sheet):
 			)
 		)
 
-	slip_rows = {
-		r.salary_component: flt(r.amount)
-		for r in frappe.get_all(
-			"Salary Detail", filters={"parent": slip_name}, fields=["salary_component", "amount"], parent_doctype=SLIP_DT
-		)
-	}
-	structure = frappe.db.get_value(SLIP_DT, slip_name, "salary_structure")
+	# several sheet fields can feed one component, so compare per component, not per field
+	expected: dict[str, float] = {}
 	for field, (component, _type) in mapping.items():
-		expected, got = flt(sheet.get(field)), slip_rows.get(component, 0.0)
-		if abs(expected - got) <= 0.01:
+		expected[component] = expected.get(component, 0.0) + flt(sheet.get(field))
+	got = {}
+	for r in frappe.get_all(
+		"Salary Detail", filters={"parent": slip_name}, fields=["salary_component", "amount"], parent_doctype=SLIP_DT
+	):
+		got[r.salary_component] = got.get(r.salary_component, 0.0) + flt(r.amount)
+
+	structure = frappe.db.get_value(SLIP_DT, slip_name, "salary_structure")
+	for component in sorted(set(expected) | set(got)):
+		want, have = expected.get(component, 0.0), got.get(component, 0.0)
+		if abs(want - have) <= 0.01:
 			continue
-		note = f"{component}: sheet {expected:,.2f}, slip {got:,.2f}"
+		note = f"{component}: sheet {want:,.2f}, slip {have:,.2f}"
 		if structure and frappe.db.get_value(
 			"Salary Detail", {"parent": structure, "salary_component": component, "amount_based_on_formula": 1}, "name"
 		):

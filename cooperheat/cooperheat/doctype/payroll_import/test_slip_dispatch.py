@@ -454,6 +454,23 @@ class TestPipeline(FrappeTestCase):
 		self.assertIn("not in the Component Mapping", message)
 		self.assertIn("Service Allowance 300.00", message)
 
+	def test_two_sheet_fields_feeding_one_component_are_not_a_false_alarm(self):
+		settings = frappe.get_single("Pay Sheet Settings")
+		for m in settings.component_mapping:
+			if m.payroll_field == "others":
+				m.salary_component = "Other Allowance"  # same component as other_allowance
+		settings.flags.ignore_permissions = True
+		settings.save()
+
+		emp = self.make_employee("Shared", company_email="shared@example.com")
+		frappe.db.set_value("Employee Compensation", {"employee": emp.name}, "other_allowance", 100)
+		sheet = self.make_sheet(emp)
+		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		frappe.db.set_value("Salary Slip", slip, "net_pay", 1)  # force a disagreement that has no component cause
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			sd.assert_slip_matches_sheet(slip, sheet)
+		self.assertNotIn("Other Allowance:", str(ctx.exception))
+
 	def test_bulk_submit_leaves_a_mismatched_draft_alone(self):
 		emp = self.make_employee("Drift", company_email="drift@example.com")
 		sheet = self.make_sheet(emp)
