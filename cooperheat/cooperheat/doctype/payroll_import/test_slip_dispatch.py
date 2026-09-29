@@ -422,6 +422,43 @@ class TestPipeline(FrappeTestCase):
 		self.assertEqual(by_emp[self.emp_ok.name]["slip_status"], "Submitted")
 		self.assertEqual(dict((s["label"], s["value"]) for s in summary)["Employees"], 3)
 
+	def test_a_slip_that_disagrees_with_its_sheet_is_refused(self):
+		emp = self.make_employee("Mismatch", company_email="mismatch@example.com")
+		sheet = self.make_sheet(emp)
+		sheet_net = frappe.db.get_value("Payroll Sheet", sheet, "net_payable")
+		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+
+		sd.assert_slip_matches_sheet(slip, sheet)  # equal: fine
+		frappe.db.set_value("Salary Slip", slip, "net_pay", sheet_net + 1700)
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			sd.assert_slip_matches_sheet(slip, sheet)
+		self.assertIn("does not match", str(ctx.exception))
+		frappe.db.set_value("Salary Slip", slip, "net_pay", sheet_net + 0.004)  # rounding noise is tolerated
+		sd.assert_slip_matches_sheet(slip, sheet)
+
+	def test_bulk_submit_leaves_a_mismatched_draft_alone(self):
+		emp = self.make_employee("Drift", company_email="drift@example.com")
+		sheet = self.make_sheet(emp)
+		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		frappe.db.set_value("Salary Slip", slip, "net_pay", 999)  # someone edited the draft after it was made
+
+		imp = frappe.get_doc({
+			"doctype": "Payroll Import", "company": self.company, "month": self.month, "year": self.year,
+			"posting_date": self.today, "file": "/files/zz-test3.xlsx", "status": "Completed",
+		})
+		imp.append("rows", {
+			"doc_no": "1", "code": emp.employee_number, "employee": emp.name, "employee_name": emp.employee_name,
+			"payroll_sheet": sheet, "row_status": "Created",
+		})
+		imp.flags.ignore_permissions = True
+		imp.insert()
+		with patch.object(sd, "_set_bulk"):
+			sd.run_bulk(imp.name, "submit_slips", {})
+		row = sd._rows(imp.name)[0]
+		self.assertEqual(row.slip_status, "Draft")
+		self.assertIn("does not match", row.slip_error)
+		self.assertEqual(frappe.db.get_value("Salary Slip", slip, "docstatus"), 0)
+
 	def test_a_failing_employee_does_not_stop_the_others(self):
 		# an employee who joins after the period cannot get a salary slip; the good one must still get one
 		late = self.make_employee("Late", company_email="late@example.com")
