@@ -243,7 +243,8 @@ def _state(r, ctx):
 	# a slip error only means something while the slip is still waiting on that step
 	slip_error = cstr(r.slip_error) if slip_status in ("Sheet Draft", "Not Created", "Draft") else ""
 	has_slip = slip_status in ("Draft", "Submitted")
-	address = employee_email(emp) if (emp and has_slip) else ""
+	# the address is shown as soon as there is a sheet, so a missing one can be fixed before slips exist
+	address = employee_email(emp) if (emp and slip_status in ("Sheet Draft", "Not Created", "Draft", "Submitted")) else ""
 
 	q = ctx.queues.get(r.email_queue) if r.email_queue else None
 	if not q and _never_mailed(r) and _live(slip):
@@ -281,6 +282,8 @@ def _state(r, ctx):
 		email["email_to"] = address
 		if not address:
 			email.update(email_status="Skipped", email_error=_(NO_EMAIL_MESSAGE))
+	else:
+		email["email_to"] = address  # no slip yet: show the address, flag nothing
 
 	return {
 		"salary_slip": slip.name if slip else "",
@@ -329,7 +332,7 @@ def _summary(name):
 	s = frappe._dict(
 		rows=len(rows), with_sheet=0, sheet_draft=0, not_created=0,
 		slip_draft=0, slip_submitted=0, slip_cancelled=0,
-		mail_pending=0, mail_queued=0, mail_sent=0, mail_failed=0, mail_skipped=0, needs_sync=0,
+		mail_pending=0, mail_queued=0, mail_sent=0, mail_failed=0, mail_skipped=0, no_address=0, needs_sync=0,
 	)
 	slip_key = {
 		"Sheet Draft": "sheet_draft", "Not Created": "not_created", "Draft": "slip_draft",
@@ -346,6 +349,8 @@ def _summary(name):
 			continue
 		if r.slip_status in slip_key:
 			s[slip_key[r.slip_status]] += 1
+		if r.slip_status in ("Sheet Draft", "Not Created", "Draft", "Submitted") and not r.email_to:
+			s.no_address += 1
 		if r.slip_status not in ("Draft", "Submitted"):
 			continue
 		if r.email_status in mail_key:

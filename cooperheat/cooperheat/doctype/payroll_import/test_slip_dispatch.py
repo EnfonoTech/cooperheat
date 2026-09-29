@@ -114,6 +114,14 @@ class TestRowState(FrappeTestCase):
 		st = self.state(_row(email_status="Skipped"), **ctx)
 		self.assertEqual((st["email_status"], st["email_to"]), ("", "fixed@x.com"))
 
+	def test_address_is_shown_before_any_slip_exists(self):
+		ctx = dict(sheets={"PS1": self.sheet()}, employees={"E1": self.emp()})
+		st = self.state(_row(), **ctx)
+		self.assertEqual((st["slip_status"], st["email_to"], st["email_status"]), ("Not Created", "e1@x.com", ""))
+		ctx["employees"]["E1"] = self.emp(prefered_email="")
+		st = self.state(_row(), **ctx)
+		self.assertEqual((st["email_to"], st["email_status"]), ("", ""))  # flagged in the summary, not as Skipped
+
 	def submitted_ctx(self, **extra):
 		ctx = dict(sheets={"PS1": self.sheet(slip="SS1")}, row_slip={"row1": self.slip()},
 			employees={"E1": self.emp()})
