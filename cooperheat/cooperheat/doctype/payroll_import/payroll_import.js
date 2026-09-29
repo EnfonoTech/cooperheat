@@ -453,7 +453,7 @@ function render_pipeline_panel(frm, s) {
 		+ chip(__("Queued"), s.mail_queued, "blue")
 		+ chip(__("Sent"), s.mail_sent, "green")
 		+ chip(__("Failed"), s.mail_failed, "red")
-		+ chip(__("No email address"), s.mail_skipped, "orange");
+		+ chip(__("No email address"), s.no_address, "orange");
 
 	const html = `
 		<div id="${id}" class="form-section" style="margin-top:15px;">
@@ -481,7 +481,8 @@ function render_pipeline_panel(frm, s) {
 // Who was skipped and who failed, straight from the table, so HR can chase them.
 function mail_issues_html(frm) {
 	const rows = frm.doc.rows || [];
-	const missing = rows.filter(r => r.email_status === "Skipped");
+	const missing = rows.filter(r => r.payroll_sheet && !r.email_to && !r.email_queue
+		&& ["Sheet Draft", "Not Created", "Draft", "Submitted"].includes(r.slip_status));
 	const failed = rows.filter(r => r.email_status === "Failed");
 	const line = (r) => `<li>${frappe.utils.escape_html(r.employee_name || r.employee || r.code || "")}`
 		+ ` <span class="text-muted">(${frappe.utils.escape_html(r.employee || r.code || "")})</span>`
@@ -492,7 +493,7 @@ function mail_issues_html(frm) {
 			+ `<ul style="margin:6px 0 0 18px;">${failed.map(line).join("")}</ul></details>`;
 	}
 	if (missing.length) {
-		html += `<details style="margin-top:10px;"><summary class="text-warning"><b>${missing.length}</b> ${__("employee(s) have no email address - they are skipped")}</summary>`
+		html += `<details style="margin-top:10px;"><summary class="text-warning"><b>${missing.length}</b> ${__("employee(s) have no email address - their emails are skipped until one is added")}</summary>`
 			+ `<ul style="margin:6px 0 0 18px;">${missing.map(line).join("")}</ul></details>`;
 	}
 	return html;
@@ -513,6 +514,7 @@ const BULK_ACTIONS = {
 			html: `<p>${__("{0} employee(s) have a submitted Payroll Sheet but no salary slip. A <b>draft</b> Salary Slip is created for each.", [s.not_created])}</p>`
 				+ `<p class="text-muted">${__("A missing Salary Structure Assignment is created automatically from the default structure.")}</p>`
 				+ (s.sheet_draft ? `<p class="text-warning">${__("{0} Payroll Sheet(s) are still Draft and are skipped unless you tick the box below.", [s.sheet_draft])}</p>` : "")
+				+ (s.no_address ? `<p class="text-warning">${__("{0} employee(s) have no email address. Their slips are created, but their emails are skipped until an address is added on the Employee.", [s.no_address])}</p>` : "")
 				+ (s.slip_cancelled ? `<p class="text-muted">${__("{0} cancelled slip(s) are not re-created here; use Create Salary Slip on the Payroll Sheet.", [s.slip_cancelled])}</p>` : ""),
 			fields,
 			ok: __("Create"),
@@ -546,7 +548,7 @@ const BULK_ACTIONS = {
 					? __("{0} email(s) with the salary slip PDF will be queued.", [todo])
 					: __("No new emails to send.")}`
 				+ (s.mail_failed ? ` ${__("This includes {0} that failed before.", [s.mail_failed])}` : "") + `</p>`
-				+ (s.mail_skipped ? `<p class="text-warning">${__("{0} employee(s) have no email address and are skipped.", [s.mail_skipped])}</p>` : "")
+				+ (s.no_address ? `<p class="text-warning">${__("{0} employee(s) have no email address and are skipped.", [s.no_address])}</p>` : "")
 				+ (s.mail_queued ? `<p class="text-muted">${__("{0} email(s) are still waiting in the queue and are not queued twice.", [s.mail_queued])}</p>` : "")
 				+ (s.slip_draft ? `<p class="text-muted">${__("{0} slip(s) are still Draft - submit them to email them.", [s.slip_draft])}</p>` : "")
 				+ `<p class="text-muted">${__("A problem with one employee never stops the others. Status shows per employee in the table.")}</p>`,
