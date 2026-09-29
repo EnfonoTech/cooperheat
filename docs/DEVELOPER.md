@@ -227,6 +227,13 @@ Rules worth knowing before touching it:
 - **A failing row must never stop the run.** Each row runs in a savepoint, but
   rendering a PDF (`frappe.attach_print`) writes an Access Log and *commits*, which
   releases the savepoint; `_rollback_row()` falls back to a plain rollback.
+- **Net-pay guard.** `assert_slip_matches_sheet` runs after Create and before Submit and refuses a
+  slip whose `net_pay` differs from the sheet's `net_payable` by more than 0.01. Reasons it
+  exists (all seen on the production September data): a sheet field with no Component Mapping row
+  is dropped from the slip; a formula row in the Salary Structure (Basic = `base * 1`) overwrites
+  the sheet's amount in `Salary Slip.validate`; with nothing mapped HRMS fills in the structure's
+  defaults. `_explain_mismatch` puts the cause in the Slip Error. The single "Create Salary Slip"
+  button on the Payroll Sheet has no such check.
 - **Nothing is mailed twice by accident**: `Queued` rows are never re-queued, `Sent`
   rows only with `resend_all`.
 - Skipped ("no email address") is *computed*, not stored: it appears once a slip
