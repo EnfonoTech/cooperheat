@@ -110,7 +110,7 @@ def _process(doc):
 			if status == "Error":
 				frappe.db.rollback(save_point="row_sp")
 
-		_append_row(doc.name, r, status, payroll_sheet, employee, message)
+		_append_row(doc.name, r, status, payroll_sheet, employee, message, idx=total)
 
 		if status == "Created":
 			created += 1
@@ -129,6 +129,20 @@ def _process(doc):
 		update_modified=False,
 	)
 	frappe.db.commit()
+
+	# Fill the Slip / Email columns so missing email addresses show up right away.
+	# Never let this fail the import itself.
+	try:
+		from cooperheat.cooperheat.doctype.payroll_import.slip_dispatch import sync_rows
+
+		sync_rows(doc.name)
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		frappe.log_error(
+			title=f"Payroll Import {doc.name}: slip status sync failed",
+			message=frappe.get_traceback(),
+		)
 
 
 def _process_row(doc, r):
@@ -177,12 +191,13 @@ def _process_row(doc, r):
 	return "Created", ps.name, employee, ""
 
 
-def _append_row(parent, r, status, payroll_sheet, employee, message):
+def _append_row(parent, r, status, payroll_sheet, employee, message, idx=None):
 	frappe.get_doc({
 		"doctype": "Payroll Import Row",
 		"parenttype": "Payroll Import",
 		"parentfield": "rows",
 		"parent": parent,
+		"idx": idx,
 		"doc_no": r.get("doc_no"),
 		"code": r.get("code"),
 		"employee": employee or "",

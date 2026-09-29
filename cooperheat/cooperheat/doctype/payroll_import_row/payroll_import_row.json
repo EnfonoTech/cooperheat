@@ -11,17 +11,28 @@
   "employee_name",
   "payroll_sheet",
   "row_status",
-  "message"
+  "message",
+  "slip_section",
+  "salary_slip",
+  "slip_status",
+  "slip_error",
+  "mail_column",
+  "email_status",
+  "email_to",
+  "email_sent_on",
+  "email_error",
+  "email_queue",
+  "resend_email"
  ],
  "fields": [
   {
    "fieldname": "doc_no",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Doc No",
    "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "code",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -31,12 +42,12 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Employee",
    "options": "Employee",
    "read_only": 1
   },
   {
+   "columns": 2,
    "fieldname": "employee_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -44,6 +55,7 @@
    "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "payroll_sheet",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -52,10 +64,11 @@
    "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "row_status",
    "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Status",
+   "label": "Import",
    "options": "Pending\nCreated\nSkipped\nError",
    "read_only": 1
   },
@@ -64,12 +77,86 @@
    "fieldtype": "Small Text",
    "label": "Message",
    "read_only": 1
+  },
+  {
+   "fieldname": "slip_section",
+   "fieldtype": "Section Break",
+   "label": "Salary Slip & Email"
+  },
+  {
+   "fieldname": "salary_slip",
+   "fieldtype": "Link",
+   "label": "Salary Slip",
+   "options": "Salary Slip",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "slip_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Slip",
+   "options": "\nSheet Draft\nSheet Cancelled\nNot Created\nDraft\nSubmitted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "slip_error",
+   "fieldtype": "Small Text",
+   "label": "Slip Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mail_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "email_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Email",
+   "options": "\nQueued\nSent\nFailed\nSkipped",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "email_to",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Email To",
+   "read_only": 1
+  },
+  {
+   "fieldname": "email_sent_on",
+   "fieldtype": "Datetime",
+   "label": "Sent On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "email_error",
+   "fieldtype": "Small Text",
+   "label": "Email Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "email_queue",
+   "fieldtype": "Link",
+   "label": "Email Queue",
+   "options": "Email Queue",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "resend_email",
+   "fieldtype": "Button",
+   "in_list_view": 1,
+   "label": "Send"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-24 12:00:00.000000",
+ "modified": "2026-09-29 19:30:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Import Row",
