@@ -37,6 +37,10 @@ from frappe.utils import (
 )
 
 from cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet import (
+	DEDUCTION_FIELDS,
+	EARNING_FIELDS,
+	SPECIAL_EARNINGS,
+	_mapping_from_settings,
 	create_salary_slip,
 	days_in_month,
 	month_index,
@@ -618,21 +622,69 @@ def _mailing_is_separate():
 		frappe.flags.via_payroll_entry = previous
 
 
+# Every money field a Payroll Sheet can carry (total_ot_amount is the sum of the three OT amounts).
+SHEET_MONEY_FIELDS = [
+	*EARNING_FIELDS, *SPECIAL_EARNINGS, *DEDUCTION_FIELDS,
+	"normal_ot_amount", "holiday_ot_amount", "travel_ot_amount", "gosi",
+]
+
+
+def _explain_mismatch(slip_name, sheet):
+	"""Say why a slip disagrees with its sheet: money fields with no Component Mapping row, and
+	components whose amount HRMS recalculated (a formula row in the Salary Structure)."""
+	meta = frappe.get_meta("Payroll Sheet")
+	mapping = _mapping_from_settings(frappe.get_cached_doc("Pay Sheet Settings"))
+	reasons = []
+
+	unmapped = [f for f in SHEET_MONEY_FIELDS if flt(sheet.get(f)) and f not in mapping]
+	if unmapped:
+		reasons.append(
+			_("not in the Component Mapping: {0}").format(
+				", ".join(f"{meta.get_label(f)} {flt(sheet.get(f)):,.2f}" for f in unmapped)
+			)
+		)
+
+	slip_rows = {
+		r.salary_component: flt(r.amount)
+		for r in frappe.get_all(
+			"Salary Detail", filters={"parent": slip_name}, fields=["salary_component", "amount"], parent_doctype=SLIP_DT
+		)
+	}
+	structure = frappe.db.get_value(SLIP_DT, slip_name, "salary_structure")
+	for field, (component, _type) in mapping.items():
+		expected, got = flt(sheet.get(field)), slip_rows.get(component, 0.0)
+		if abs(expected - got) <= 0.01:
+			continue
+		note = f"{component}: sheet {expected:,.2f}, slip {got:,.2f}"
+		if structure and frappe.db.get_value(
+			"Salary Detail", {"parent": structure, "salary_component": component, "amount_based_on_formula": 1}, "name"
+		):
+			note += " (formula in the Salary Structure)"
+		reasons.append(note)
+	return "; ".join(reasons[:4])
+
+
 def assert_slip_matches_sheet(slip_name, sheet_name):
 	"""Refuse a slip whose net pay is not what the Payroll Sheet worked out.
 
-	HRMS fills in the Salary Structure's own default amounts when none of the mapped components
-	has a value (e.g. an employee with zero worked days), so a slip can quietly come out with a
-	different - non-zero - net than the sheet. In a bulk run that would be emailed to the employee."""
-	sheet_net = flt(frappe.db.get_value("Payroll Sheet", sheet_name, "net_payable"), 2)
+	HRMS drops or replaces amounts the sheet carries - a field with no Component Mapping row is
+	left off the slip, a formula row in the Salary Structure overwrites the sheet's figure, and
+	with nothing mapped at all it fills in the structure's defaults - so a slip can quietly come
+	out with a different net than the sheet. In a bulk run that would be emailed to the employee."""
+	sheet = frappe.get_doc("Payroll Sheet", sheet_name)
+	sheet_net = flt(sheet.net_payable, 2)
 	slip_net = flt(frappe.db.get_value(SLIP_DT, slip_name, "net_pay"), 2)
-	if abs(slip_net - sheet_net) > 0.01:
-		frappe.throw(
-			_(
-				"Net pay on the Salary Slip ({0}) does not match the Payroll Sheet ({1}). "
-				"Check the Salary Structure and the Component Mapping, then create or submit this one individually."
-			).format(f"{slip_net:,.2f}", f"{sheet_net:,.2f}")
+	if abs(slip_net - sheet_net) <= 0.01:
+		return
+	cause = _explain_mismatch(slip_name, sheet)
+	frappe.throw(
+		_("Net pay on the Salary Slip ({0}) does not match the Payroll Sheet ({1}).").format(
+			f"{slip_net:,.2f}", f"{sheet_net:,.2f}"
 		)
+		+ (" " + _("Cause: {0}.").format(cause) if cause else "")
+		+ " "
+		+ _("Fix that, then create or submit this one individually.")
+	)
 
 
 def _step_create(r, state, options):

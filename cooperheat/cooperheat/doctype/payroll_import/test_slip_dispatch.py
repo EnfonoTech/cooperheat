@@ -436,6 +436,24 @@ class TestPipeline(FrappeTestCase):
 		frappe.db.set_value("Salary Slip", slip, "net_pay", sheet_net + 0.004)  # rounding noise is tolerated
 		sd.assert_slip_matches_sheet(slip, sheet)
 
+	def test_the_error_names_the_unmapped_field(self):
+		# a field with an amount but no Component Mapping row is left off the slip - say so
+		settings = frappe.get_single("Pay Sheet Settings")
+		settings.component_mapping = [m for m in settings.component_mapping if m.payroll_field != "service_allowance"]
+		settings.flags.ignore_permissions = True
+		settings.save()
+
+		emp = self.make_employee("Unmapped", company_email="unmapped@example.com")
+		frappe.db.set_value("Employee Compensation", {"employee": emp.name}, "service_allowance", 300)
+		sheet = self.make_sheet(emp)
+		self.assertEqual(frappe.db.get_value("Payroll Sheet", sheet, "service_allowance"), 300)
+		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			sd.assert_slip_matches_sheet(slip, sheet)
+		message = str(ctx.exception)
+		self.assertIn("not in the Component Mapping", message)
+		self.assertIn("Service Allowance 300.00", message)
+
 	def test_bulk_submit_leaves_a_mismatched_draft_alone(self):
 		emp = self.make_employee("Drift", company_email="drift@example.com")
 		sheet = self.make_sheet(emp)
