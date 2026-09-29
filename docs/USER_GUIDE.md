@@ -246,6 +246,25 @@ email **failed** and those who have **no email address**.
   single slip from the Salary Slip form, HRMS mails it as before and that mail
   shows up here as *Sent*.
 
+### 5.2a When a slip is refused
+
+**Create** and **Submit** check every slip against its Payroll Sheet and stop at the
+first difference in net pay (more than 0.01), because HRMS can quietly build a slip
+that pays something other than the sheet says. That employee's row shows a **Slip
+Error** (hover the Slip pill or open the row) and the rest of the run continues:
+
+> Net pay on the Salary Slip (8,984.25) does not match the Payroll Sheet (9,484.25).
+> Cause: not in the Component Mapping: Service Allowance 500.00.
+
+| Cause shown | Why | Fix |
+|---|---|---|
+| **not in the Component Mapping: X** | The sheet has an amount for a field that has no row in *Pay Sheet Settings → Component Mapping*, so HRMS leaves it off the slip. | Add the row (field → Salary Component, Earning/Deduction), then run **Create** again. |
+| **(formula in the Salary Structure)** | A component in the employee's Salary Structure is formula-based (for example Basic = `base * 1`); HRMS recalculates it and replaces the sheet's figure. | Make that row non-formula in the Salary Structure used for sheet-driven slips (or keep the assignment base equal to the sheet). Ask your developer; it changes payroll configuration. |
+| **From Date … cannot be before employee's joining Date** | The slip period starts on the 1st of the month, so an employee who joined mid-month is rejected by HRMS. | Not fixable from here yet; create that slip by hand or ask for the period to start at the joining date. |
+
+A refused row stays as it was (no slip is created, or the draft stays a draft), so
+nothing wrong can be submitted or emailed.
+
 ### 5.3 Report: Salary Slip Dispatch Status
 
 Reports → *Salary Slip Dispatch Status* (or **Dispatch Report** on the import).
