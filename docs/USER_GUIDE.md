@@ -145,6 +145,9 @@ After completion you see:
   - Amber = Skipped (already submitted for this period)
   - Red = Error
 
+  After the import the table also tracks each employee's **Slip** and **Email**
+  status (see section 5).
+
 Common errors:
 
 | Reason | Fix |
@@ -185,9 +188,77 @@ automatically when you select an Employee.
 
 ---
 
-## 5. Generate Salary Slips
+## 5. Salary slips: create, submit, email
 
-On a **Submitted** Payroll Sheet, click **Create Salary Slip**. This:
+Do this from the finished **Payroll Import** (status *Completed*), using the
+**Salary Slips** button group at the top of the form.
+
+| Button | What it does |
+|---|---|
+| **Create Salary Slips** | Creates one **draft** Salary Slip for every submitted Payroll Sheet that has none. A missing Salary Structure Assignment is created automatically. If some sheets are still Draft, a tick-box offers to submit them first. |
+| **Submit Salary Slips** | Submits every draft slip of this import. **It does not email anyone.** |
+| **Send Salary Slip Emails** | Queues one email per employee with the salary slip PDF attached. |
+| **Refresh Slip & Email Status** | Re-reads the slips and the mail queue and updates the table. |
+| **Dispatch Report** | Opens the *Salary Slip Dispatch Status* report for this import. |
+
+Each button asks for confirmation, shows how many employees it will touch, then
+runs in the background one employee at a time. **A problem with one employee never
+stops the others** — the reason is written on that employee's row and the run
+carries on. You can leave the page; a progress bar shows while it runs.
+
+### 5.1 Reading the table
+
+Three columns follow the import status:
+
+| Column | Values | Meaning |
+|---|---|---|
+| **Slip** | No slip · Draft · Submitted · Cancelled (click it to open the slip) | State of the employee's Salary Slip. "Sheet draft" = the Payroll Sheet is not submitted yet. |
+| **Email** | *(blank)* · Queued · Sent · Failed · Skipped | State of the email. Hover for the reason. |
+| **Email To** | address | Where the slip goes (or would go). |
+| **Send** | Send / Retry / Resend | Button for that one employee. |
+
+Above the table a summary shows the counts, plus lists of the employees whose
+email **failed** and those who have **no email address**.
+
+### 5.2 How emailing works
+
+- **Address used**: the Employee's *Preferred Email*, then Company Email, Personal
+  Email, then the user's login email. Employees with none are shown as **Skipped**
+  ("No email address on the Employee record") — add an address on the Employee,
+  then press Send again. They are flagged as soon as the slip exists, before
+  anything is sent.
+- **Only submitted slips are emailed.**
+- **Attachment**: PDF in the Print Format chosen in *Pay Sheet Settings → Salary
+  Slip Print Format*. Empty = the "Salary Slip" print format if it exists.
+- **Subject and message**: from *Payroll Settings → Email Template* if one is set,
+  otherwise a plain default. Sender comes from Payroll Settings / the default
+  outgoing Email Account.
+- **Queued → Sent / Failed**: emails go through the normal Email Queue, so a
+  temporary SMTP problem is retried automatically. The table follows the queue:
+  Queued while waiting or retrying, Sent once delivered to the mail server,
+  Failed with the SMTP reason after the retries are used up.
+- **Re-sending**: the bulk button only sends to employees never emailed or whose
+  email failed — it never sends twice. Use the row **Send / Retry / Resend**
+  button for one employee, or tick *"Also send again to the N employees already
+  emailed"* to resend to everyone.
+- **Payroll Settings → "Email Salary Slip to Employee"**: bulk *Submit* does not
+  trigger it, so mailing stays a separate, tracked step. If someone submits a
+  single slip from the Salary Slip form, HRMS mails it as before and that mail
+  shows up here as *Sent*.
+
+### 5.3 Report: Salary Slip Dispatch Status
+
+Reports → *Salary Slip Dispatch Status* (or **Dispatch Report** on the import).
+One row per employee: Payroll Sheet, net payable, Salary Slip and its status, email
+address, email status, sent time and the reason for any problem. Filter by import,
+company/month/year, slip status, email status, or **Needs attention only**. The
+status columns are read live from the mail queue, so the report is current even if
+nobody opened the import.
+
+### 5.4 Single slip (unchanged)
+
+On a **Submitted** Payroll Sheet you can still click **Create Salary Slip** for
+one employee. This:
 
 1. Auto-creates a Salary Structure Assignment for the employee (using the
    default structure) if none exists with `from_date ≤ slip.start_date`.
@@ -196,8 +267,6 @@ On a **Submitted** Payroll Sheet, click **Create Salary Slip**. This:
    `payment_days = total_working_days = days_in_month` (so HRMS doesn't
    re-prorate).
 4. Pushes amounts into Earnings / Deductions per the mapping.
-
-You're routed to the new Salary Slip. Submit it through ERPNext's normal flow.
 
 ---
 
@@ -230,4 +299,7 @@ Reports support standard Frappe export (Excel / CSV / PDF).
 4. Review red rows, fix the cause, **Re-run Import**.
 5. Open the list of Payroll Sheets for the month → Submit (bulk-submit if happy).
 6. Run Pay Sheet Detail and Pay Sheet Summary reports → export / print.
-7. Per employee → **Create Salary Slip** if you need ERPNext slips.
+7. Back on the Payroll Import → **Salary Slips → Create Salary Slips**, then
+   **Submit Salary Slips**, then **Send Salary Slip Emails**.
+8. Fix any *No email address* / *Failed* rows and press **Send** on them; check
+   **Dispatch Report** when done.

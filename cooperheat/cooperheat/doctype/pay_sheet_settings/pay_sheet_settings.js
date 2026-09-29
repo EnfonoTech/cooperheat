@@ -2,6 +2,12 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Pay Sheet Settings", {
+	setup(frm) {
+		frm.set_query("slip_print_format", () => ({
+			filters: { doc_type: "Salary Slip", disabled: 0 },
+		}));
+	},
+
 	refresh(frm) {
 		frm.add_custom_button(__("Setup Defaults"), () => {
 			frappe.confirm(

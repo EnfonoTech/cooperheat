@@ -83,7 +83,8 @@ One per `(employee, month, year)`. Two halves:
 | `status` | Draft / Running / Completed / Failed |
 | `total_rows`, `created_count`, `skipped_count`, `error_count` | Counters |
 | `error_message` | Top-level failure (set in `finally`) |
-| `rows` (Table) | Per-row log |
+| `rows` (Table) | Per-row log **and** per-employee slip / email state (see 3.5) |
+| `bulk_action`, `bulk_status`, `bulk_message`, `bulk_updated_on` | Bookkeeping for the running Create / Submit / Send job |
 
 ---
 
@@ -193,6 +194,54 @@ ordered by `from_date DESC` — i.e. the most recent applicable record.
 
 ---
 
+### 3.5 Salary slip pipeline (Create → Submit → Email)
+
+`payroll_import/slip_dispatch.py`. Buttons on the Payroll Import form call
+`start_bulk(name, action, options)`, which enqueues `run_bulk` on the `long` queue
+(`job_id = payroll_import_bulk::<name>`, deduplicated). `resend_email(name, row)` is
+the one-employee path and runs inline.
+
+```
+run_bulk(name, action)
+  ├── sync_rows(name)                      # refresh row state from the documents
+  ├── todo = rows where _eligible(action, state, options)
+  └── for row in todo:  _process(...)      # savepoint -> step -> rollback on error -> sync_rows([row]) -> commit
+```
+
+Rules worth knowing before touching it:
+
+- **Row state is derived, never trusted.** `compute_rows()` is the only reader:
+  slip state from Payroll Sheet / Salary Slip, mail state from the Email Queue,
+  address from Employee. It feeds the form, the jobs and the
+  *Salary Slip Dispatch Status* report, so they cannot disagree. `sync_rows()`
+  writes the result back onto the `Payroll Import Row` columns.
+- **Mail goes through the Email Queue** (`frappe.sendmail`, delayed). The row keeps
+  `email_queue` and mirrors its status: Not Sent/Sending → *Queued*, Sent → *Sent*,
+  Error/Expired → *Failed* (last traceback line as the reason). Retries are Frappe's
+  own (`email_retry_limit`). Queue-less failures (PDF error, …) are stored as
+  *Failed* on the row. A row that was never mailed from here adopts the newest
+  queue entry for its slip, so mail HRMS sent on submit is shown too.
+- **Bulk submit sets `frappe.flags.via_payroll_entry`** (`_mailing_is_separate`).
+  HRMS `Salary Slip.on_submit` mails the slip when Payroll Settings →
+  *Email Salary Slip to Employee* is on — a fire-and-forget job with no status.
+- **A failing row must never stop the run.** Each row runs in a savepoint, but
+  rendering a PDF (`frappe.attach_print`) writes an Access Log and *commits*, which
+  releases the savepoint; `_rollback_row()` falls back to a plain rollback.
+- **Nothing is mailed twice by accident**: `Queued` rows are never re-queued, `Sent`
+  rows only with `resend_all`.
+- Skipped ("no email address") is *computed*, not stored: it appears once a slip
+  exists and clears itself when an address is added.
+- Print format: Pay Sheet Settings → `slip_print_format`, else the "Salary Slip"
+  Print Format if present, else the standard layout. Subject/message/sender/password
+  policy follow Payroll Settings, like `SalarySlip.email_salary_slip`.
+
+Tests: `bench --site <site> run-tests --module cooperheat.cooperheat.doctype.payroll_import.test_slip_dispatch`
+(state derivation is tested without a database; the pipeline test needs ERPNext +
+HRMS and a Company with a Fiscal Year for the current month; nothing is mailed and
+nothing is committed).
+
+---
+
 ## 4. Settings hooks
 
 `setup.py`:
@@ -261,12 +310,16 @@ Sheet, plus the `gosi_applicable_category` Select on Pay Sheet Settings.
 
 ## 6. Reports
 
-Both reports are **Script Reports**. Their `get_data` builds plain SQL against
+The pay sheet reports are **Script Reports**. Their `get_data` builds plain SQL against
 `tabPayroll Sheet` with whitelisted filter keys. Default filter is
 `docstatus = 1`; passing `include_draft = 1` widens to `docstatus < 2`.
 
 To add a new column: add a `{label, fieldname, fieldtype, width}` dict to
 `get_columns`, include the field in the `SELECT`, done.
+
+`Salary Slip Dispatch Status` (`report/salary_slip_dispatch_status`) is different: it
+does not query `tabPayroll Sheet`; it reads one Payroll Import through
+`slip_dispatch.compute_rows`, so the slip and mail columns are live.
 
 ---
 
