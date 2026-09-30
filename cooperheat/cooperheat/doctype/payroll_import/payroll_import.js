@@ -12,16 +12,14 @@ frappe.ui.form.on("Payroll Import", {
 					? __("Retry Import")
 					: __("Start Import");
 			frm.add_custom_button(label, () => {
-				if (!frm.doc.file) {
-					frappe.msgprint(__("Attach an Excel file first."));
-					return;
-				}
 				const proceed = () => {
 					frappe.call({
 						method: "cooperheat.cooperheat.doctype.payroll_import.payroll_import.start_import",
 						args: { name: frm.doc.name },
 						freeze: true,
-						freeze_message: __("Processing Excel..."),
+						freeze_message: frm.doc.file
+							? __("Processing Excel...")
+							: __("Generating from Attendance..."),
 					}).then(() => frm.reload_doc());
 				};
 				if (frm.is_dirty()) {
