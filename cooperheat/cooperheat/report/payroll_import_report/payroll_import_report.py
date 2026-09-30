@@ -1,6 +1,5 @@
 import frappe
 from frappe import _
-from frappe.utils import getdate
 
 
 def execute(filters=None):
@@ -12,6 +11,7 @@ def execute(filters=None):
 
 def get_columns():
     return [
+        {"label": _("DocNo"),      "fieldname": "doc_no",    "fieldtype": "Data",     "width": 130},
         {"label": _("Code"),       "fieldname": "code",      "fieldtype": "Link",     "options": "Employee", "width": 120},
         {"label": _("Month"),      "fieldname": "month",     "fieldtype": "Data",     "width": 100},
         {"label": _("Total Present Days"), "fieldname": "days", "fieldtype": "Float",    "precision": 1, "width": 130},
@@ -31,23 +31,27 @@ def get_columns():
 def get_data(filters):
     from_date = filters.get("from_date")
     to_date = filters.get("to_date")
-    month_label = getdate(from_date).strftime("%m/%Y")
+    company = filters.get("company") or None
 
-    days_map = {r.employee: r for r in _get_days(from_date, to_date)}
-    ot_map = _get_ot(from_date, to_date)
-    hot_map = _get_hot(from_date, to_date)
+    days_map = {(r.employee, r.month): r for r in _get_days(from_date, to_date, company)}
+    ot_map = _get_ot(from_date, to_date, company)
+    hot_map = _get_hot(from_date, to_date, company)
 
-    all_employees = set(days_map) | set(ot_map) | set(hot_map)
+    all_keys = set(days_map) | set(ot_map) | set(hot_map)
+    doc_prefix = "PIR"
 
     rows = []
-    for emp in sorted(all_employees):
-        d = days_map.get(emp)
+    for idx, key in enumerate(sorted(all_keys), start=1):
+        emp, month_key = key
+        d = days_map.get(key)
+        month_label = f"{month_key[5:7]}/{month_key[0:4]}"  # YYYY-MM -> MM/YYYY
         rows.append({
+            "doc_no":     f"{doc_prefix}-{month_key.replace('-', '')}-{idx:04d}",
             "code":       d.code if d else emp,
             "month":      month_label,
             "days":       round(float(d.days or 0), 1) if d else 0,
-            "ot":         round(float(ot_map.get(emp) or 0), 2),
-            "hot":        round(float(hot_map.get(emp) or 0), 2),
+            "ot":         round(float(ot_map.get(key) or 0), 2),
+            "hot":        round(float(hot_map.get(key) or 0), 2),
             "travel_ot":  0,
             "expenses":   0,
             "other":      0,
@@ -61,11 +65,13 @@ def get_data(filters):
     return rows
 
 
-def _get_days(from_date, to_date):
-    return frappe.db.sql("""
+def _get_days(from_date, to_date, company=None):
+    company_cond = "AND emp.company = %(company)s" if company else ""
+    return frappe.db.sql(f"""
         SELECT
             a.employee,
             emp.name AS code,
+            DATE_FORMAT(a.attendance_date, '%%Y-%%m') AS month,
             SUM(
                 CASE a.status
                     WHEN 'Present'        THEN 1
@@ -78,17 +84,20 @@ def _get_days(from_date, to_date):
         JOIN `tabEmployee` emp ON emp.name = a.employee
         WHERE a.attendance_date BETWEEN %(from_date)s AND %(to_date)s
           AND a.docstatus = 1
-        GROUP BY a.employee, emp.name
-        ORDER BY emp.name
-    """, {"from_date": from_date, "to_date": to_date}, as_dict=True)
+          {company_cond}
+        GROUP BY a.employee, emp.name, DATE_FORMAT(a.attendance_date, '%%Y-%%m')
+        ORDER BY emp.name, month
+    """, {"from_date": from_date, "to_date": to_date, "company": company}, as_dict=True)
 
 
-def _get_ot(from_date, to_date):
-    rows = frappe.db.sql("""
-        SELECT employee, ROUND(SUM(ot_hours), 2) AS ot_hours
+def _get_ot(from_date, to_date, company=None):
+    company_cond = "AND emp.company = %(company)s" if company else ""
+    rows = frappe.db.sql(f"""
+        SELECT employee, month, ROUND(SUM(ot_hours), 2) AS ot_hours
         FROM (
             SELECT
                 ec.employee,
+                DATE_FORMAT(DATE(ec.time), '%%Y-%%m') AS month,
                 ROUND(GREATEST(
                     ROUND(TIMESTAMPDIFF(MINUTE,
                         MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
@@ -106,12 +115,14 @@ def _get_ot(from_date, to_date):
                 AND hol.holiday_date = DATE(ec.time)
             WHERE DATE(ec.time) BETWEEN %(from_date)s AND %(to_date)s
               AND hol.holiday_date IS NULL
+              {company_cond}
             GROUP BY ec.employee, DATE(ec.time), ec.custom_project
 
             UNION ALL
 
             SELECT
                 att.employee,
+                DATE_FORMAT(att.attendance_date, '%%Y-%%m') AS month,
                 ROUND(GREATEST(
                     COALESCE(ash.hours, 0)
                     - COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), COALESCE(ash.hours, 0))
@@ -127,23 +138,26 @@ def _get_ot(from_date, to_date):
             WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
               AND att.docstatus = 1
               AND hol.holiday_date IS NULL
+              {company_cond}
               AND NOT EXISTS (
                   SELECT 1 FROM `tabEmployee Checkin` ec2
                   WHERE ec2.employee = att.employee
                     AND DATE(ec2.time) = att.attendance_date)
         ) ot_union
-        GROUP BY employee
-    """, {"from_date": from_date, "to_date": to_date}, as_dict=True)
+        GROUP BY employee, month
+    """, {"from_date": from_date, "to_date": to_date, "company": company}, as_dict=True)
 
-    return {r.employee: r.ot_hours or 0 for r in rows}
+    return {(r.employee, r.month): r.ot_hours or 0 for r in rows}
 
 
-def _get_hot(from_date, to_date):
-    rows = frappe.db.sql("""
-        SELECT employee, ROUND(SUM(hot_hours), 2) AS hot_hours
+def _get_hot(from_date, to_date, company=None):
+    company_cond = "AND emp.company = %(company)s" if company else ""
+    rows = frappe.db.sql(f"""
+        SELECT employee, month, ROUND(SUM(hot_hours), 2) AS hot_hours
         FROM (
             SELECT
                 ec.employee,
+                DATE_FORMAT(DATE(ec.time), '%%Y-%%m') AS month,
                 ROUND(TIMESTAMPDIFF(MINUTE,
                     MIN(CASE WHEN ec.log_type = 'IN'  THEN ec.time END),
                     MAX(CASE WHEN ec.log_type = 'OUT' THEN ec.time END)) / 60, 2) AS hot_hours
@@ -153,12 +167,14 @@ def _get_hot(from_date, to_date):
             JOIN `tabHoliday` hol ON hol.parent = COALESCE(NULLIF(emp.holiday_list, ''), comp.default_holiday_list)
                 AND hol.holiday_date = DATE(ec.time)
             WHERE DATE(ec.time) BETWEEN %(from_date)s AND %(to_date)s
+              {company_cond}
             GROUP BY ec.employee, DATE(ec.time), ec.custom_project
 
             UNION ALL
 
             SELECT
                 att.employee,
+                DATE_FORMAT(att.attendance_date, '%%Y-%%m') AS month,
                 COALESCE(ash.hours, 0) AS hot_hours
             FROM `tabAttendance` att
             JOIN `tabAttendance Site Hours` ash
@@ -169,12 +185,13 @@ def _get_hot(from_date, to_date):
                 AND hol.holiday_date = att.attendance_date
             WHERE att.attendance_date BETWEEN %(from_date)s AND %(to_date)s
               AND att.docstatus = 1
+              {company_cond}
               AND NOT EXISTS (
                   SELECT 1 FROM `tabEmployee Checkin` ec2
                   WHERE ec2.employee = att.employee
                     AND DATE(ec2.time) = att.attendance_date)
         ) hot_union
-        GROUP BY employee
-    """, {"from_date": from_date, "to_date": to_date}, as_dict=True)
+        GROUP BY employee, month
+    """, {"from_date": from_date, "to_date": to_date, "company": company}, as_dict=True)
 
-    return {r.employee: r.hot_hours or 0 for r in rows}
+    return {(r.employee, r.month): r.hot_hours or 0 for r in rows}

@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import os
+from datetime import date
 
 import frappe
 from frappe import _
@@ -13,6 +14,7 @@ from cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet import (
 	PRORATED_EARNING_FIELDS,
 	days_in_month,
 	get_employee_compensation,
+	month_index,
 )
 
 
@@ -92,6 +94,10 @@ def run_import(doc_name, user=None):
 
 
 def _process(doc):
+	if not doc.file:
+		# No Excel attached — build one from Attendance in the same column
+		# format, attach it, then import it like any uploaded file.
+		doc.file = _attach_generated_excel(doc, _generate_rows_from_attendance(doc))
 	rows = _read_rows(doc.file)
 	# Reset log child table
 	frappe.db.sql("DELETE FROM `tabPayroll Import Row` WHERE parent = %s", (doc.name,))
@@ -252,6 +258,65 @@ def _make_payroll_sheet(company, employee, month, year, posting_date, row, comp_
 	ps.flags.ignore_permissions = True
 	ps.insert()
 	return ps
+
+
+def _generate_rows_from_attendance(doc):
+	"""No Excel file attached — pull Days/OT/HOT straight from Attendance/Employee
+	Checkin for the doc's Month/Year, same calculation as the Payroll Import Report.
+
+	TravelOT/Expenses/Other/Vacation/Bonus/Airfare/Otherded/Housingded have no
+	automated source anywhere in this app (no Expense Claim / Additional Salary /
+	Leave Application usage) and come back as 0 - same as the report.
+	"""
+	from cooperheat.cooperheat.report.payroll_import_report.payroll_import_report import (
+		get_data as get_report_rows,
+	)
+
+	month_num = month_index(doc.month)
+	if not month_num:
+		frappe.throw(_("Invalid month."))
+	dim = days_in_month(doc.year, doc.month)
+	from_date = date(int(doc.year), month_num, 1)
+	to_date = date(int(doc.year), month_num, dim)
+
+	return get_report_rows(frappe._dict({
+		"from_date": from_date,
+		"to_date": to_date,
+		"company": doc.company,
+	}))
+
+
+def _attach_generated_excel(doc, rows):
+	from frappe.utils.xlsxutils import make_xlsx
+
+	# Same layout as the manually prepared Excel: serial DocNo, Employee Number
+	# as Code, month-end date as Month, and blank cells instead of zeros.
+	month_end = date(int(doc.year), month_index(doc.month), days_in_month(doc.year, doc.month))
+	month_label = month_end.strftime("%d-%m-%Y")
+
+	header = list(COLUMN_MAP)
+	data = [header]
+	for idx, r in enumerate(rows, start=1):
+		r = dict(r)
+		r["doc_no"] = idx
+		r["code"] = frappe.db.get_value("Employee", r.get("code"), "employee_number") or r.get("code")
+		r["month"] = month_label
+		data.append([r.get(COLUMN_MAP[h]) or None for h in header])
+	xlsx = make_xlsx(data, "Payroll Import")
+
+	file_doc = frappe.get_doc({
+		"doctype": "File",
+		"file_name": f"{doc.name}-{doc.month}-{doc.year}.xlsx",
+		"attached_to_doctype": "Payroll Import",
+		"attached_to_name": doc.name,
+		"attached_to_field": "file",
+		"is_private": 1,
+		"content": xlsx.getvalue(),
+	}).insert(ignore_permissions=True)
+
+	frappe.db.set_value("Payroll Import", doc.name, "file", file_doc.file_url, update_modified=False)
+	frappe.db.commit()
+	return file_doc.file_url
 
 
 def _read_rows(file_url):

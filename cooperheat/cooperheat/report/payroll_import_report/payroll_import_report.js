@@ -17,5 +17,11 @@ frappe.query_reports["Payroll Import Report"] = {
 			reqd: 1,
 			default: frappe.datetime.month_end(),
 		},
+		{
+			fieldname: "company",
+			label: __("Company"),
+			fieldtype: "Link",
+			options: "Company",
+		},
 	],
 };

@@ -89,11 +89,10 @@
    "label": "File"
   },
   {
-   "description": "Columns expected: DocNo, Code, Month, Days, OT, HOT, TravelOT, Expenses, Other, Vacation, Bonus, Airfare, Otherded, Housingded.",
+   "description": "Optional. Leave empty and Start Import will generate an Excel (same format) from Attendance for the selected Month/Year, attach it here, and import it. If you attach your own, columns expected: DocNo, Code, Month, Days, OT, HOT, TravelOT, Expenses, Other, Vacation, Bonus, Airfare, Otherded, Housingded.",
    "fieldname": "file",
    "fieldtype": "Attach",
-   "label": "Excel File",
-   "reqd": 1
+   "label": "Excel File"
   },
   {
    "fieldname": "stats_section",
