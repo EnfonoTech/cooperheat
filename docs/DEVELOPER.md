@@ -227,13 +227,21 @@ Rules worth knowing before touching it:
 - **A failing row must never stop the run.** Each row runs in a savepoint, but
   rendering a PDF (`frappe.attach_print`) writes an Access Log and *commits*, which
   releases the savepoint; `_rollback_row()` falls back to a plain rollback.
-- **Net-pay guard.** `assert_slip_matches_sheet` runs after Create and before Submit and refuses a
-  slip whose `net_pay` differs from the sheet's `net_payable` by more than 0.01. Reasons it
-  exists (all seen on the production September data): a sheet field with no Component Mapping row
-  is dropped from the slip; a formula row in the Salary Structure (Basic = `base * 1`) overwrites
-  the sheet's amount in `Salary Slip.validate`; with nothing mapped HRMS fills in the structure's
-  defaults. `_explain_mismatch` puts the cause in the Slip Error. The single "Create Salary Slip"
-  button on the Payroll Sheet has no such check.
+- **Slip-vs-sheet guard.** `assert_slip_matches_sheet` runs after Create, and before *and after* Submit
+  (submit re-runs HRMS's calculation), and refuses a slip unless net pay, every component line (summed
+  per Salary Component - two sheet fields can feed one) and gross/total deduction all agree with the
+  sheet within 0.01. Checking net alone would pass two offsetting errors. Reasons it exists (all seen on
+  the production September data): a sheet field with no Component Mapping row is dropped from the slip;
+  a formula row in the Salary Structure (Basic = `base * 1`) overwrites the sheet's amount in
+  `Salary Slip.validate`; with nothing mapped HRMS fills in the structure's defaults. `_slip_differences`
+  puts the causes in the Slip Error. The single "Create Salary Slip" button on the Payroll Sheet has no
+  such check.
+- **Production override (cooperheat.enfonoerp.com, 2026-09-30).** Salary Structure `Cooperheat Saudi
+  Standard` has its Basic row switched off with `condition = False` (formula `base * 1` left in place;
+  only `condition`/`formula` are editable after submit), and Component Mapping has the
+  `service_allowance` and `transport_deduction` rows. Effect: a slip built from a Payroll Sheet keeps the
+  sheet's own Basic. A slip built *from the structure alone* (Payroll Entry, "Get Details from
+  Structure", a manual slip) now has no Basic. To restore, clear the condition on that row.
 - **Nothing is mailed twice by accident**: `Queued` rows are never re-queued, `Sent`
   rows only with `resend_all`.
 - Skipped ("no email address") is *computed*, not stored: it appears once a slip

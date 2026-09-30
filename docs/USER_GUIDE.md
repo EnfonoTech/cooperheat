@@ -248,9 +248,9 @@ email **failed** and those who have **no email address**.
 
 ### 5.2a When a slip is refused
 
-**Create** and **Submit** check every slip against its Payroll Sheet and stop at the
-first difference in net pay (more than 0.01), because HRMS can quietly build a slip
-that pays something other than the sheet says. That employee's row shows a **Slip
+**Create** and **Submit** check every slip against its Payroll Sheet - net pay, every
+component line and the totals, within 0.01 - and again right after submitting, because
+HRMS can quietly build a slip that pays something other than the sheet says. That employee's row shows a **Slip
 Error** (hover the Slip pill or open the row) and the rest of the run continues:
 
 > Net pay on the Salary Slip (8,984.25) does not match the Payroll Sheet (9,484.25).

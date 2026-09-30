@@ -237,6 +237,14 @@ class TestPipeline(FrappeTestCase):
 		cls.commit_patch.start()
 		cls.addClassCleanup(cls.commit_patch.stop)
 
+		# frappe.sendmail needs an outgoing account to build the queue entry; nothing is ever sent under tests
+		cls.mail_patch = patch.dict(frappe.local.conf, {
+			"mail_server": "localhost", "mail_port": 25, "mail_login": "payroll-tests@example.com", "mail_password": "unused",
+		})
+		cls.mail_patch.start()
+		cls.addClassCleanup(cls.mail_patch.stop)
+		frappe.local.outgoing_email_account = {}
+
 		# the current month, in a company that has a Fiscal Year for it (HRMS needs one to build a slip)
 		cls.today = getdate()
 		cls.month, cls.year = MONTHS[cls.today.month - 1], cls.today.year
@@ -368,7 +376,7 @@ class TestPipeline(FrappeTestCase):
 			sd.run_bulk(self.imp, "send_emails", {})
 		rows = self.rows()
 		ok, none, plain = rows[self.emp_ok.name], rows[self.emp_none.name], rows[self.emp_plain.name]
-		self.assertEqual(ok.email_status, "Queued")
+		self.assertEqual(ok.email_status, "Queued", ok.email_error)
 		self.assertEqual(plain.email_status, "Queued")
 		self.assertEqual(none.email_status, "Skipped")
 		self.assertFalse(none.email_queue)
@@ -470,6 +478,44 @@ class TestPipeline(FrappeTestCase):
 		with self.assertRaises(frappe.ValidationError) as ctx:
 			sd.assert_slip_matches_sheet(slip, sheet)
 		self.assertNotIn("Other Allowance:", str(ctx.exception))
+
+	def test_offsetting_errors_are_caught_too(self):
+		# same net, but one line up and another down: the payslip would still be wrong
+		emp = self.make_employee("Offset", company_email="offset@example.com")
+		sheet = self.make_sheet(emp)
+		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		sd.assert_slip_matches_sheet(slip, sheet)  # untouched: fine
+		rows = frappe.get_all("Salary Detail", filters={"parent": slip, "parentfield": "earnings"}, fields=["name", "amount"], order_by="idx")
+		self.assertGreaterEqual(len(rows), 2)
+		frappe.db.set_value("Salary Detail", rows[0].name, "amount", rows[0].amount + 100)
+		frappe.db.set_value("Salary Detail", rows[1].name, "amount", rows[1].amount - 100)
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			sd.assert_slip_matches_sheet(slip, sheet)
+		self.assertIn("although the net pay is equal", str(ctx.exception))
+
+	def test_bulk_submit_checks_again_after_submit(self):
+		emp = self.make_employee("Late", company_email="latecheck@example.com")
+		sheet = self.make_sheet(emp)
+		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		imp = frappe.get_doc({
+			"doctype": "Payroll Import", "company": self.company, "month": self.month, "year": self.year,
+			"posting_date": self.today, "file": "/files/zz-test4.xlsx", "status": "Completed",
+		})
+		imp.append("rows", {
+			"doc_no": "1", "code": emp.employee_number, "employee": emp.name, "employee_name": emp.employee_name,
+			"payroll_sheet": sheet, "row_status": "Created",
+		})
+		imp.flags.ignore_permissions = True
+		imp.insert()
+		# passes before the submit, fails after it (HRMS recalculated something on submit)
+		with patch.object(sd, "_set_bulk"), patch.object(
+			sd, "assert_slip_matches_sheet", side_effect=[None, frappe.ValidationError("changed on submit")]
+		):
+			sd.run_bulk(imp.name, "submit_slips", {})
+		row = sd._rows(imp.name)[0]
+		self.assertEqual(row.slip_status, "Draft")
+		self.assertIn("changed on submit", row.slip_error)
+		self.assertEqual(frappe.db.get_value("Salary Slip", slip, "docstatus"), 0)  # the submit was undone
 
 	def test_bulk_submit_leaves_a_mismatched_draft_alone(self):
 		emp = self.make_employee("Drift", company_email="drift@example.com")
