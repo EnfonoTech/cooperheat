@@ -623,20 +623,35 @@ def _mailing_is_separate():
 
 
 # Every money field a Payroll Sheet can carry (total_ot_amount is the sum of the three OT amounts).
-SHEET_MONEY_FIELDS = [
-	*EARNING_FIELDS, *SPECIAL_EARNINGS, *DEDUCTION_FIELDS,
-	"normal_ot_amount", "holiday_ot_amount", "travel_ot_amount", "gosi",
-]
+OT_PARTS = ("normal_ot_amount", "holiday_ot_amount", "travel_ot_amount")
+SHEET_MONEY_FIELDS = [*EARNING_FIELDS, *SPECIAL_EARNINGS, *DEDUCTION_FIELDS, *OT_PARTS, "gosi"]
 
 
-def _explain_mismatch(slip_name, sheet):
-	"""Say why a slip disagrees with its sheet: money fields with no Component Mapping row, and
-	components whose amount HRMS recalculated (a formula row in the Salary Structure)."""
+def _differs(a, b):
+	return round(abs(flt(a) - flt(b)), 2) > 0.01
+
+
+def _live_formula_row(structure, component):
+	"""True if the Salary Structure recalculates this component from a formula on every slip
+	(a formula row that a condition has switched off does not count)."""
+	rows = frappe.get_all(
+		"Salary Detail",
+		filters={"parent": structure, "salary_component": component, "amount_based_on_formula": 1},
+		fields=["condition"], parent_doctype="Salary Structure",
+	)
+	return any(not cstr(r.condition).strip() for r in rows)
+
+
+def _slip_differences(slip_name, sheet):
+	"""Every way the slip's lines disagree with the sheet, as short texts (empty = they agree):
+	money fields with no Component Mapping row, components HRMS changed, and the two totals."""
 	meta = frappe.get_meta("Payroll Sheet")
 	mapping = _mapping_from_settings(frappe.get_cached_doc("Pay Sheet Settings"))
+	# when total_ot_amount is mapped the three OT amounts are not separate lines
+	fields = [f for f in SHEET_MONEY_FIELDS if not (f in OT_PARTS and "total_ot_amount" in mapping)]
 	reasons = []
 
-	unmapped = [f for f in SHEET_MONEY_FIELDS if flt(sheet.get(f)) and f not in mapping]
+	unmapped = [f for f in fields if flt(sheet.get(f)) and f not in mapping]
 	if unmapped:
 		reasons.append(
 			_("not in the Component Mapping: {0}").format(
@@ -648,7 +663,7 @@ def _explain_mismatch(slip_name, sheet):
 	expected: dict[str, float] = {}
 	for field, (component, _type) in mapping.items():
 		expected[component] = expected.get(component, 0.0) + flt(sheet.get(field))
-	got = {}
+	got: dict[str, float] = {}
 	for r in frappe.get_all(
 		"Salary Detail", filters={"parent": slip_name}, fields=["salary_component", "amount"], parent_doctype=SLIP_DT
 	):
@@ -657,35 +672,48 @@ def _explain_mismatch(slip_name, sheet):
 	structure = frappe.db.get_value(SLIP_DT, slip_name, "salary_structure")
 	for component in sorted(set(expected) | set(got)):
 		want, have = expected.get(component, 0.0), got.get(component, 0.0)
-		if abs(want - have) <= 0.01:
+		if not _differs(want, have):
 			continue
 		note = f"{component}: sheet {want:,.2f}, slip {have:,.2f}"
-		if structure and frappe.db.get_value(
-			"Salary Detail", {"parent": structure, "salary_component": component, "amount_based_on_formula": 1}, "name"
-		):
+		if structure and _live_formula_row(structure, component):
 			note += " (formula in the Salary Structure)"
 		reasons.append(note)
-	return "; ".join(reasons[:4])
+
+	slip = frappe.db.get_value(SLIP_DT, slip_name, ["gross_pay", "total_deduction"], as_dict=True)
+	for label, want, have in (
+		("Gross pay", sheet.total_earnings, slip.gross_pay),
+		("Total deduction", sheet.total_deduction, slip.total_deduction),
+	):
+		if _differs(want, have):
+			reasons.append(f"{label}: sheet {flt(want):,.2f}, slip {flt(have):,.2f}")
+	return reasons
 
 
 def assert_slip_matches_sheet(slip_name, sheet_name):
-	"""Refuse a slip whose net pay is not what the Payroll Sheet worked out.
+	"""Refuse a slip that does not say what the Payroll Sheet worked out.
 
 	HRMS drops or replaces amounts the sheet carries - a field with no Component Mapping row is
 	left off the slip, a formula row in the Salary Structure overwrites the sheet's figure, and
 	with nothing mapped at all it fills in the structure's defaults - so a slip can quietly come
-	out with a different net than the sheet. In a bulk run that would be emailed to the employee."""
+	out different. The net pay, every component line and the two totals must all agree; checking
+	net alone would let two offsetting errors through. In a bulk run a wrong slip is emailed."""
 	sheet = frappe.get_doc("Payroll Sheet", sheet_name)
 	sheet_net = flt(sheet.net_payable, 2)
 	slip_net = flt(frappe.db.get_value(SLIP_DT, slip_name, "net_pay"), 2)
-	if abs(slip_net - sheet_net) <= 0.01:
+	net_differs = _differs(slip_net, sheet_net)
+	reasons = _slip_differences(slip_name, sheet)
+	if not net_differs and not reasons:
 		return
-	cause = _explain_mismatch(slip_name, sheet)
-	frappe.throw(
-		_("Net pay on the Salary Slip ({0}) does not match the Payroll Sheet ({1}).").format(
+
+	if net_differs:
+		head = _("Net pay on the Salary Slip ({0}) does not match the Payroll Sheet ({1}).").format(
 			f"{slip_net:,.2f}", f"{sheet_net:,.2f}"
 		)
-		+ (" " + _("Cause: {0}.").format(cause) if cause else "")
+	else:
+		head = _("The Salary Slip lines do not match the Payroll Sheet, although the net pay is equal.")
+	frappe.throw(
+		head
+		+ (" " + _("Cause: {0}.").format("; ".join(reasons[:4])) if reasons else "")
 		+ " "
 		+ _("Fix that, then create or submit this one individually.")
 	)
@@ -706,6 +734,9 @@ def _step_submit(r, state, options):
 	slip.flags.ignore_permissions = True
 	with _mailing_is_separate():
 		slip.submit()
+	# submit re-runs HRMS's calculation (new Additional Salary, attendance, ...): check again,
+	# and a throw here rolls the submit back with the rest of this employee's work
+	assert_slip_matches_sheet(state["salary_slip"], r.payroll_sheet)
 
 
 def _step_send(r, state):
