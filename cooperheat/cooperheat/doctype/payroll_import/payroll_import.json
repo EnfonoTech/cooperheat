@@ -22,6 +22,12 @@
   "skipped_count",
   "error_count",
   "error_message",
+  "slip_processing_section",
+  "bulk_action",
+  "bulk_status",
+  "column_break_bulk",
+  "bulk_updated_on",
+  "bulk_message",
   "log_section",
   "rows"
  ],
@@ -129,6 +135,41 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.bulk_action",
+   "fieldname": "slip_processing_section",
+   "fieldtype": "Section Break",
+   "label": "Salary Slip Processing"
+  },
+  {
+   "fieldname": "bulk_action",
+   "fieldtype": "Data",
+   "label": "Last Action",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bulk_status",
+   "fieldtype": "Select",
+   "label": "Action Status",
+   "options": "\nQueued\nRunning\nCompleted\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_bulk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bulk_updated_on",
+   "fieldtype": "Datetime",
+   "label": "Last Updated",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bulk_message",
+   "fieldtype": "Small Text",
+   "label": "Result",
+   "read_only": 1
+  },
+  {
    "fieldname": "log_section",
    "fieldtype": "Section Break",
    "label": "Log"
@@ -143,7 +184,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-24 11:42:16.000000",
+ "modified": "2026-09-29 19:30:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Payroll Import",

@@ -15,7 +15,9 @@
   "round_amounts",
   "salary_slip_section",
   "default_salary_structure",
-  "component_mapping"
+  "component_mapping",
+  "salary_slip_email_section",
+  "slip_print_format"
  ],
  "fields": [
   {
@@ -96,12 +98,24 @@
    "fieldtype": "Table",
    "label": "Component Mapping",
    "options": "Pay Sheet Component Mapping"
+  },
+  {
+   "fieldname": "salary_slip_email_section",
+   "fieldtype": "Section Break",
+   "label": "Salary Slip Email"
+  },
+  {
+   "description": "Print Format attached (as PDF) when a salary slip is emailed from a Payroll Import. Leave empty to use the \"Salary Slip\" print format if it exists, otherwise the standard layout. Subject, message and sender come from Payroll Settings.",
+   "fieldname": "slip_print_format",
+   "fieldtype": "Link",
+   "label": "Salary Slip Print Format",
+   "options": "Print Format"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-24 16:00:00.000000",
+ "modified": "2026-09-29 19:30:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Pay Sheet Settings",
