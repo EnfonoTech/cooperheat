@@ -165,3 +165,20 @@ class TestOrgStructure(FrappeTestCase):
 		rows = org.product_line_query("Department", "", "name", 0, 50, {"business_line": self.bl})
 		names = {r[0] for r in rows}
 		self.assertEqual(names, {self.cndt, self.ndt})
+
+	def test_moving_location_reroutes_supervisor(self):
+		e = make_employee("Mover", custom_product_line=self.ndt, custom_assigned_location=self.jubail)
+		self.assertEqual(e.reports_to, self.anil)
+		e.custom_assigned_location = self.yanbu
+		e.save(ignore_permissions=True)
+		saleh_user = frappe.db.get_value("Employee", self.saleh, "user_id")
+		self.assertEqual(e.reports_to, self.saleh)
+		self.assertEqual(e.leave_approver, saleh_user)
+
+	def test_manual_reports_to_survives_a_move(self):
+		e = make_employee("Manual", custom_product_line=self.ndt, custom_assigned_location=self.jubail)
+		e.reports_to = self.irtaza
+		e.save(ignore_permissions=True)
+		e.custom_assigned_location = self.yanbu
+		e.save(ignore_permissions=True)
+		self.assertEqual(e.reports_to, self.irtaza)

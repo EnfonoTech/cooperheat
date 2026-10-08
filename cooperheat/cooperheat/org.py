@@ -189,6 +189,30 @@ def sync_employee_org(doc):
 		doc.custom_business_line = nearest_of_type(doc.department, BUSINESS_LINE)
 
 
+def reroute_on_move(doc):
+	"""Employee moved (department or assigned location changed): clear Reports To
+	and approver fields that still point at the OLD placement's approvers, so they
+	re-resolve for the new one. Values HR set by hand to someone else are kept."""
+	if doc.is_new():
+		return
+	old = frappe.db.get_value("Employee", doc.name, ["department", "custom_assigned_location"], as_dict=True)
+	if not old or (old.department == doc.get("department") and old.custom_assigned_location == doc.get("custom_assigned_location")):
+		return
+	# What the old placement would have filled in automatically.
+	old_auto = next(
+		(r.approver for r in effective_matrix(old.department, location=old.custom_assigned_location) if r.approver != doc.name),
+		None,
+	)
+	if not old_auto:
+		return
+	if doc.get("reports_to") == old_auto:
+		doc.reports_to = None
+	old_user = frappe.db.get_value("Employee", old_auto, "user_id")
+	for field in ("leave_approver", "shift_request_approver", "expense_approver"):
+		if old_user and doc.meta.has_field(field) and doc.get(field) == old_user:
+			doc.set(field, None)
+
+
 def fill_default_approvers(doc):
 	"""Empty Leave / Shift Request / Expense approver -> the Level 1 approver's user.
 
