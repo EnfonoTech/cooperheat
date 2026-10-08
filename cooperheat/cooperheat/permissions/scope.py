@@ -53,17 +53,19 @@ def _own_employees(user: str) -> list[str]:
 
 
 def _approver_departments(employees: list[str]) -> list[str]:
+	"""Departments where one of *employees* is an approver, plus every
+	department below them (they inherit the approver, e.g. a Business Line
+	manager covers all its Product Lines)."""
 	if not employees:
 		return []
-	return list(
-		set(
-			frappe.get_all(
-				"Department Approval Matrix",
-				filters={"approver": ["in", employees], "parentfield": "approval_matrix"},
-				pluck="parent",
-			)
-		)
+	from cooperheat.cooperheat.org import descendants
+
+	direct = frappe.get_all(
+		"Department Approval Matrix",
+		filters={"approver": ["in", employees], "parentfield": "approval_matrix"},
+		pluck="parent",
 	)
+	return list(descendants(set(direct)) | set(direct))
 
 
 def _subtree(roots: list[str]) -> set[str]:

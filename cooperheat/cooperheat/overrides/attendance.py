@@ -269,7 +269,7 @@ def _auto_approve_if_no_level3(doc):
 	without any manual action — triggering on_update_after_submit again, but that
 	second call sees "Approved" which is not in _NOTIFY_LEVEL and exits cleanly.
 	"""
-	matrix = _get_matrix(doc.get("department") or "")
+	matrix = _get_matrix(doc.get("department") or "", doc.get("employee"))
 	if _row_for_level(matrix, 3):
 		return  # Level 3 approver exists — normal flow, do nothing
 
@@ -285,15 +285,15 @@ def _auto_approve_if_no_level3(doc):
 		frappe.log_error(frappe.get_traceback(), "Auto Level 3 Approve failed: " + doc.name)
 
 
-def _get_matrix(department: str) -> list:
-	if not department:
-		return []
-	return frappe.get_all(
-		"Department Approval Matrix",
-		filters={"parent": department, "parentfield": "approval_matrix"},
-		fields=["approval_level", "approver", "approval_window_hours"],
-		order_by="approval_level asc",
-	)
+def _get_matrix(department: str, employee: str | None = None) -> list:
+	"""Approval rows for *department*, inherited up the department tree.
+
+	Pass *employee* so location-specific rows (e.g. Jubail vs Yanbu supervisor)
+	resolve for that employee.
+	"""
+	from cooperheat.cooperheat.org import effective_matrix
+
+	return effective_matrix(department, employee)
 
 
 def _row_for_level(matrix: list, level: int):
@@ -342,7 +342,7 @@ def _sync_current_approver(doc):
 	level = level_map.get(doc.get("workflow_state") or "")
 	if not level or not doc.department:
 		return
-	matrix = _get_matrix(doc.department)
+	matrix = _get_matrix(doc.department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
 		return
@@ -497,7 +497,7 @@ def _validate_hours_edit_authorization(doc):
 	if not department:
 		frappe.throw(_("Department is required to validate approver."))
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, level)
 
 	if not row:
@@ -600,7 +600,7 @@ def _validate_approver_authorization(doc):
 	if not department:
 		frappe.throw(_("Department is required on the Attendance record for approval routing."))
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, required_level)
 
 	if not row:
@@ -646,7 +646,7 @@ def _send_notification_for_level(doc, level: int):
 	if not department:
 		return
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
 		return
@@ -849,7 +849,7 @@ def _stamp_tracking_fields(doc, level: int):
 	department = doc.department
 	if not department:
 		return
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
 		return

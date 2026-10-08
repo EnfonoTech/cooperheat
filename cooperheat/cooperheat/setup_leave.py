@@ -44,7 +44,7 @@ def create_leave_setup(year, company, days=None, holiday_list=None):
 	if year < 2000:
 		frappe.throw(_("Enter a valid year."))
 	if not frappe.db.exists("Company", company):
-		frappe.throw(_("Company not found: {0}", [company]))
+		frappe.throw(_("Company not found: {0}").format(company))
 	days = frappe.parse_json(days) if isinstance(days, str) else (days or DEFAULT_DAYS)
 
 	period = get_or_create_leave_period(year, company)
@@ -73,7 +73,7 @@ def get_or_create_policy(year, days):
 		return frappe.get_doc("Leave Policy", name)
 	missing = [lt for lt in days if not frappe.db.exists("Leave Type", lt)]
 	if missing:
-		frappe.throw(_("Leave Type not found: {0}", [", ".join(missing)]))
+		frappe.throw(_("Leave Type not found: {0}").format(", ".join(missing)))
 	doc = frappe.get_doc(
 		{
 			"doctype": "Leave Policy",

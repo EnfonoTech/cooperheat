@@ -125,15 +125,11 @@ def _generate(from_date, to_date, limit: int) -> dict:
 		# An approval nobody can action is worse than none: wait until the
 		# department has a Level 1 approver (see the Employee Approver Exceptions
 		# report) and back-fill with run_now().
-		if emp.department not in has_l1:
-			has_l1[emp.department] = bool(
-				emp.department
-				and frappe.db.exists(
-					"Department Approval Matrix",
-					{"parent": emp.department, "parentfield": "approval_matrix", "approval_level": 1, "approver": ["is", "set"]},
-				)
-			)
-		if not has_l1[emp.department]:
+		if employee not in has_l1:
+			from cooperheat.cooperheat.org import l1_approver
+
+			has_l1[employee] = bool(emp.department and l1_approver(emp.department, employee))
+		if not has_l1[employee]:
 			result["no_approver"] += 1
 			continue
 

@@ -36,18 +36,13 @@ def get_data(filters):
 		order_by="department asc, employee_name asc",
 	)
 
-	# department -> Level 1 approver employee (lowest level present)
-	l1 = {}
-	for row in frappe.get_all(
-		"Department Approval Matrix",
-		filters={"parentfield": "approval_matrix"},
-		fields=["parent", "approval_level", "approver"],
-		order_by="approval_level desc",
-	):
-		l1[row.parent] = row.approver  # ends up with the lowest level (sorted desc)
+	# employee -> Level 1 approver, inherited up the department tree (and by location)
+	from cooperheat.cooperheat.org import l1_approver
+
+	l1 = {e.name: l1_approver(e.department, e.name) for e in employees if e.department}
 	approver_users = {
 		e.name: e.user_id
-		for e in frappe.get_all("Employee", filters={"name": ["in", list(set(l1.values())) or [""]]}, fields=["name", "user_id"])
+		for e in frappe.get_all("Employee", filters={"name": ["in", list(set(filter(None, l1.values()))) or [""]]}, fields=["name", "user_id"])
 	}
 
 	out = []
@@ -61,7 +56,7 @@ def get_data(filters):
 		if not e.department:
 			issues.append(_("No Department"))
 		else:
-			approver = l1.get(e.department)
+			approver = l1.get(e.name)
 			if not approver:
 				issues.append(_("Department has no Level 1 approver"))
 			elif not approver_users.get(approver):

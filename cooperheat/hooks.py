@@ -44,6 +44,7 @@ app_license = "mit"
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Employee": "public/js/employee.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -150,6 +151,11 @@ fixtures = [
 					"Leave Application-custom_client_approval_required",
 					"Leave Application-custom_client_approval_received",
 					"Leave Application-custom_client_approval_attachment",
+					# Organisation structure
+					"Department-custom_unit_type",
+					"Employee-custom_business_line",
+					"Employee-custom_product_line",
+					"Employee-custom_assigned_location",
 				],
 			]
 		],

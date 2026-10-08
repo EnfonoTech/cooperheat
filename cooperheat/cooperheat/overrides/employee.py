@@ -6,7 +6,11 @@ from cooperheat.cooperheat.permissions.scope import on_employee_update as _sync_
 
 
 def before_validate(doc, method=None):
+	from cooperheat.cooperheat.org import fill_default_approvers, sync_employee_org
+
+	sync_employee_org(doc)
 	_auto_link_reports_to(doc)
+	fill_default_approvers(doc)
 
 
 def on_update(doc, method=None):
@@ -20,12 +24,9 @@ def _auto_link_reports_to(doc):
 	An employee is never linked to themself."""
 	if doc.get("reports_to") or not doc.get("department"):
 		return
-	rows = frappe.get_all(
-		"Department Approval Matrix",
-		filters={"parent": doc.department, "parentfield": "approval_matrix"},
-		fields=["approval_level", "approver"],
-		order_by="approval_level asc",
-	)
+	from cooperheat.cooperheat.org import effective_matrix
+
+	rows = effective_matrix(doc.department, None if doc.is_new() else doc.name, doc.get("custom_assigned_location"))
 	for row in rows:
 		if row.approver and row.approver != doc.name:
 			doc.reports_to = row.approver

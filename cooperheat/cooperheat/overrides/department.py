@@ -69,23 +69,20 @@ def on_update(doc, method):
 
 
 def _sync_pending_attendance(dept_doc):
-	department = dept_doc.name
-	matrix = {
-		cint(row.approval_level): row.approver
-		for row in (dept_doc.get("approval_matrix") or [])
-	}
-	if not matrix:
-		return
+	"""Re-stamp current_approver on pending Attendance of this department and of
+	every department below it, since those inherit its approvers."""
+	from cooperheat.cooperheat.org import clear_cache, descendants, effective_matrix
 
+	clear_cache()
 	pending_states = list(_LEVEL_STATE.values())
 	records = frappe.get_all(
 		"Attendance",
 		filters={
-			"department": department,
+			"department": ["in", list(descendants([dept_doc.name])) or [dept_doc.name]],
 			"workflow_state": ["in", pending_states],
 			"docstatus": 1,
 		},
-		fields=["name", "workflow_state", "current_approver"],
+		fields=["name", "employee", "department", "workflow_state", "current_approver"],
 	)
 	if not records:
 		return
@@ -96,7 +93,8 @@ def _sync_pending_attendance(dept_doc):
 		level = state_to_level.get(rec.workflow_state)
 		if not level:
 			continue
-		new_approver = matrix.get(level)
+		row = next((r for r in effective_matrix(rec.department, rec.employee) if r.approval_level == level), None)
+		new_approver = row.approver if row else None
 		if not new_approver or new_approver == rec.current_approver:
 			continue
 		approver_name = frappe.db.get_value("Employee", new_approver, "employee_name") or new_approver
