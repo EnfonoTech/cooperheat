@@ -147,9 +147,9 @@ class TestOrgStructure(FrappeTestCase):
 		self.assertEqual(e.shift_request_approver, saleh_user)
 
 	def test_support_department_untouched(self):
-		ct = dev_seed.dept_name("Contracting")
-		e = make_employee("Support", department=ct)
-		self.assertEqual(e.department, ct)
+		ndt = dev_seed.dept_name("NDT")  # no unit type: a plain department
+		e = make_employee("Support", department=ndt)
+		self.assertEqual(e.department, ndt)
 		self.assertFalse(e.custom_business_line)
 
 	# --- scope ---------------------------------------------------------------

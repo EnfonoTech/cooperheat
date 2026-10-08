@@ -197,8 +197,11 @@ def fill_default_approvers(doc):
 	"""
 	if not doc.get("department"):
 		return
-	approver = l1_approver(doc.department, location=doc.get("custom_assigned_location"))
-	if not approver or approver == doc.name:
+	# First approver who is not the employee themself (a supervisor's own leave
+	# goes to the next level up).
+	rows = effective_matrix(doc.department, location=doc.get("custom_assigned_location"))
+	approver = next((r.approver for r in rows if r.approver != doc.name), None)
+	if not approver:
 		return
 	user = frappe.db.get_value("Employee", approver, "user_id")
 	if not user:
