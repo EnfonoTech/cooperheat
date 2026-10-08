@@ -58,7 +58,9 @@ function recalc(frm, settings) {
 
 	const mwh = settings.monthly_working_hours || 240;
 	const basic = flt(frm.doc.basic);
-	const hourly = mwh ? basic / mwh : 0;
+	// OT is paid on the full fixed basic, never on the prorated one (matches payroll_sheet.py).
+	const ot_basic = frm.__comp ? flt(frm.__comp.basic) : basic;
+	const hourly = mwh ? ot_basic / mwh : 0;
 
 	const normal = hourly * (settings.normal_ot_multiplier || 1.5) * flt(frm.doc.normal_ot_hours);
 	const holiday = hourly * (settings.holiday_ot_multiplier || 2) * flt(frm.doc.holiday_ot_hours);
@@ -96,6 +98,7 @@ async function trigger_recalc(frm, fieldname) {
 	frm.__recalc_in_progress = true;
 	try {
 		const settings = await get_settings();
+		await load_compensation(frm);
 		if (REPRORATE_ON_CHANGE.includes(fieldname)) {
 			await apply_proration(frm);
 		}
@@ -105,11 +108,19 @@ async function trigger_recalc(frm, fieldname) {
 	}
 }
 
-async function apply_proration(frm) {
-	if (!frm.doc.compensation) return;
+async function load_compensation(frm) {
+	if (!frm.doc.compensation) {
+		frm.__comp = null;
+		return;
+	}
 	if (!frm.__comp || frm.__comp.name !== frm.doc.compensation) {
 		frm.__comp = await frappe.db.get_doc("Employee Compensation", frm.doc.compensation);
 	}
+}
+
+async function apply_proration(frm) {
+	if (!frm.doc.compensation) return;
+	await load_compensation(frm);
 	const comp = frm.__comp;
 	const dim = frm.doc.days_in_month || days_in_month(frm.doc.year, frm.doc.month);
 	const worked = flt(frm.doc.worked_days);
