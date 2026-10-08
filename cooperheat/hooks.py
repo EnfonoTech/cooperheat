@@ -144,7 +144,12 @@ fixtures = [
                    	"Employee-custom_id_type",
                     "Employee-custom_site_id",
                     "Employee-custom_column_break_z4stf",
-                    "Employee-custom_expairy_date"
+                    "Employee-custom_expairy_date",
+					# Leave Application
+					"Leave Application-custom_client_approval_section",
+					"Leave Application-custom_client_approval_required",
+					"Leave Application-custom_client_approval_received",
+					"Leave Application-custom_client_approval_attachment",
 				],
 			]
 		],
@@ -270,6 +275,9 @@ doc_events = {
 	},
 	"Project": {
 		"autoname": "cooperheat.cooperheat.overrides.project.autoname",
+	},
+	"Leave Application": {
+		"validate": "cooperheat.cooperheat.overrides.leave_application.validate",
 	},
 	"User": {
 		"on_update": "cooperheat.cooperheat.permissions.scope.on_user_update",
