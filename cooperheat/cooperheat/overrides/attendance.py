@@ -707,6 +707,10 @@ def _get_project_for_attendance(doc) -> str | None:
 	"""Return the project from the active Shift Assignment's legacy custom_project_ field."""
 	if not doc.employee or not doc.attendance_date:
 		return None
+	# The legacy field only exists on sites that carried it over; a fresh site
+	# must not crash on every Attendance submit.
+	if not frappe.get_meta("Shift Assignment").has_field("custom_project_"):
+		return None
 
 	filters = {
 		"employee": doc.employee,

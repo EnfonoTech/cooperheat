@@ -1,0 +1,15 @@
+{
+ "doctype": "Page",
+ "module": "cooperheat",
+ "name": "supervisor-workspace",
+ "page_name": "supervisor-workspace",
+ "roles": [
+  {"role": "Supervisor"},
+  {"role": "Manager"},
+  {"role": "HR Manager"},
+  {"role": "HR User"},
+  {"role": "System Manager"}
+ ],
+ "standard": "Yes",
+ "title": "Supervisor Workspace"
+}

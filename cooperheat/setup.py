@@ -26,6 +26,14 @@ def setup_custom_fields():
 				"insert_after": "status",
 				"description": "",
 			},
+			{
+				"fieldname": "custom_pay_batch",
+				"label": "Pay Batch",
+				"fieldtype": "Link",
+				"options": "Pay Batch",
+				"insert_after": "nationality",
+				"description": "Payroll runs can be limited to one batch (main, sponsor batches, visa batches...).",
+			},
 		],
 	}
 	create_custom_fields(custom_fields, update=True)
@@ -100,6 +108,7 @@ def after_install():
 	seed_nationalities()
 	setup_custom_fields()
 	seed_settings()
+	ensure_roles()
 
 
 def backfill_compensation_from_date():
@@ -207,6 +216,232 @@ def setup_client_scripts():
 			doc.insert()
 
 
+# ---------------------------------------------------------------------------
+# Supervisor / Manager roles, permissions and desk
+# ---------------------------------------------------------------------------
+
+SCOPED_ROLE_NAMES = ("Supervisor", "Manager")
+
+# doctype -> (permlevel, ptypes granted to Supervisor and Manager). Deliberately
+# no ``delete`` anywhere, and Employee is read-only: moving a technician between
+# departments stays an HR action. Team scoping (permissions/scope.py) narrows
+# every one of these to the user's own team.
+_SCOPED_ROLE_PERMS = [
+	("Employee", 0, ("read",)),
+	("Department", 0, ("read", "write")),
+	("Project", 0, ("read", "write", "create")),
+	("Shift Assignment", 0, ("read", "write", "create", "submit")),
+	# submit: a workflow approval on a submitted Attendance is a "submit-level" action
+	("Attendance", 0, ("read", "write", "submit")),
+	("Employee Checkin", 0, ("read", "write", "create")),
+	# the ``time`` field sits at permlevel 1
+	("Employee Checkin", 1, ("read", "write")),
+]
+
+
+def ensure_roles():
+	for role in SCOPED_ROLE_NAMES:
+		if not frappe.db.exists("Role", role):
+			frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert(ignore_permissions=True)
+
+
+def _grant(doctype, role, permlevel, ptypes):
+	"""Add the rights only when the (doctype, role, permlevel) combination has no
+	Custom DocPerm row yet. A row an administrator already made - even a narrower
+	one - is left exactly as they set it. Never raises: a failed grant is logged and
+	must not abort ``bench migrate`` on a live site."""
+	from frappe.permissions import add_permission, update_permission_property
+
+	try:
+		if frappe.db.exists("Custom DocPerm", {"parent": doctype, "role": role, "permlevel": permlevel}):
+			return
+		add_permission(doctype, role, permlevel)
+		for ptype in ptypes:
+			update_permission_property(doctype, role, permlevel, ptype, 1)
+	except Exception:
+		frappe.log_error(
+			title="cooperheat: could not grant %s on %s (permlevel %s)" % (role, doctype, permlevel),
+			message=frappe.get_traceback(),
+		)
+
+
+def ensure_role_permissions():
+	"""Idempotent and add-only."""
+	for role in SCOPED_ROLE_NAMES:
+		for doctype, permlevel, ptypes in _SCOPED_ROLE_PERMS:
+			if frappe.db.exists("DocType", doctype):
+				_grant(doctype, role, permlevel, ptypes)
+	# HR Manager can create and maintain Pay Batches (also in the DocType JSON)
+	if frappe.db.exists("DocType", "Pay Batch"):
+		_grant("Pay Batch", "HR Manager", 0, ("read", "write", "create"))
+
+
+def ensure_project_display():
+	"""Show the project NAME (searchable by code and CRM number) wherever a
+	Project is picked, instead of only the system id."""
+	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+	make_property_setter("Project", None, "title_field", "project_name", "Data", for_doctype=True)
+	make_property_setter("Project", None, "show_title_field_in_link", "1", "Check", for_doctype=True)
+	make_property_setter(
+		"Project", None, "search_fields", "project_name,custom_project_code,custom_crm_no", "Data", for_doctype=True
+	)
+
+
+SUPERVISOR_WORKSPACE = "Supervisor Desk"
+
+_PENDING_STATES = ["Pending Level 1 Approval", "Pending Level 2 Approval", "Pending Level 3 Approval"]
+
+# name -> (doctype, filters). Counted through the normal permission layer, so a
+# supervisor's numbers are his own team's.
+_NUMBER_CARDS = {
+	"Team Pending Approvals": (
+		"Attendance",
+		[["Attendance", "workflow_state", "in", _PENDING_STATES, False], ["Attendance", "docstatus", "=", 1, False]],
+		"#E67E22",
+	),
+	"Team Check-ins Today": ("Employee Checkin", [["Employee Checkin", "time", "Timespan", "today", False]], "#2D9CDB"),
+	"Team Members": ("Employee", [["Employee", "status", "=", "Active", False]], "#27AE60"),
+}
+
+# card title -> [(label, link_type, link_to)]
+_LINK_CARDS = {
+	"My Team": [
+		("Supervisor Workspace", "Page", "supervisor-workspace"),
+		("Employee", "DocType", "Employee"),
+		("Department", "DocType", "Department"),
+		("Org Chart", "Page", "organizational-chart"),
+	],
+	"Attendance & Approvals": [
+		("Attendance", "DocType", "Attendance"),
+		("Employee Checkin", "DocType", "Employee Checkin"),
+		("Shift Assignment", "DocType", "Shift Assignment"),
+		("Level 3 Attendance Approval", "Page", "level-3-approval"),
+		("Approver Technician Summary", "Report", "Approver Technician Summary"),
+	],
+	"Projects & Sites": [
+		("Project", "DocType", "Project"),
+		("Task", "DocType", "Task"),
+	],
+	"HR Tools": [
+		("Employee Approver Exceptions", "Report", "Employee Approver Exceptions"),
+		("Pay Batch", "DocType", "Pay Batch"),
+		("Payroll Import", "DocType", "Payroll Import"),
+	],
+}
+
+
+def ensure_number_cards():
+	import json
+
+	for label, (doctype, filters, color) in _NUMBER_CARDS.items():
+		values = {
+			"document_type": doctype,
+			"function": "Count",
+			"filters_json": json.dumps(filters),
+			"is_public": 1,
+			"show_percentage_stats": 0,
+			"color": color,
+			"module": "cooperheat",
+			"type": "Document Type",
+		}
+		if frappe.db.exists("Number Card", label):
+			doc = frappe.get_doc("Number Card", label)
+			doc.update(values)
+		else:
+			doc = frappe.new_doc("Number Card")
+			doc.label = label
+			doc.name = label
+			doc.update(values)
+		doc.flags.ignore_permissions = True
+		doc.save()
+
+
+def ensure_supervisor_workspace():
+	"""A workspace for supervisors and managers: numbers, shortcuts and grouped cards.
+	Visible to the Supervisor and Manager roles; each of them only ever sees their
+	own team. Rebuilt on every migrate so it follows this definition."""
+	import json
+
+	ensure_number_cards()
+
+	shortcuts = [
+		("Supervisor Workspace", "Page", "supervisor-workspace", None),
+		("Employee", "DocType", "Employee", "List"),
+		("Department", "DocType", "Department", "List"),
+		("Project", "DocType", "Project", "List"),
+		("Employee Checkin", "DocType", "Employee Checkin", "List"),
+		("Attendance", "DocType", "Attendance", "List"),
+		("Org Chart", "URL", "/app/organizational-chart", None),
+	]
+
+	def header(i, text):
+		return {"id": "h%d" % i, "type": "header", "data": {"text": "<span class=\"h4\">%s</span>" % text, "col": 12}}
+
+	content = [header(0, "Today at a glance")]
+	for i, label in enumerate(_NUMBER_CARDS):
+		content.append({"id": "nc%d" % i, "type": "number_card", "data": {"number_card_name": label, "col": 4}})
+	content.append(header(1, "Shortcuts"))
+	for i, (label, *_rest) in enumerate(shortcuts):
+		content.append({"id": "sc%d" % i, "type": "shortcut", "data": {"shortcut_name": label, "col": 3}})
+	content.append(header(2, "Everything in one place"))
+	for i, title in enumerate(_LINK_CARDS):
+		content.append({"id": "cd%d" % i, "type": "card", "data": {"card_name": title, "col": 4}})
+
+	if frappe.db.exists("Workspace", SUPERVISOR_WORKSPACE):
+		ws = frappe.get_doc("Workspace", SUPERVISOR_WORKSPACE)
+		for table in ("shortcuts", "roles", "links", "number_cards"):
+			ws.set(table, [])
+	else:
+		ws = frappe.new_doc("Workspace")
+		ws.name = SUPERVISOR_WORKSPACE
+		ws.title = SUPERVISOR_WORKSPACE
+		ws.label = SUPERVISOR_WORKSPACE
+	ws.module = "cooperheat"
+	ws.public = 1
+	ws.is_hidden = 0
+	ws.content = json.dumps(content)
+
+	for label, stype, link, view in shortcuts:
+		row = {"label": label, "type": stype, "link_to": link}
+		if stype == "URL":
+			row = {"label": label, "type": "URL", "url": link}
+		elif view:
+			row["doc_view"] = view
+		ws.append("shortcuts", row)
+
+	for title, links in _LINK_CARDS.items():
+		ws.append("links", {"type": "Card Break", "label": title, "hidden": 0})
+		for label, link_type, link_to in links:
+			ws.append(
+				"links",
+				{
+					"type": "Link",
+					"label": label,
+					"link_type": link_type,
+					"link_to": link_to,
+					"is_query_report": 1 if link_type == "Report" else 0,
+					"onboard": 0,
+					"hidden": 0,
+				},
+			)
+
+	for label in _NUMBER_CARDS:
+		ws.append("number_cards", {"label": label, "number_card_name": label})
+	for role in SCOPED_ROLE_NAMES + ("HR Manager", "HR User"):
+		ws.append("roles", {"role": role})
+	ws.flags.ignore_permissions = True
+	ws.save()
+
+
+def sync_scoped_user_permissions():
+	"""One-off clean-up of Employee/Department User Permissions held by
+	supervisors (see permissions/scope.py)."""
+	from cooperheat.cooperheat.permissions.scope import sync_all_user_permissions
+
+	return sync_all_user_permissions()
+
+
 def after_migrate():
 	cleanup_legacy_employee_fields()
 	seed_nationalities()
@@ -214,3 +449,7 @@ def after_migrate():
 	seed_settings()
 	backfill_compensation_from_date()
 	setup_client_scripts()
+	ensure_roles()
+	ensure_role_permissions()
+	ensure_project_display()
+	ensure_supervisor_workspace()

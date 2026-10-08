@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 import frappe
 from frappe import _
-from frappe.utils import getdate
+from frappe.utils import get_datetime, getdate, now_datetime
 
 
 def validate(doc, method):
+	_enforce_edit_window(doc)
 	_auto_set_project(doc)
 	_validate_no_open_checkin(doc)
 	_validate_no_overlap(doc)
@@ -15,6 +18,71 @@ def after_insert(doc, method):
 
 def on_update(doc, method):
 	_sync_attendance_site_hours(doc)
+
+
+_FINAL_STATES = ("Approved", "Rejected")
+_CLOCK_SKEW = timedelta(minutes=5)
+
+
+def _enforce_edit_window(doc):
+	"""Supervisors/managers may record or correct a check-in time only within the
+	last 48 hours (HR Manager / System Manager are exempt). Enforced on the
+	document, so every route - desk form, Supervisor Workspace, mobile approval
+	screen, API - is covered:
+
+	* an existing log older than 48h cannot be changed (time, employee or type);
+	* the new time can never be in the future or older than 48h;
+	* a log whose Attendance is already approved/rejected is frozen for them;
+	* a supervisor's own punch (created for their own Employee record) is a normal
+	  check-in and not restricted on insert.
+
+	Every change of time is written to the document timeline."""
+	from cooperheat.cooperheat.api.supervisor import EDIT_WINDOW_HOURS, can_edit_checkin_time
+	from cooperheat.cooperheat.permissions.scope import is_scoped
+
+	user = frappe.session.user
+	scoped = is_scoped(user)
+	before = None if doc.is_new() else doc.get_doc_before_save()
+	time_changed = bool(before) and get_datetime(doc.time) != get_datetime(before.time)
+
+	if scoped:
+		own = set(frappe.get_all("Employee", filters={"user_id": user}, pluck="name"))
+		own_punch = doc.is_new() and doc.employee in own
+		if not own_punch and (doc.is_new() or time_changed):
+			new_time = get_datetime(doc.time)
+			if new_time > now_datetime() + _CLOCK_SKEW:
+				frappe.throw(_("A check-in time cannot be set in the future."))
+			if not can_edit_checkin_time(new_time, user):
+				frappe.throw(
+					_("Supervisors can only record or change check-ins from the last {0} hours. "
+					  "Please ask HR.").format(EDIT_WINDOW_HOURS),
+					title=_("Edit window closed"),
+				)
+		if before:
+			if not can_edit_checkin_time(before.time, user) and (
+				time_changed or doc.employee != before.employee or doc.log_type != before.log_type
+			):
+				frappe.throw(
+					_("This check-in is more than {0} hours old and can no longer be changed by a supervisor. "
+					  "Please ask HR to correct it.").format(EDIT_WINDOW_HOURS),
+					title=_("Edit window closed"),
+				)
+			if time_changed:
+				state = frappe.db.get_value(
+					"Attendance",
+					{"employee": before.employee, "attendance_date": getdate(before.time), "docstatus": 1},
+					"workflow_state",
+				)
+				if state in _FINAL_STATES:
+					frappe.throw(
+						_("The attendance for this day is already {0}. Please ask HR to correct it.").format(state)
+					)
+
+	if time_changed:
+		doc.add_comment(
+			"Info",
+			_("Time changed from {0} to {1} by {2}").format(before.time, doc.time, user),
+		)
 
 
 def _auto_set_project(doc):

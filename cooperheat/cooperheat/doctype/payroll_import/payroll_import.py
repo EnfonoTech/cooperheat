@@ -160,6 +160,15 @@ def _process_row(doc, r):
 	if not employee:
 		return "Error", None, "", _("Employee not found for code {0}").format(code)
 
+	if doc.get("pay_batch"):
+		from cooperheat.cooperheat.overrides.employee import effective_pay_batch
+
+		batch = effective_pay_batch(employee)
+		if batch != doc.pay_batch:
+			return "Skipped", None, employee, _("Employee is in pay batch {0}, not {1}.").format(
+				batch or _("(none)"), doc.pay_batch
+			)
+
 	# Submitted sheets are protected — cannot overwrite
 	submitted = frappe.db.get_value("Payroll Sheet", {
 		"employee": employee, "month": doc.month, "year": doc.year,
@@ -279,11 +288,16 @@ def _generate_rows_from_attendance(doc):
 	from_date = date(int(doc.year), month_num, 1)
 	to_date = date(int(doc.year), month_num, dim)
 
-	return get_report_rows(frappe._dict({
+	rows = get_report_rows(frappe._dict({
 		"from_date": from_date,
 		"to_date": to_date,
 		"company": doc.company,
 	}))
+	if doc.get("pay_batch"):
+		from cooperheat.cooperheat.overrides.employee import effective_pay_batch
+
+		rows = [r for r in rows if effective_pay_batch(r.get("code")) == doc.pay_batch]
+	return rows
 
 
 def _attach_generated_excel(doc, rows):

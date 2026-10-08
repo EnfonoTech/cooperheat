@@ -1,5 +1,6 @@
 import frappe
-from frappe.utils import cint, now
+from frappe import _
+from frappe.utils import cint, cstr, now
 
 
 _LEVEL_STATE = {
@@ -7,6 +8,57 @@ _LEVEL_STATE = {
 	2: "Pending Level 2 Approval",
 	3: "Pending Level 3 Approval",
 }
+
+
+_LAYOUT_FIELDTYPES = {"Section Break", "Column Break", "Tab Break", "HTML", "Button", "Heading"}
+
+
+def validate(doc, method=None):
+	"""A supervisor may maintain the approvers of their own department, within limits:
+
+	* only if they are ALREADY an approver of that department (otherwise anyone with
+	  one report in a department could appoint themselves and widen their own scope);
+	* only at their own level or below - never replace someone more senior;
+	* nothing else on the Department record.
+	"""
+	from cooperheat.cooperheat.permissions.scope import is_scoped
+
+	if doc.is_new() or not is_scoped(frappe.session.user):
+		return
+	before = doc.get_doc_before_save()
+	if not before:
+		return
+	for df in doc.meta.fields:
+		if df.fieldtype in _LAYOUT_FIELDTYPES or df.fieldtype in frappe.model.table_fields:
+			continue
+		if cstr(doc.get(df.fieldname)) != cstr(before.get(df.fieldname)):
+			frappe.throw(
+				_("You can only change the Approval Matrix of a department. {0} is read-only for you.").format(
+					_(df.label or df.fieldname)
+				)
+			)
+
+	def rows(d):
+		return {
+			(cint(r.approval_level), cstr(r.approver), cint(r.approval_window_hours))
+			for r in (d.get("approval_matrix") or [])
+		}
+
+	old_rows, new_rows = rows(before), rows(doc)
+	changed_levels = {row[0] for row in old_rows ^ new_rows}
+	if not changed_levels:
+		return
+
+	mine = set(frappe.get_all("Employee", filters={"user_id": frappe.session.user}, pluck="name"))
+	my_levels = [lvl for (lvl, approver, _w) in old_rows if approver in mine]
+	if not my_levels:
+		frappe.throw(_("Only an approver of this department can change its Approval Matrix."))
+	if max(changed_levels) > max(my_levels):
+		frappe.throw(
+			_("You can change approvers up to your own level ({0}). Ask HR to change more senior levels.").format(
+				max(my_levels)
+			)
+		)
 
 
 def on_update(doc, method):

@@ -8,11 +8,20 @@ from frappe.model.document import Document
 
 class EmployeeCompensation(Document):
 	def validate(self):
+		self.inherit_pay_batch()
 		self.derive_employee_category()
 		if not self.employee_category:
 			frappe.throw(_("Employee Category is required."))
 		if not self.from_date:
 			frappe.throw(_("Effective From is required."))
+
+	def inherit_pay_batch(self):
+		"""The Employee's own Pay Batch wins; a blank one is filled from it."""
+		if not self.employee:
+			return
+		batch = frappe.db.get_value("Employee", self.employee, "custom_pay_batch")
+		if batch:
+			self.pay_batch = batch
 
 	def derive_employee_category(self):
 		"""Set employee_category from the linked Employee's Nationality:

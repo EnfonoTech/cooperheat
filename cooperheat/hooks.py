@@ -261,7 +261,18 @@ doc_events = {
 		"on_update_after_submit": "cooperheat.cooperheat.overrides.attendance.on_update_after_submit",
 	},
 	"Department": {
+		"validate": "cooperheat.cooperheat.overrides.department.validate",
 		"on_update": "cooperheat.cooperheat.overrides.department.on_update",
+	},
+	"Employee": {
+		"before_validate": "cooperheat.cooperheat.overrides.employee.before_validate",
+		"on_update": "cooperheat.cooperheat.overrides.employee.on_update",
+	},
+	"Project": {
+		"autoname": "cooperheat.cooperheat.overrides.project.autoname",
+	},
+	"User": {
+		"on_update": "cooperheat.cooperheat.permissions.scope.on_user_update",
 	},
 	"Employee Checkin": {
 		"validate": "cooperheat.cooperheat.overrides.employee_checkin.validate",
@@ -275,6 +286,7 @@ doc_events = {
 
 scheduler_events = {
 	"hourly": [
+		"cooperheat.cooperheat.api.attendance_gen.generate_attendance_from_checkins",
 		"cooperheat.cooperheat.api.tasks.process_attendance_approval_windows",
 	],
 }
@@ -360,3 +372,20 @@ scheduler_events = {
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+
+# Team scoping for Supervisor / Manager users (see cooperheat/permissions/scope.py)
+permission_query_conditions = {
+	"Employee": "cooperheat.cooperheat.permissions.scope.employee_query",
+	"Employee Checkin": "cooperheat.cooperheat.permissions.scope.employee_checkin_query",
+	"Attendance": "cooperheat.cooperheat.permissions.scope.attendance_query",
+	"Shift Assignment": "cooperheat.cooperheat.permissions.scope.shift_assignment_query",
+	"Department": "cooperheat.cooperheat.permissions.scope.department_query",
+}
+
+has_permission = {
+	"Employee": "cooperheat.cooperheat.permissions.scope.employee_has_permission",
+	"Employee Checkin": "cooperheat.cooperheat.permissions.scope.employee_doc_has_permission",
+	"Attendance": "cooperheat.cooperheat.permissions.scope.employee_doc_has_permission",
+	"Shift Assignment": "cooperheat.cooperheat.permissions.scope.employee_doc_has_permission",
+	"Department": "cooperheat.cooperheat.permissions.scope.department_has_permission",
+}

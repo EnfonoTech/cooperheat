@@ -6,3 +6,7 @@
 # Patches added in this section will be executed after doctypes are migrated
 cooperheat.cooperheat.patches.v1.deactivate_shift_assignment_workflow
 cooperheat.cooperheat.patches.v1.fix_attendance_status
+cooperheat.cooperheat.patches.v1.backfill_pay_batch
+cooperheat.cooperheat.patches.v1.sync_supervisor_user_permissions
+
+cooperheat.cooperheat.patches.v1.grant_attendance_submit_to_scoped_roles
