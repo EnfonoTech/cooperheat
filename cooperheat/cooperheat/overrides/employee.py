@@ -8,7 +8,10 @@ from cooperheat.cooperheat.permissions.scope import on_employee_update as _sync_
 def before_validate(doc, method=None):
 	from cooperheat.cooperheat.org import fill_default_approvers, reroute_on_move, sync_employee_org
 
+	from cooperheat.cooperheat.work_schedule import sync_work_schedule
+
 	sync_employee_org(doc)
+	sync_work_schedule(doc)
 	reroute_on_move(doc)
 	_auto_link_reports_to(doc)
 	fill_default_approvers(doc)

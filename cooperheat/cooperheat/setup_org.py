@@ -37,18 +37,26 @@ STRUCTURE = [
 	("Admin", "Department", "HR Division", 0),
 	("PRO", "Department", "HR Division", 0),
 	("Recruitment", "Department", "HR Division", 0),
-	("Inspection", org.BUSINESS_LINE, None, 1),
-	("TPI", org.PRODUCT_LINE, "Inspection", 0),
-	("ANDT", org.PRODUCT_LINE, "Inspection", 0),
-	("CNDT", org.PRODUCT_LINE, "Inspection", 1),
+	("Inspection Business Line", org.BUSINESS_LINE, None, 1),
+	("TPI", org.PRODUCT_LINE, "Inspection Business Line", 0),
+	("ANDT", org.PRODUCT_LINE, "Inspection Business Line", 0),
+	("CNDT", org.PRODUCT_LINE, "Inspection Business Line", 1),
 	("RSO Team", org.PRODUCT_LINE, "CNDT", 0),
 	("NDT Team", org.PRODUCT_LINE, "CNDT", 0),
-	("Specialized Mechanical Services", org.BUSINESS_LINE, None, 1),
-	("HTLS", org.PRODUCT_LINE, "Specialized Mechanical Services", 0),
-	("Online Leak Sealing", org.PRODUCT_LINE, "Specialized Mechanical Services", 0),
-	("Heat Treatment", org.BUSINESS_LINE, None, 1),
-	("Fabrication", org.BUSINESS_LINE, None, 1),
+	("Specialized Mechanical Services Business Line", org.BUSINESS_LINE, None, 1),
+	("HTLS", org.PRODUCT_LINE, "Specialized Mechanical Services Business Line", 0),
+	("Online Leak Sealing", org.PRODUCT_LINE, "Specialized Mechanical Services Business Line", 0),
+	("Heat Treatment Business Line", org.BUSINESS_LINE, None, 1),
+	("Fabrication Business Line", org.BUSINESS_LINE, None, 1),
 ]
+
+# Business lines carry their full name (client request 2026-10-11).
+RENAMES = {
+	"Inspection": "Inspection Business Line",
+	"Specialized Mechanical Services": "Specialized Mechanical Services Business Line",
+	"Heat Treatment": "Heat Treatment Business Line",
+	"Fabrication": "Fabrication Business Line",
+}
 
 # (location, parent group or None, is_group)
 LOCATIONS = [
@@ -75,6 +83,12 @@ def create_structure(company):
 				{"doctype": "Location", "location_name": name, "parent_location": parent, "is_group": is_group}
 			).insert()
 			created.append(name)
+
+	for old, new in RENAMES.items():
+		if frappe.db.exists("Department", dept(company, old)) and not frappe.db.exists("Department", dept(company, new)):
+			frappe.rename_doc("Department", dept(company, old), dept(company, new), force=True)
+			frappe.db.set_value("Department", dept(company, new), "department_name", new)
+			created.append(dept(company, new))
 
 	for name, unit_type, parent, is_group in STRUCTURE:
 		full = dept(company, name)
@@ -104,6 +118,40 @@ def create_structure(company):
 		created.append(full)
 	org.clear_cache()
 	return created
+
+
+@frappe.whitelist()
+def remove_unlisted(company, keep=None, dry_run=1):
+	"""Departments of `company` that are not in STRUCTURE (or `keep`):
+	deleted when nothing points at them, otherwise disabled (history kept).
+
+	`dry_run=1` only reports.
+	"""
+	frappe.only_for(("System Manager", "HR Manager"))
+	from frappe.utils import cint
+
+	keep = set(frappe.parse_json(keep) if isinstance(keep, str) else (keep or []))
+	wanted = {dept(company, name) for name, *_ in STRUCTURE} | {dept(company, k) for k in keep}
+	report = {"delete": [], "disable": [], "kept": sorted(wanted)}
+	candidates = frappe.get_all(
+		"Department", filters={"company": company, "name": ["not in", list(wanted)]}, fields=["name", "disabled"], order_by="rgt desc"
+	)
+	for row in candidates:
+		in_use = any(
+			frappe.db.exists(doctype, {"department": row.name})
+			for doctype in ("Employee", "Attendance", "Leave Application", "Salary Slip", "Expense Claim", "Shift Assignment")
+		) or frappe.db.exists("Department", {"parent_department": row.name})
+		if in_use:
+			if not row.disabled:
+				report["disable"].append(row.name)
+				if not cint(dry_run):
+					frappe.db.set_value("Department", row.name, "disabled", 1)
+		else:
+			report["delete"].append(row.name)
+			if not cint(dry_run):
+				frappe.delete_doc("Department", row.name, ignore_permissions=True)
+	org.clear_cache()
+	return report
 
 
 @frappe.whitelist()
@@ -163,7 +211,7 @@ def uat_demo():
 	# The seeded Leak Sealing / Contracting teams become product lines of SMS.
 	for seeded in ("Leak Sealing", "Contracting"):
 		doc = frappe.get_doc("Department", dev_seed.dept_name(seeded))
-		doc.parent_department = d("Specialized Mechanical Services")
+		doc.parent_department = d("Specialized Mechanical Services Business Line")
 		doc.custom_unit_type = org.PRODUCT_LINE
 		doc.save()
 
@@ -199,7 +247,7 @@ def uat_demo():
 		)
 
 	# Dedicated approvers, so the seeded supervisors' teams stay exactly as tested.
-	insp_mgr = demo_person("Inspection Manager", "inspection.manager", custom_business_line=d("Inspection"))
+	insp_mgr = demo_person("Inspection Manager", "inspection.manager", custom_business_line=d("Inspection Business Line"))
 	sup_jub = demo_person("NDT Supervisor Jubail", "ndt.jubail", custom_product_line=d("NDT Team"), custom_assigned_location="Jubail")
 	sup_yan = demo_person("NDT Supervisor Yanbu", "ndt.yanbu", custom_product_line=d("NDT Team"), custom_assigned_location="Yanbu")
 
@@ -217,11 +265,11 @@ def uat_demo():
 			)
 		doc.save()
 
-	matrix("Inspection", [(2, insp_mgr, None), (3, irtaza, None)])
+	matrix("Inspection Business Line", [(2, insp_mgr, None), (3, irtaza, None)])
 	matrix("NDT Team", [(1, sup_jub, "Jubail"), (1, sup_yan, "Yanbu")])
-	matrix("Specialized Mechanical Services", [(2, khalid, None), (3, irtaza, None)])
-	matrix("Heat Treatment", [(3, irtaza, None)])
-	matrix("Fabrication", [(3, irtaza, None)])
+	matrix("Specialized Mechanical Services Business Line", [(2, khalid, None), (3, irtaza, None)])
+	matrix("Heat Treatment Business Line", [(3, irtaza, None)])
+	matrix("Fabrication Business Line", [(3, irtaza, None)])
 	matrix("Finance Division", [(1, mustafa, None), (3, irtaza, None)])
 	matrix("HR Division", [(1, irtaza, None)])
 
@@ -230,7 +278,7 @@ def uat_demo():
 		doc.update(values)
 		doc.save()
 
-	place(khalid, custom_business_line=d("Specialized Mechanical Services"), custom_product_line=None)
+	place(khalid, custom_business_line=d("Specialized Mechanical Services Business Line"), custom_product_line=None)
 	place(mustafa, department=d("ICT"))
 	place(irtaza, department=d("HR"))
 
@@ -269,4 +317,16 @@ def uat_demo():
 		frappe.delete_doc("Department", twin)
 	org.clear_cache()
 	backfill_employees(company, dry_run=0)
-	return "ok"
+
+	# Work schedule: office people vs field people.
+	office = {mustafa, irtaza}
+	for name in frappe.get_all("Employee", filters={"company": company, "status": "Active"}, pluck="name"):
+		category = "Office Staff" if name in office else "Field Staff"
+		if frappe.db.get_value("Employee", name, "custom_staff_category") != category:
+			doc = frappe.get_doc("Employee", name)
+			doc.custom_staff_category = category
+			doc.default_shift = None
+			doc.save()
+
+	# Only the agreed structure (plus the seeded UAT test teams) stays.
+	return remove_unlisted(company, keep=["Leak Sealing", "Contracting", "NDT"], dry_run=0)

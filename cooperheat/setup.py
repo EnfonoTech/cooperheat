@@ -453,3 +453,6 @@ def after_migrate():
 	ensure_role_permissions()
 	ensure_project_display()
 	ensure_supervisor_workspace()
+	from cooperheat.cooperheat.work_schedule import place_default_shift_field
+
+	place_default_shift_field()

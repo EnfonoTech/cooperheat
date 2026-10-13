@@ -46,6 +46,7 @@ app_license = "mit"
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 doctype_js = {"Employee": "public/js/employee.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+doctype_list_js = {"Employee Checkin": "public/js/employee_checkin_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -156,6 +157,8 @@ fixtures = [
 					"Employee-custom_business_line",
 					"Employee-custom_product_line",
 					"Employee-custom_assigned_location",
+					"Employee-custom_work_schedule_section",
+					"Employee-custom_staff_category",
 				],
 			]
 		],
@@ -302,6 +305,9 @@ scheduler_events = {
 	"hourly": [
 		"cooperheat.cooperheat.api.attendance_gen.generate_attendance_from_checkins",
 		"cooperheat.cooperheat.api.tasks.process_attendance_approval_windows",
+	],
+	"daily": [
+		"cooperheat.cooperheat.work_schedule.roll_over_calendars",
 	],
 }
 
