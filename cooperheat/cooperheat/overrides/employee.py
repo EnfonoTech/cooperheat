@@ -12,6 +12,7 @@ def before_validate(doc, method=None):
 
 	sync_employee_org(doc)
 	sync_work_schedule(doc)
+	_default_pay_batch(doc)
 	reroute_on_move(doc)
 	_auto_link_reports_to(doc)
 	fill_default_approvers(doc)
@@ -35,6 +36,13 @@ def _auto_link_reports_to(doc):
 		if row.approver and row.approver != doc.name:
 			doc.reports_to = row.approver
 			return
+
+
+def _default_pay_batch(doc):
+	"""New joiners go into the Main batch. Without a batch, a payroll run for
+	Main silently leaves them out."""
+	if doc.meta.has_field("custom_pay_batch") and not doc.get("custom_pay_batch") and frappe.db.exists("Pay Batch", "Main"):
+		doc.custom_pay_batch = "Main"
 
 
 def _propagate_pay_batch(doc):

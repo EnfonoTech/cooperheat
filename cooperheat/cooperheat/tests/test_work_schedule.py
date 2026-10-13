@@ -61,3 +61,9 @@ class TestWorkSchedule(FrappeTestCase):
 		frappe.db.set_value("Employee", e.name, "holiday_list", None)
 		roll_over_calendars()
 		self.assertEqual(frappe.db.get_value("Employee", e.name, "holiday_list"), holiday_list_name("Field", self.year))
+
+	def test_new_employee_defaults_to_main_pay_batch(self):
+		if not frappe.db.exists("Pay Batch", "Main"):
+			frappe.get_doc({"doctype": "Pay Batch", "batch_name": "Main"}).insert(ignore_permissions=True)
+		e = make_employee("Batch")
+		self.assertEqual(e.custom_pay_batch, "Main")
