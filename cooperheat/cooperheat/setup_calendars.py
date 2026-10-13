@@ -63,7 +63,52 @@ def make_holiday_list(name, year, weekly_offs):
 	return doc
 
 
-def make_shift_type(name, holiday_list, start_time=None, end_time=None):
+# Client shift timings (2026-10-13). Field work is flexible day or night: the shift
+# is a full-day window and the 8-hour / 16-hour rules decide overtime.
+SHIFTS = {
+	"Office Shift": ("Office", "07:30:00", "16:30:00"),
+	"Office Shift 2": ("Office", "08:30:00", "17:30:00"),
+	"Field Shift": ("Field", "00:00:00", "23:59:00"),
+}
+
+
+@frappe.whitelist()
+def setup_shifts(year=None):
+	"""Create / update Office Shift (07:30-16:30), Office Shift 2 (08:30-17:30) and the
+	flexible Field Shift. Idempotent; times are corrected on existing shifts."""
+	frappe.only_for(("System Manager", "HR Manager"))
+	from frappe.utils import getdate, nowdate
+
+	year = cint(year) or getdate(nowdate()).year
+	changed = []
+	for name, (kind, start, end) in SHIFTS.items():
+		holiday_list = holiday_list_name(kind, year)
+		holiday_list = holiday_list if frappe.db.exists("Holiday List", holiday_list) else None
+		if frappe.db.exists("Shift Type", name):
+			current = frappe.db.get_value("Shift Type", name, ["start_time", "end_time", "enable_auto_attendance"], as_dict=True)
+			if str(current.start_time) != start or str(current.end_time) != end or current.enable_auto_attendance:
+				# Direct write: HRMS refuses to edit a shift while check-ins wait for ITS auto
+				# attendance, which this site does not use (attendance comes from cooperheat).
+				values = {"start_time": start, "end_time": end, "enable_auto_attendance": 0}
+				if kind == "Field":
+					values.update(begin_check_in_before_shift_start_time=0, allow_check_out_after_shift_end_time=0)
+				frappe.db.set_value("Shift Type", name, values)
+				frappe.clear_document_cache("Shift Type", name)
+				changed.append(name)
+		else:
+			make_shift_type(name, holiday_list, start, end, flexible=kind == "Field")
+			changed.append(name)
+	return changed
+
+
+def _flexible(doc, kind):
+	"""A full-day Field shift would overlap itself through HRMS's grace minutes."""
+	if kind == "Field":
+		doc.begin_check_in_before_shift_start_time = 0
+		doc.allow_check_out_after_shift_end_time = 0
+
+
+def make_shift_type(name, holiday_list, start_time=None, end_time=None, flexible=False):
 	regular = frappe.db.get_value("Shift Type", "regular", ["start_time", "end_time"], as_dict=True) or {}
 	doc = frappe.new_doc("Shift Type")
 	doc.name = name
@@ -73,5 +118,7 @@ def make_shift_type(name, holiday_list, start_time=None, end_time=None):
 	# Attendance comes from cooperheat's check-in job; HRMS auto attendance
 	# would create duplicates.
 	doc.enable_auto_attendance = 0
+	if flexible:
+		_flexible(doc, "Field")
 	doc.insert()
 	return doc

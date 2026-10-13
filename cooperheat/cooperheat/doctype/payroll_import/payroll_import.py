@@ -251,7 +251,7 @@ def _make_payroll_sheet(company, employee, month, year, posting_date, row, comp_
 
 	ps.normal_ot_hours = flt(row.get("ot"))
 	ps.holiday_ot_hours = flt(row.get("hot"))
-	ps.travel_ot_hours = flt(row.get("travel_ot"))
+	ps.travel_ot_hours = 0  # travel overtime is not used
 	ps.expenses = flt(row.get("expenses"))
 	ps.others = flt(row.get("other"))
 	ps.vacation_pay = flt(row.get("vacation"))

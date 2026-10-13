@@ -27,7 +27,7 @@
   },
   {
    "default": "240",
-   "description": "Used as denominator in OT rate. (8 hours × 30 days)",
+   "description": "Used as denominator in OT rate. (8 hours \u00d7 30 days)",
    "fieldname": "monthly_working_hours",
    "fieldtype": "Float",
    "label": "Monthly Working Hours",
@@ -52,7 +52,8 @@
    "fieldname": "travel_ot_multiplier",
    "fieldtype": "Float",
    "label": "Travel OT Multiplier",
-   "reqd": 1
+   "reqd": 1,
+   "hidden": 1
   },
   {
    "fieldname": "column_break_ot",
@@ -60,7 +61,7 @@
   },
   {
    "default": "9.75",
-   "description": "GOSI = (basic + housing_allowance) × rate%. Applies only to employees in the category below.",
+   "description": "GOSI = (basic + housing_allowance) \u00d7 rate%. Applies only to employees in the category below.",
    "fieldname": "gosi_rate_percent",
    "fieldtype": "Float",
    "label": "GOSI Rate (%)",

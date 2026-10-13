@@ -17,7 +17,7 @@ from cooperheat.cooperheat.setup_calendars import holiday_list_name
 OFFICE, FIELD = "Office Staff", "Field Staff"
 KIND = {OFFICE: "Office", FIELD: "Field"}
 SHIFT_FOR = {OFFICE: "Office Shift", FIELD: "Field Shift"}
-CATEGORY_FOR_SHIFT = {v: k for k, v in SHIFT_FOR.items()}
+CATEGORY_FOR_SHIFT = {v: k for k, v in SHIFT_FOR.items()} | {"Office Shift 2": OFFICE}
 
 
 def calendar_for(category, date=None):

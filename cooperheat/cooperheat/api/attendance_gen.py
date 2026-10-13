@@ -86,19 +86,31 @@ def _generate(from_date, to_date, limit: int) -> dict:
 	today_str = str(getdate(today()))
 	has_l1: dict[str, bool] = {}
 
+	from cooperheat.cooperheat.work_day import group_by_work_date
+
+	# One day wider on both sides so a night shift is seen whole: the IN the
+	# evening before the window and the OUT the morning after it.
 	logs = frappe.get_all(
 		"Employee Checkin",
 		filters={
-			"time": ["between", [str(from_date) + " 00:00:00", str(to_date) + " 23:59:59"]],
+			"time": ["between", [str(add_days(from_date, -1)) + " 00:00:00", str(add_days(to_date, 1)) + " 23:59:59"]],
 			"skip_auto_attendance": 0,
 		},
 		fields=["name", "employee", "log_type", "time", "attendance"],
 		order_by="employee asc, time asc",
+		limit=0,
 	)
 
-	days: dict[tuple[str, str], list] = {}
+	by_employee: dict[str, list] = {}
 	for log in logs:
-		days.setdefault((log.employee, str(getdate(log.time))), []).append(log)
+		by_employee.setdefault(log.employee, []).append(log)
+
+	# Grouped by the date the shift STARTED (see work_day).
+	days: dict[tuple[str, str], list] = {}
+	for employee, employee_logs in by_employee.items():
+		for work_day, group in group_by_work_date(employee_logs).items():
+			if from_date <= work_day <= to_date:
+				days[(employee, str(work_day))] = group
 
 	for (employee, day), day_logs in days.items():
 		if result["created"] >= limit:

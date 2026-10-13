@@ -96,13 +96,10 @@ def get_team(date=None) -> list[dict]:
 		order_by="employee_name asc",
 	)
 
+	from cooperheat.cooperheat.work_day import team_logs_for_work_date
+
 	logs_by_emp: dict[str, list] = {}
-	for log in frappe.get_all(
-		"Employee Checkin",
-		filters={"employee": ["in", team], "time": ["between", [day + " 00:00:00", day + " 23:59:59"]]},
-		fields=["employee", "log_type", "time"],
-		order_by="time asc",
-	):
+	for log in team_logs_for_work_date(team, day):  # shift date: night shifts stay with their start day
 		logs_by_emp.setdefault(log.employee, []).append(log)
 
 	me = _my_employee()
@@ -156,14 +153,22 @@ def get_employee_days(employee: str, from_date=None, to_date=None) -> list[dict]
 	to_d = getdate(to_date or today())
 	from_d = getdate(from_date or add_days(to_d, -13))
 
+	from cooperheat.cooperheat.work_day import group_by_work_date
+
 	logs_by_day: dict[str, list] = {}
-	for log in frappe.get_all(
+	fetched = frappe.get_all(
 		"Employee Checkin",
-		filters={"employee": employee, "time": ["between", [str(from_d) + " 00:00:00", str(to_d) + " 23:59:59"]]},
+		filters={
+			"employee": employee,
+			"time": ["between", [str(add_days(from_d, -1)) + " 00:00:00", str(add_days(to_d, 1)) + " 23:59:59"]],
+		},
 		fields=["name", "log_type", "time", "custom_project", "attendance"],
 		order_by="time asc",
-	):
-		logs_by_day.setdefault(str(getdate(log.time)), []).append(log)
+		limit=0,
+	)
+	for work_day, group in group_by_work_date(fetched).items():
+		if from_d <= work_day <= to_d:
+			logs_by_day[str(work_day)] = group
 
 	atts = {
 		str(a.attendance_date): a

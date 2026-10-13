@@ -64,12 +64,10 @@ function recalc(frm, settings) {
 
 	const normal = hourly * (settings.normal_ot_multiplier || 1.5) * flt(frm.doc.normal_ot_hours);
 	const holiday = hourly * (settings.holiday_ot_multiplier || 2) * flt(frm.doc.holiday_ot_hours);
-	const travel = hourly * (settings.travel_ot_multiplier || 1.5) * flt(frm.doc.travel_ot_hours);
 
 	frm.set_value("normal_ot_amount", normal);
 	frm.set_value("holiday_ot_amount", holiday);
-	frm.set_value("travel_ot_amount", travel);
-	const total_ot = normal + holiday + travel;
+	const total_ot = normal + holiday;
 	frm.set_value("total_ot_amount", total_ot);
 
 	// GOSI

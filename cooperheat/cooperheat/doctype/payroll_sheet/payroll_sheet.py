@@ -148,13 +148,12 @@ class PayrollSheet(Document):
 		self.holiday_ot_amount = self.round_amount(
 			hourly * flt(settings.holiday_ot_multiplier) * flt(self.holiday_ot_hours)
 		)
-		self.travel_ot_amount = self.round_amount(
-			hourly * flt(settings.travel_ot_multiplier) * flt(self.travel_ot_hours)
-		)
+		# Travel overtime is not used (client, 2026-10-13).
+		self.travel_ot_hours = 0
+		self.travel_ot_amount = 0
 		self.total_ot_amount = self.round_amount(
 			flt(self.normal_ot_amount)
 			+ flt(self.holiday_ot_amount)
-			+ flt(self.travel_ot_amount)
 		)
 
 	def get_ot_basic(self):

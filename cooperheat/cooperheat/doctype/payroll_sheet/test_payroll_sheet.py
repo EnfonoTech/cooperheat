@@ -48,13 +48,13 @@ class TestPayrollSheetOvertime(FrappeTestCase):
 			worked_days=25,
 			normal_ot_hours=10,
 			holiday_ot_hours=8,
-			travel_ot_hours=4,
+			travel_ot_hours=4,  # ignored: travel overtime is not used
 		)
 		self.assertEqual(doc.basic, 2500)
 		self.assertEqual(doc.normal_ot_amount, 187.5)  # 3000 / 240 * 1.5 * 10
 		self.assertEqual(doc.holiday_ot_amount, 200)  # 3000 / 240 * 2 * 8
-		self.assertEqual(doc.travel_ot_amount, 75)  # 3000 / 240 * 1.5 * 4
-		self.assertEqual(doc.total_ot_amount, 462.5)
+		self.assertEqual(doc.travel_ot_amount, 0)
+		self.assertEqual(doc.total_ot_amount, 387.5)
 
 	def test_without_compensation_uses_sheet_basic(self):
 		doc = make_sheet(basic=2400, worked_days=20, normal_ot_hours=10)

@@ -43,7 +43,6 @@ def get_columns():
 		{"label": _("RPP A"), "fieldname": "rpp_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Other A"), "fieldname": "other_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Normal OT"), "fieldname": "normal_ot_amount", "fieldtype": "Currency", "width": 110},
-		{"label": _("Travel OT"), "fieldname": "travel_ot_amount", "fieldtype": "Currency", "width": 110},
 		{"label": _("Holiday OT"), "fieldname": "holiday_ot_amount", "fieldtype": "Currency", "width": 110},
 		{"label": _("Monthly Additions"), "fieldname": "monthly_additions", "fieldtype": "Currency", "width": 130},
 		{"label": _("Monthly Deductions"), "fieldname": "monthly_deductions", "fieldtype": "Currency", "width": 130},
@@ -74,7 +73,7 @@ def get_data(filters):
 			service_allowance, driving_allowance, merit_award, aramco_certification,
 			supervisor_allowance, education_allowance, rso_allowance, rpp_allowance,
 			other_allowance,
-			normal_ot_amount, travel_ot_amount, holiday_ot_amount,
+			normal_ot_amount, holiday_ot_amount,
 			expenses, others, vacation_pay, bonus, air_fare,
 			other_deduction, housing_deduction, gosi,
 			net_payable

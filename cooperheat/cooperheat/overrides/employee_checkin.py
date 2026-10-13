@@ -102,22 +102,10 @@ def _auto_set_project(doc):
 	if doc.log_type != "OUT":
 		return
 
-	checkin_date = getdate(doc.time)
-	date_str = str(checkin_date)
+	# The open IN before this OUT - including one from before midnight (night shift).
+	from cooperheat.cooperheat.work_day import open_in_before
 
-	# Find the last IN that has no matching OUT yet (open checkin)
-	last_in = frappe.db.get_value(
-		"Employee Checkin",
-		{
-			"employee": doc.employee,
-			"log_type": "IN",
-			"time": ["between", [date_str + " 00:00:00", date_str + " 23:59:59"]],
-			"name": ["!=", doc.name],
-		},
-		["custom_project", "time"],
-		as_dict=True,
-		order_by="time desc",
-	)
+	last_in = open_in_before(doc.employee, doc.time, exclude=doc.name)
 	doc.custom_project = last_in.custom_project if last_in else None
 
 
@@ -126,24 +114,13 @@ def _validate_no_open_checkin(doc):
 	if doc.log_type != "IN" or not doc.employee or not doc.time:
 		return
 
+	from cooperheat.cooperheat.work_day import open_in_before
+
 	date_str = str(getdate(doc.time))
-	filters = [
-		["employee", "=", doc.employee],
-		["time", ">=", date_str + " 00:00:00"],
-		["time", "<=", date_str + " 23:59:59"],
-	]
-	if not doc.is_new():
-		filters.append(["name", "!=", doc.name])
+	# Still-open shift from earlier (also from before midnight) blocks a new IN.
+	last = open_in_before(doc.employee, doc.time, exclude=None if doc.is_new() else doc.name)
 
-	last = frappe.db.get_value(
-		"Employee Checkin",
-		filters,
-		["log_type", "custom_project", "time"],
-		as_dict=True,
-		order_by="time desc",
-	)
-
-	if last and last.log_type == "IN":
+	if last:
 		project_msg = _(" at project {0}").format(last.custom_project) if last.custom_project else ""
 		frappe.throw(
 			_("Employee already has an open check-in{0} on {1}. Please check out first.").format(
@@ -222,7 +199,12 @@ def _sync_attendance_site_hours(doc):
 	if doc.skip_auto_attendance:
 		return
 
-	attendance_date = getdate(doc.time)
+	# The shift's date, not the calendar date: an after-midnight OUT updates the
+	# attendance of the day the shift started.
+	from cooperheat.cooperheat.work_day import open_in_before
+
+	opened = open_in_before(doc.employee, doc.time, exclude=doc.name) if doc.log_type == "OUT" else None
+	attendance_date = getdate(opened.time) if opened else getdate(doc.time)
 	attendance_name = frappe.db.get_value(
 		"Attendance",
 		{"employee": doc.employee, "attendance_date": attendance_date, "docstatus": 1},

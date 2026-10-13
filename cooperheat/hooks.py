@@ -159,6 +159,11 @@ fixtures = [
 					"Employee-custom_assigned_location",
 					"Employee-custom_work_schedule_section",
 					"Employee-custom_staff_category",
+					"Attendance-custom_overtime_section",
+					"Attendance-custom_regular_hours",
+					"Attendance-custom_ot_hours",
+					"Attendance-custom_holiday_ot_hours",
+					"Attendance-custom_ot_basis",
 				],
 			]
 		],
