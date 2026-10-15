@@ -327,13 +327,15 @@
   {
    "fieldname": "travel_ot_hours",
    "fieldtype": "Float",
-   "label": "Travel OT Hours"
+   "label": "Travel OT Hours",
+   "hidden": 1
   },
   {
    "fieldname": "travel_ot_amount",
    "fieldtype": "Currency",
    "label": "Travel OT Amount",
-   "read_only": 1
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "bold": 1,

@@ -63,6 +63,9 @@ def validate(doc, method):
 	_validate_payable_vs_billable_hours(doc)
 	_fill_checkin_times(doc)                 # fill in_time/out_time from checkins (draft only)
 	_recalculate_working_hours(doc)          # recalc parent working_hours (skipped if site hours exist)
+	from cooperheat.cooperheat.overtime import apply_to_doc
+
+	apply_to_doc(doc)                        # regular / overtime / holiday overtime hours
 	_set_status_from_thresholds(doc)
 	_sync_current_approver(doc)
 
@@ -85,6 +88,9 @@ def before_update_after_submit(doc, method):
 def on_update_after_submit(doc, method):
 	"""Recalculate working_hours and send notification when state advances."""
 	_update_working_hours_from_site_hours(doc)
+	from cooperheat.cooperheat.overtime import persist
+
+	persist(doc)
 	_correct_status_on_submitted(doc)
 
 	prev_state, new_state = _state_changed(doc)
@@ -115,13 +121,9 @@ def _fill_checkin_times(doc):
 		return
 	if doc.in_time and doc.out_time:
 		return  # already set, nothing to do
-	date_str = str(doc.attendance_date)
-	checkins = frappe.get_all(
-		"Employee Checkin",
-		filters={"employee": doc.employee, "time": ["between", [date_str + " 00:00:00", date_str + " 23:59:59"]]},
-		fields=["log_type", "time"],
-		order_by="time asc",
-	)
+	from cooperheat.cooperheat.work_day import logs_for_work_date
+
+	checkins = logs_for_work_date(doc.employee, doc.attendance_date)
 	if not checkins:
 		return
 	if not doc.in_time:
@@ -151,11 +153,9 @@ def _set_status_from_thresholds(doc):
 	if not doc.employee or not doc.attendance_date:
 		return
 	# Only override if checkin records exist for this employee/date
-	date_str = str(doc.attendance_date)
-	has_checkins = frappe.db.exists("Employee Checkin", {
-		"employee": doc.employee,
-		"time": ["between", [date_str + " 00:00:00", date_str + " 23:59:59"]],
-	})
+	from cooperheat.cooperheat.work_day import has_logs_for_work_date
+
+	has_checkins = has_logs_for_work_date(doc.employee, doc.attendance_date)
 	if not has_checkins:
 		return
 	# Read thresholds from the Shift Type linked on this attendance
@@ -188,11 +188,9 @@ def _correct_status_on_submitted(doc):
 	"""
 	if not doc.employee or not doc.attendance_date:
 		return
-	date_str = str(doc.attendance_date)
-	has_checkins = frappe.db.exists("Employee Checkin", {
-		"employee": doc.employee,
-		"time": ["between", [date_str + " 00:00:00", date_str + " 23:59:59"]],
-	})
+	from cooperheat.cooperheat.work_day import has_logs_for_work_date
+
+	has_checkins = has_logs_for_work_date(doc.employee, doc.attendance_date)
 	if not has_checkins:
 		return
 	shift_type = doc.get("shift")
@@ -229,11 +227,9 @@ def fix_all_attendance_status():
 	)
 	fixed = 0
 	for r in records:
-		date_str = str(r.attendance_date)
-		has_checkins = frappe.db.exists("Employee Checkin", {
-			"employee": r.employee,
-			"time": ["between", [date_str + " 00:00:00", date_str + " 23:59:59"]],
-		})
+		from cooperheat.cooperheat.work_day import has_logs_for_work_date
+
+		has_checkins = has_logs_for_work_date(r.employee, r.attendance_date)
 		if not has_checkins:
 			continue
 		threshold_absent = 0.0
@@ -269,7 +265,7 @@ def _auto_approve_if_no_level3(doc):
 	without any manual action — triggering on_update_after_submit again, but that
 	second call sees "Approved" which is not in _NOTIFY_LEVEL and exits cleanly.
 	"""
-	matrix = _get_matrix(doc.get("department") or "")
+	matrix = _get_matrix(doc.get("department") or "", doc.get("employee"))
 	if _row_for_level(matrix, 3):
 		return  # Level 3 approver exists — normal flow, do nothing
 
@@ -285,15 +281,15 @@ def _auto_approve_if_no_level3(doc):
 		frappe.log_error(frappe.get_traceback(), "Auto Level 3 Approve failed: " + doc.name)
 
 
-def _get_matrix(department: str) -> list:
-	if not department:
-		return []
-	return frappe.get_all(
-		"Department Approval Matrix",
-		filters={"parent": department, "parentfield": "approval_matrix"},
-		fields=["approval_level", "approver", "approval_window_hours"],
-		order_by="approval_level asc",
-	)
+def _get_matrix(department: str, employee: str | None = None) -> list:
+	"""Approval rows for *department*, inherited up the department tree.
+
+	Pass *employee* so location-specific rows (e.g. Jubail vs Yanbu supervisor)
+	resolve for that employee.
+	"""
+	from cooperheat.cooperheat.org import effective_matrix
+
+	return effective_matrix(department, employee)
 
 
 def _row_for_level(matrix: list, level: int):
@@ -342,7 +338,7 @@ def _sync_current_approver(doc):
 	level = level_map.get(doc.get("workflow_state") or "")
 	if not level or not doc.department:
 		return
-	matrix = _get_matrix(doc.department)
+	matrix = _get_matrix(doc.department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
 		return
@@ -497,7 +493,7 @@ def _validate_hours_edit_authorization(doc):
 	if not department:
 		frappe.throw(_("Department is required to validate approver."))
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, level)
 
 	if not row:
@@ -600,7 +596,7 @@ def _validate_approver_authorization(doc):
 	if not department:
 		frappe.throw(_("Department is required on the Attendance record for approval routing."))
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, required_level)
 
 	if not row:
@@ -646,7 +642,7 @@ def _send_notification_for_level(doc, level: int):
 	if not department:
 		return
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
 		return
@@ -707,6 +703,10 @@ def _get_project_for_attendance(doc) -> str | None:
 	"""Return the project from the active Shift Assignment's legacy custom_project_ field."""
 	if not doc.employee or not doc.attendance_date:
 		return None
+	# The legacy field only exists on sites that carried it over; a fresh site
+	# must not crash on every Attendance submit.
+	if not frappe.get_meta("Shift Assignment").has_field("custom_project_"):
+		return None
 
 	filters = {
 		"employee": doc.employee,
@@ -729,17 +729,14 @@ def _populate_site_hours(doc) -> None:
 	"""
 	from collections import defaultdict
 
-	checkins = frappe.get_all(
-		"Employee Checkin",
-		filters=[
-			["employee", "=", doc.employee],
-			["time", ">=", str(doc.attendance_date) + " 00:00:00"],
-			["time", "<=", str(doc.attendance_date) + " 23:59:59"],
-			["skip_auto_attendance", "=", 0],
-		],
-		fields=["name", "log_type", "time", "custom_project", "activity_log"],
-		order_by="time asc",
-		limit=200,
+	from cooperheat.cooperheat.work_day import logs_for_work_date
+
+	# Logs of this SHIFT: a night shift's after-midnight OUT is included.
+	checkins = logs_for_work_date(
+		doc.employee,
+		doc.attendance_date,
+		filters=[["skip_auto_attendance", "=", 0]],
+		fields=["name", "custom_project", "activity_log"],
 	)
 	if not checkins:
 		return
@@ -779,17 +776,13 @@ def _populate_site_hours(doc) -> None:
 
 	# Link any unlinked checkins for this employee+date to this attendance so HRMS
 	# does not try to create a duplicate attendance on the next auto-attendance run.
-	frappe.db.sql(
-		"""
-		UPDATE `tabEmployee Checkin`
-		SET attendance = %s
-		WHERE employee = %s
-		  AND DATE(time) = %s
-		  AND (attendance IS NULL OR attendance = '')
-		  AND skip_auto_attendance = 0
-		""",
-		(doc.name, doc.employee, str(doc.attendance_date)),
+	unlinked = frappe.get_all(
+		"Employee Checkin",
+		filters={"name": ["in", [c.name for c in checkins]], "attendance": ["in", ["", None]]},
+		pluck="name",
 	)
+	if unlinked:
+		frappe.db.set_value("Employee Checkin", {"name": ["in", unlinked]}, "attendance", doc.name, update_modified=False)
 
 	frappe.db.delete("Attendance Site Hours", {"parent": doc.name})
 	for idx, row in enumerate(site_rows, start=1):
@@ -810,6 +803,9 @@ def _populate_site_hours(doc) -> None:
 	frappe.db.set_value(
 		"Attendance", doc.name, "working_hours", flt(total_hours, 2), update_modified=False
 	)
+	from cooperheat.cooperheat.overtime import persist
+
+	persist(doc)
 
 
 def _calculate_hours_from_pairs(logs: list) -> float:
@@ -845,7 +841,7 @@ def _stamp_tracking_fields(doc, level: int):
 	department = doc.department
 	if not department:
 		return
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
 		return

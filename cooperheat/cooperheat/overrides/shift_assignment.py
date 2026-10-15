@@ -37,16 +37,11 @@ def on_update(doc, method):
 # ---------------------------------------------------------------------------
 
 
-def _get_matrix(department: str) -> list:
-	"""Return all approval matrix rows for *department*, ordered by level."""
-	if not department:
-		return []
-	return frappe.get_all(
-		"Department Approval Matrix",
-		filters={"parent": department, "parentfield": "approval_matrix"},
-		fields=["approval_level", "approver", "approval_window_hours"],
-		order_by="approval_level asc",
-	)
+def _get_matrix(department: str, employee: str | None = None) -> list:
+	"""Approval rows for *department*, inherited up the department tree."""
+	from cooperheat.cooperheat.org import effective_matrix
+
+	return effective_matrix(department, employee)
 
 
 def _row_for_level(matrix: list, level: int):
@@ -100,7 +95,7 @@ def _validate_approver_authorization(doc):
 	if not department:
 		frappe.throw(_("Department is required on Shift Assignment for approval routing."))
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, required_level)
 
 	if not row:
@@ -152,7 +147,7 @@ def _send_approval_notification(doc):
 	if not department:
 		return
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, notify_level)
 	if not row:
 		return
@@ -216,7 +211,7 @@ def _update_tracking_fields(doc):
 	if not department:
 		return
 
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, notify_level)
 	if not row:
 		return

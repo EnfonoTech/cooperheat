@@ -12,6 +12,7 @@
   "column_break_head",
   "month",
   "year",
+  "pay_batch",
   "submit_after_create",
   "section_file",
   "file",
@@ -75,6 +76,13 @@
    "in_list_view": 1,
    "label": "Year",
    "reqd": 1
+  },
+  {
+   "fieldname": "pay_batch",
+   "fieldtype": "Link",
+   "label": "Pay Batch",
+   "options": "Pay Batch",
+   "description": "Leave empty to process everyone. Pick a batch to process only the employees in that batch."
   },
   {
    "default": "0",
@@ -218,10 +226,25 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [
-  {"title": "Draft", "color": "Gray"},
-  {"title": "Queued", "color": "Blue"},
-  {"title": "Running", "color": "Blue"},
-  {"title": "Completed", "color": "Green"},
-  {"title": "Failed", "color": "Red"}
+  {
+   "title": "Draft",
+   "color": "Gray"
+  },
+  {
+   "title": "Queued",
+   "color": "Blue"
+  },
+  {
+   "title": "Running",
+   "color": "Blue"
+  },
+  {
+   "title": "Completed",
+   "color": "Green"
+  },
+  {
+   "title": "Failed",
+   "color": "Red"
+  }
  ]
 }

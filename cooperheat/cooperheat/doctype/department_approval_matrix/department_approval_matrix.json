@@ -9,7 +9,8 @@
   "approver",
   "approver_name",
   "role",
-  "approval_window_hours"
+  "approval_window_hours",
+  "location"
  ],
  "fields": [
   {
@@ -47,16 +48,25 @@
    "label": "Role"
   },
   {
-   "columns": 2,
+   "columns": 1,
    "fieldname": "approval_window_hours",
    "fieldtype": "Int",
    "in_list_view": 1,
    "label": "Approval Window Hours"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "options": "Location",
+   "label": "Location",
+   "in_list_view": 1,
+   "description": "Only for employees assigned to this location. Leave empty for everyone.",
+   "columns": 2
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2026-06-19 12:22:23.180348",
+ "modified": "2026-10-08 20:00:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Department Approval Matrix",

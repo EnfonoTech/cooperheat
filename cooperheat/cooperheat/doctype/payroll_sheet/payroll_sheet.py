@@ -89,6 +89,9 @@ class PayrollSheet(Document):
 		except frappe.DoesNotExistError:
 			return
 
+		# OT is paid on the full fixed basic, never on the prorated one.
+		self._full_basic = flt(comp.get("basic"))
+
 		worked = flt(self.worked_days)
 		dim = flt(self.days_in_month) or 30
 		factor = min(worked, dim) / dim if worked > 0 and dim > 0 else 0.0
@@ -137,8 +140,7 @@ class PayrollSheet(Document):
 	def calculate_overtime(self):
 		settings = self.get_settings()
 		mwh = flt(settings.monthly_working_hours) or 240.0
-		basic = flt(self.basic)
-		hourly = basic / mwh if mwh else 0.0
+		hourly = self.get_ot_basic() / mwh if mwh else 0.0
 
 		self.normal_ot_amount = self.round_amount(
 			hourly * flt(settings.normal_ot_multiplier) * flt(self.normal_ot_hours)
@@ -146,14 +148,22 @@ class PayrollSheet(Document):
 		self.holiday_ot_amount = self.round_amount(
 			hourly * flt(settings.holiday_ot_multiplier) * flt(self.holiday_ot_hours)
 		)
-		self.travel_ot_amount = self.round_amount(
-			hourly * flt(settings.travel_ot_multiplier) * flt(self.travel_ot_hours)
-		)
+		# Travel overtime is not used (client, 2026-10-13).
+		self.travel_ot_hours = 0
+		self.travel_ot_amount = 0
 		self.total_ot_amount = self.round_amount(
 			flt(self.normal_ot_amount)
 			+ flt(self.holiday_ot_amount)
-			+ flt(self.travel_ot_amount)
 		)
+
+	def get_ot_basic(self):
+		"""Full monthly basic from the Compensation, unaffected by unpaid days.
+
+		Without a linked Compensation nothing is prorated, so the sheet's own
+		basic is already the full amount.
+		"""
+		full = getattr(self, "_full_basic", None)
+		return flt(self.basic) if full is None else full
 
 	def calculate_gosi(self):
 		settings = self.get_settings()

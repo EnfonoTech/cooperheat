@@ -1,0 +1,65 @@
+# Copyright (c) 2026, enfonotechnology and contributors
+# For license information, please see license.txt
+
+import frappe
+from cooperheat.cooperheat.permissions.scope import on_employee_update as _sync_user_permissions
+
+
+def before_validate(doc, method=None):
+	from cooperheat.cooperheat.org import fill_default_approvers, reroute_on_move, sync_employee_org
+
+	from cooperheat.cooperheat.work_schedule import sync_work_schedule
+
+	sync_employee_org(doc)
+	sync_work_schedule(doc)
+	_default_pay_batch(doc)
+	reroute_on_move(doc)
+	_auto_link_reports_to(doc)
+	fill_default_approvers(doc)
+
+
+def on_update(doc, method=None):
+	_sync_user_permissions(doc, method)
+	_propagate_pay_batch(doc)
+
+
+def _auto_link_reports_to(doc):
+	"""A new joiner (or anyone saved without a manager) is linked to the nearest
+	approver of their Department's approval matrix: Level 1 first, then 2, 3.
+	An employee is never linked to themself."""
+	if doc.get("reports_to") or not doc.get("department"):
+		return
+	from cooperheat.cooperheat.org import effective_matrix
+
+	rows = effective_matrix(doc.department, None if doc.is_new() else doc.name, doc.get("custom_assigned_location"))
+	for row in rows:
+		if row.approver and row.approver != doc.name:
+			doc.reports_to = row.approver
+			return
+
+
+def _default_pay_batch(doc):
+	"""New joiners go into the Main batch. Without a batch, a payroll run for
+	Main silently leaves them out."""
+	if doc.meta.has_field("custom_pay_batch") and not doc.get("custom_pay_batch") and frappe.db.exists("Pay Batch", "Main"):
+		doc.custom_pay_batch = "Main"
+
+
+def _propagate_pay_batch(doc):
+	"""Employee.custom_pay_batch is the source of truth; keep the active
+	Employee Compensation record (which the Payroll Sheet copies) in step."""
+	batch = doc.get("custom_pay_batch")
+	if not batch or not doc.has_value_changed("custom_pay_batch"):
+		return
+	for name in frappe.get_all("Employee Compensation", filters={"employee": doc.name, "is_active": 1}, pluck="name"):
+		frappe.db.set_value("Employee Compensation", name, "pay_batch", batch, update_modified=False)
+
+
+def effective_pay_batch(employee: str) -> str | None:
+	"""The batch an employee is paid in: their own setting, else the active compensation record's."""
+	batch = frappe.db.get_value("Employee", employee, "custom_pay_batch")
+	if batch:
+		return batch
+	return frappe.db.get_value(
+		"Employee Compensation", {"employee": employee, "is_active": 1}, "pay_batch", order_by="from_date desc"
+	)
