@@ -127,6 +127,29 @@ class TestApprovalChain(ReportingTestCase):
 		office = make_employee("OfficeB", custom_staff_category=OFFICE, reports_to=anil)
 		self.assertFalse(office.custom_secondary_reporting)
 
+	def test_secondary_is_filled_when_the_category_is_set_later(self):
+		anil, khalid, _ = self.people()
+		emp = make_employee("FieldLate", reports_to=anil)  # no category yet: still gets the default
+		self.assertEqual(emp.custom_secondary_reporting, khalid)
+		frappe.db.set_value("Employee", emp.name, "custom_secondary_reporting", None)
+		doc = frappe.get_doc("Employee", emp.name)
+		doc.custom_staff_category = FIELD
+		doc.save()
+		self.assertEqual(doc.custom_secondary_reporting, khalid)
+
+	def test_backfill_fills_existing_employees_and_skips_office_staff(self):
+		anil, khalid, _ = self.people()
+		field = make_employee("BackField", custom_staff_category=FIELD, reports_to=anil)
+		office = make_employee("BackOffice", custom_staff_category=OFFICE, reports_to=anil)
+		for e in (field, office):
+			frappe.db.set_value("Employee", e.name, "custom_secondary_reporting", None)
+		dry = org.backfill_secondary_reporting(dry_run=True)
+		self.assertTrue(dry["dry_run"])
+		self.assertIsNone(frappe.db.get_value("Employee", field.name, "custom_secondary_reporting"))
+		org.backfill_secondary_reporting(dry_run=False)
+		self.assertEqual(frappe.db.get_value("Employee", field.name, "custom_secondary_reporting"), khalid)
+		self.assertIsNone(frappe.db.get_value("Employee", office.name, "custom_secondary_reporting"))
+
 	def test_a_secondary_set_by_hand_is_kept(self):
 		anil, khalid, irtaza = self.people()
 		emp = make_employee("FieldE", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=irtaza)

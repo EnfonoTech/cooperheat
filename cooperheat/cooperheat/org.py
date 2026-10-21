@@ -342,18 +342,57 @@ APPROVER_FIELDS = ("leave_approver", "shift_request_approver", "expense_approver
 
 
 def fill_secondary_reporting(doc):
-	"""Field staff without a Secondary Reporting person get their supervisor's own
-	reporting person (normally the Manager), once, when Reports To is set or changes.
-	HR can overwrite or clear it afterwards."""
+	"""Anyone who is not Office Staff (Field Staff, or a category not set yet) without a Secondary
+	Reporting person gets their supervisor's own reporting person (normally the Manager), once:
+	when Reports To is set or changes, or when the Staff Category is set or changes. HR can
+	overwrite or clear it afterwards. Office Staff never use Secondary Reporting."""
 	if not doc.meta.has_field("custom_secondary_reporting"):
 		return
-	if doc.get("custom_staff_category") != FIELD_STAFF or doc.get("custom_secondary_reporting"):
+	if doc.get("custom_staff_category") == OFFICE_STAFF or doc.get("custom_secondary_reporting"):
 		return
-	if not doc.get("reports_to") or not (doc.is_new() or doc.has_value_changed("reports_to")):
+	if not doc.get("reports_to"):
+		return
+	if not (doc.is_new() or doc.has_value_changed("reports_to") or doc.has_value_changed("custom_staff_category")):
 		return
 	boss = frappe.db.get_value("Employee", doc.reports_to, "reports_to")
 	if boss and boss != doc.name:
 		doc.custom_secondary_reporting = boss
+
+
+def backfill_secondary_reporting(dry_run=True) -> dict:
+	"""One-off for employees that existed before Secondary Reporting did: fill it from the
+	supervisor's own reporting person where empty (not for Office Staff), then move Attendance
+	that is still waiting for approval to the right people. Writes straight to the database (no
+	other hooks run); dry_run only counts."""
+	rows = frappe.get_all(
+		"Employee",
+		filters={"status": "Active", "reports_to": ["is", "set"], "custom_secondary_reporting": ["is", "not set"]},
+		fields=["name", "reports_to", "custom_staff_category"],
+	)
+	bosses = {
+		e.name: e.reports_to
+		for e in frappe.get_all(
+			"Employee", filters={"name": ["in", sorted({r.reports_to for r in rows}) or [""]]}, fields=["name", "reports_to"]
+		)
+	}
+	changed = []
+	for r in rows:
+		boss = bosses.get(r.reports_to)
+		if r.custom_staff_category == OFFICE_STAFF or not boss or boss == r.name:
+			continue
+		changed.append((r.name, boss))
+		if not dry_run:
+			frappe.db.set_value("Employee", r.name, "custom_secondary_reporting", boss, update_modified=False)
+	restamped = 0
+	if not dry_run:
+		clear_cache()
+		pending = frappe.get_all(
+			"Attendance", filters={"docstatus": 1, "workflow_state": ["in", list(PENDING_LEVEL)]}, pluck="employee"
+		)
+		for employee in sorted(set(pending)):
+			restamp_pending_attendance(employee)
+			restamped += 1
+	return {"filled": len(changed), "employees_restamped": restamped, "dry_run": bool(dry_run)}
 
 
 def fill_default_approvers(doc):
