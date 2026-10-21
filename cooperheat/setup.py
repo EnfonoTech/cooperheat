@@ -447,6 +447,8 @@ def ensure_reporting_labels():
 	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
 	make_property_setter("Employee", "reports_to", "label", "Direct / Immediate Reporting", "Data")
+	# the stock "Salary" tab (CTC, salary mode, bank) is called CTC; the compensation package has its own tab
+	make_property_setter("Employee", "salary_information", "label", "CTC", "Data")
 
 
 def ensure_slip_print_format():
