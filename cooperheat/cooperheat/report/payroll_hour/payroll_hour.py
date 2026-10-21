@@ -34,25 +34,28 @@ def get_columns():
 
 
 def _get_access_scope():
-	"""Return (scope, employee_or_depts) based on the current user's role.
+	"""Return (scope, employee_or_team) based on the current user's role.
 
 	Returns:
-	  ("all",   None)              — HR Manager, sees everything
-	  ("depts", [dept1, dept2, …]) — user is a dept approver, sees those depts
-	  ("self",  employee_id)       — everyone else, sees only their own records
+	  ("all",  None)             — System Manager / Payroll Approver, sees everything
+	  ("team", [emp1, emp2, …])  — user has people reporting to them, sees that team
+	  ("self", employee_id)      — everyone else, sees only their own records
 	"""
-	if frappe.session.user == "Administrator" or "System Manager" in frappe.get_roles(frappe.session.user):
+	from cooperheat.cooperheat.org import is_payroll_approver
+	from cooperheat.cooperheat.permissions.scope import _subtree
+
+	if (
+		frappe.session.user == "Administrator"
+		or "System Manager" in frappe.get_roles(frappe.session.user)
+		or is_payroll_approver(frappe.session.user)
+	):
 		return "all", None
 
 	linked_emp = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
 	if linked_emp:
-		approved_depts = frappe.get_all(
-			"Department Approval Matrix",
-			filters={"approver": linked_emp},
-			pluck="parent",
-		)
-		if approved_depts:
-			return "depts", list(set(approved_depts))
+		team = _subtree([linked_emp])
+		if len(team) > 1:
+			return "team", sorted(team)
 
 	if linked_emp:
 		return "self", linked_emp
@@ -74,22 +77,16 @@ def get_data(filters):
 		if not scope_val:
 			return []
 		employee = scope_val  # override — can only see own records
-	elif scope == "depts":
-		if department and department not in scope_val:
-			return []  # requested dept outside their approved set
-		if not department:
-			# restrict to approved departments
-			pass  # handled via dept_scope_cond below
 
 	# Build optional filter snippets so missing keys never reach the SQL engine
 	emp_checkin_cond = "AND ec.employee = %(employee)s" if employee else ""
 	emp_att_cond = "AND att.employee = %(employee)s" if employee else ""
 	dept_cond = "AND emp.department = %(department)s" if department else ""
 
-	# Department scope restriction for approvers
-	if scope == "depts" and not department:
-		placeholders = ", ".join([f"%(scope_dept_{i})s" for i in range(len(scope_val))])
-		dept_scope_cond = f"AND emp.department IN ({placeholders})"
+	# Team restriction for approvers
+	if scope == "team":
+		placeholders = ", ".join([f"%(scope_emp_{i})s" for i in range(len(scope_val))])
+		dept_scope_cond = f"AND emp.name IN ({placeholders})"
 	else:
 		dept_scope_cond = ""
 
@@ -98,9 +95,9 @@ def get_data(filters):
 		values["employee"] = employee
 	if department:
 		values["department"] = department
-	if scope == "depts" and not department:
-		for i, d in enumerate(scope_val):
-			values[f"scope_dept_{i}"] = d
+	if scope == "team":
+		for i, e in enumerate(scope_val):
+			values[f"scope_emp_{i}"] = e
 
 	sql = f"""
 		SELECT

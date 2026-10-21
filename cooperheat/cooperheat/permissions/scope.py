@@ -8,12 +8,12 @@ System roles only sees:
 
   * their own Employee record,
   * everyone below them through ``Employee.reports_to`` (the whole subtree), and
-  * everyone in a Department where they are an approver in the
-    Department Approval Matrix (any level).
+  * everyone who names them as Secondary Reporting (and the subtree below those).
 
-The rule is evaluated per request from live data, so a new joiner, a department
-change or a changed approval matrix takes effect immediately - no per-user
-User Permission rows to maintain.
+The rule is evaluated per request from live data, so a new joiner or a changed
+reporting line takes effect immediately - no per-user User Permission rows to
+maintain. The Payroll Approver (Pay Sheet Settings) is never restricted: the
+final approval step needs every record.
 
 Scoped doctypes: Employee, Employee Checkin, Attendance, Shift Assignment and
 Department. HR Manager / HR User / System Manager / Administrator are never
@@ -45,27 +45,15 @@ def is_scoped(user: str | None = None) -> bool:
 	if user == "Administrator":
 		return False
 	roles = set(frappe.get_roles(user))
-	return bool(roles & SCOPED_ROLES) and not (roles & unrestricted_roles())
+	if not (roles & SCOPED_ROLES) or (roles & unrestricted_roles()):
+		return False
+	from cooperheat.cooperheat.org import is_payroll_approver
+
+	return not is_payroll_approver(user)
 
 
 def _own_employees(user: str) -> list[str]:
 	return frappe.get_all("Employee", filters={"user_id": user}, pluck="name")
-
-
-def _approver_departments(employees: list[str]) -> list[str]:
-	"""Departments where one of *employees* is an approver, plus every
-	department below them (they inherit the approver, e.g. a Business Line
-	manager covers all its Product Lines)."""
-	if not employees:
-		return []
-	from cooperheat.cooperheat.org import descendants
-
-	direct = frappe.get_all(
-		"Department Approval Matrix",
-		filters={"approver": ["in", employees], "parentfield": "approval_matrix"},
-		pluck="parent",
-	)
-	return list(descendants(set(direct)) | set(direct))
 
 
 def _subtree(roots: list[str]) -> set[str]:
@@ -74,7 +62,11 @@ def _subtree(roots: list[str]) -> set[str]:
 	for _ in range(MAX_DEPTH):
 		if not frontier:
 			break
-		children = frappe.get_all("Employee", filters={"reports_to": ["in", frontier]}, pluck="name")
+		children = frappe.get_all(
+			"Employee",
+			or_filters={"reports_to": ["in", frontier], "custom_secondary_reporting": ["in", frontier]},
+			pluck="name",
+		)
 		frontier = [c for c in children if c not in seen]
 		seen.update(frontier)
 	return seen
@@ -91,13 +83,9 @@ def get_scope(user: str | None = None) -> frappe._dict:
 		return cache[user]
 
 	own = _own_employees(user)
-	approver_depts = _approver_departments(own)
-
 	employees = _subtree(own)
-	if approver_depts:
-		employees.update(frappe.get_all("Employee", filters={"department": ["in", approver_depts]}, pluck="name"))
 
-	departments = set(approver_depts)
+	departments = set()
 	if employees:
 		departments.update(
 			d

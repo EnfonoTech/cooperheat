@@ -3,14 +3,28 @@ from frappe import _
 from frappe.utils import cint, cstr, now
 
 
-_LEVEL_STATE = {
-	1: "Pending Level 1 Approval",
-	2: "Pending Level 2 Approval",
-	3: "Pending Level 3 Approval",
-}
-
-
 _LAYOUT_FIELDTYPES = {"Section Break", "Column Break", "Tab Break", "HTML", "Button", "Heading"}
+
+
+def before_validate(doc, method=None):
+	"""Adding a node under a parent from the Division tree or the parent's own page.
+
+	* The Unit Type follows the parent when left empty (Division -> Department ->
+	  Sub-Department, Business Line -> Product Line -> Sub-Product Line).
+	* A parent that was a leaf becomes a group, so a Department can be given
+	  Sub-Departments straight from its own page.
+	"""
+	from cooperheat.cooperheat import org
+
+	parent = doc.get("parent_department")
+	if not parent:
+		return
+	if not doc.get("custom_unit_type"):
+		doc.custom_unit_type = org.child_unit_type(parent)
+	if (doc.is_new() or doc.has_value_changed("parent_department")) and not frappe.db.get_value(
+		"Department", parent, "is_group"
+	):
+		frappe.db.set_value("Department", parent, "is_group", 1)
 
 
 def validate(doc, method=None):
@@ -58,52 +72,4 @@ def validate(doc, method=None):
 			_("You can change approvers up to your own level ({0}). Ask HR to change more senior levels.").format(
 				max(my_levels)
 			)
-		)
-
-
-def on_update(doc, method):
-	"""When the Department approval matrix changes, re-stamp current_approver
-	on all pending Attendance records for this department so approvers are
-	never locked out by a stale value."""
-	_sync_pending_attendance(doc)
-
-
-def _sync_pending_attendance(dept_doc):
-	"""Re-stamp current_approver on pending Attendance of this department and of
-	every department below it, since those inherit its approvers."""
-	from cooperheat.cooperheat.org import clear_cache, descendants, effective_matrix
-
-	clear_cache()
-	pending_states = list(_LEVEL_STATE.values())
-	records = frappe.get_all(
-		"Attendance",
-		filters={
-			"department": ["in", list(descendants([dept_doc.name])) or [dept_doc.name]],
-			"workflow_state": ["in", pending_states],
-			"docstatus": 1,
-		},
-		fields=["name", "employee", "department", "workflow_state", "current_approver"],
-	)
-	if not records:
-		return
-
-	state_to_level = {v: k for k, v in _LEVEL_STATE.items()}
-
-	for rec in records:
-		level = state_to_level.get(rec.workflow_state)
-		if not level:
-			continue
-		row = next((r for r in effective_matrix(rec.department, rec.employee) if r.approval_level == level), None)
-		new_approver = row.approver if row else None
-		if not new_approver or new_approver == rec.current_approver:
-			continue
-		approver_name = frappe.db.get_value("Employee", new_approver, "employee_name") or new_approver
-		frappe.db.set_value(
-			"Attendance",
-			rec.name,
-			{
-				"current_approver": new_approver,
-				"current_approver_name": approver_name,
-			},
-			update_modified=False,
 		)

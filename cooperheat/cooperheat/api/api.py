@@ -5,10 +5,11 @@ from cooperheat.cooperheat.api.tasks import process_attendance_approval_windows
 
 
 @frappe.whitelist()
-def get_approval_matrix_approver(department, level):
-	"""Return the approver employee and their linked user for a given department + level."""
+def get_approval_matrix_approver(department=None, level=1, employee=None):
+	"""Return the approver employee and their linked user for an employee + level
+	(from the employee's own reporting line; *department* is ignored)."""
 	from cooperheat.cooperheat.overrides.attendance import _get_matrix, _row_for_level
-	matrix = _get_matrix(department)
+	matrix = _get_matrix(department, employee)
 	row = _row_for_level(matrix, cint(level))
 	if not row:
 		return None
@@ -74,7 +75,7 @@ def recalculate_site_hours(attendance_name):
 	is_hr_manager = "HR Manager" in frappe.get_roles(frappe.session.user)
 	if not is_hr_manager:
 		from cooperheat.cooperheat.overrides.attendance import _get_matrix, _row_for_level, _approver_user
-		att = frappe.db.get_value("Attendance", attendance_name, ["workflow_state", "department"], as_dict=True)
+		att = frappe.db.get_value("Attendance", attendance_name, ["workflow_state", "department", "employee"], as_dict=True)
 		level_map = {
 			"Pending Level 1 Approval": 1,
 			"Pending Level 2 Approval": 2,
@@ -83,7 +84,7 @@ def recalculate_site_hours(attendance_name):
 		level = level_map.get(att.workflow_state if att else "")
 		if not level:
 			frappe.throw(_("Only HR Managers can recalculate site hours on an approved or non-pending record."))
-		matrix = _get_matrix(att.department or "")
+		matrix = _get_matrix(att.department, att.employee)
 		row = _row_for_level(matrix, level)
 		if not row or _approver_user(row.approver) != frappe.session.user:
 			frappe.throw(_("Only the Level {0} approver or an HR Manager can recalculate site hours.").format(level))
@@ -99,43 +100,34 @@ def recalculate_site_hours(attendance_name):
 	return {"status": "ok"}
 
 
+def _can_approve_level3(user=None) -> bool:
+	"""The Payroll step: the configured Payroll Approver, or an HR Manager."""
+	from cooperheat.cooperheat.org import is_payroll_approver
+
+	user = user or frappe.session.user
+	return is_payroll_approver(user) or "HR Manager" in frappe.get_roles(user)
+
+
 @frappe.whitelist()
 def get_pending_level3_records(employee=None, department=None, from_date=None, to_date=None):
-	"""Return Attendance records pending Level 3 approval for the current user's departments.
+	"""Return Attendance records pending the Payroll (Level 3) step.
 	Accepts optional filters: employee, department, from_date, to_date.
-	HR Managers see all pending records regardless of department."""
-	from cooperheat.cooperheat.overrides.attendance import _get_matrix, _row_for_level, _approver_user
-
+	Only the Payroll Approver and HR Managers see them."""
 	frappe.has_permission("Attendance", ptype="read", throw=True)
 
-	user = frappe.session.user
-	all_departments = frappe.get_all("Department", pluck="name")
-
-	eligible_departments = [
-		dept for dept in all_departments
-		if (row := _row_for_level(_get_matrix(dept), 3)) and _approver_user(row.approver) == user
-	]
-
-	if not eligible_departments:
-		if "HR Manager" in frappe.get_roles(user):
-			eligible_departments = all_departments
-		else:
-			return []
+	if not _can_approve_level3():
+		return []
 
 	filters = {
 		"docstatus": 1,
 		"workflow_state": "Pending Level 3 Approval",
-		"department": ["in", eligible_departments],
 	}
 
 	if employee:
 		filters["employee"] = employee
 
 	if department:
-		if department in eligible_departments:
-			filters["department"] = department
-		else:
-			return []
+		filters["department"] = department
 
 	if from_date and to_date:
 		filters["attendance_date"] = ["between", [from_date, to_date]]
@@ -187,6 +179,8 @@ def level3_approve_attendance(name, in_time=None, out_time=None, working_hours=N
 	from frappe.model.workflow import apply_workflow
 
 	frappe.has_permission("Attendance", ptype="write", throw=True)
+	if not _can_approve_level3():
+		frappe.throw(_("Only the Payroll Approver or an HR Manager can give the Payroll approval."))
 
 	doc = frappe.get_doc("Attendance", name)
 	if doc.workflow_state != "Pending Level 3 Approval":
@@ -224,34 +218,16 @@ def level3_approve_attendance(name, in_time=None, out_time=None, working_hours=N
 
 @frappe.whitelist()
 def bulk_level3_approve():
-	"""Approve all Attendance records in 'Pending Level 3 Approval' for departments
-	where the current user is the configured Level 3 approver."""
+	"""Approve every Attendance record in 'Pending Level 3 Approval'. Payroll Approver / HR Manager only."""
 	from frappe.model.workflow import apply_workflow
-	from cooperheat.cooperheat.overrides.attendance import _get_matrix, _row_for_level, _approver_user
 
 	frappe.has_permission("Attendance", ptype="write", throw=True)
-
-	user = frappe.session.user
-
-	# Find all departments where this user is the Level 3 approver
-	all_departments = frappe.get_all("Department", pluck="name")
-	eligible_departments = []
-	for dept in all_departments:
-		matrix = _get_matrix(dept)
-		row = _row_for_level(matrix, 3)
-		if row and _approver_user(row.approver) == user:
-			eligible_departments.append(dept)
-
-	if not eligible_departments:
-		frappe.throw(_("You are not configured as a Level 3 approver for any department."))
+	if not _can_approve_level3():
+		frappe.throw(_("Only the Payroll Approver or an HR Manager can give the Payroll approval."))
 
 	records = frappe.get_all(
 		"Attendance",
-		filters={
-			"docstatus": 1,
-			"workflow_state": "Pending Level 3 Approval",
-			"department": ["in", eligible_departments],
-		},
+		filters={"docstatus": 1, "workflow_state": "Pending Level 3 Approval"},
 		pluck="name",
 		limit=1000,
 	)

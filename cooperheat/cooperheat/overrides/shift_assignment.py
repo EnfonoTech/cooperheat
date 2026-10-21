@@ -38,10 +38,10 @@ def on_update(doc, method):
 
 
 def _get_matrix(department: str, employee: str | None = None) -> list:
-	"""Approval rows for *department*, inherited up the department tree."""
-	from cooperheat.cooperheat.org import effective_matrix
+	"""Approval rows for *employee* from their own reporting line."""
+	from cooperheat.cooperheat.org import approval_chain
 
-	return effective_matrix(department, employee)
+	return approval_chain(employee)
 
 
 def _row_for_level(matrix: list, level: int):

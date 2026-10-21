@@ -6,36 +6,44 @@ from cooperheat.cooperheat.permissions.scope import on_employee_update as _sync_
 
 
 def before_validate(doc, method=None):
-	from cooperheat.cooperheat.org import fill_default_approvers, reroute_on_move, sync_employee_org
+	from cooperheat.cooperheat.org import fill_default_approvers, fill_secondary_reporting, sync_employee_org
 
 	from cooperheat.cooperheat.work_schedule import sync_work_schedule
 
 	sync_employee_org(doc)
 	sync_work_schedule(doc)
 	_default_pay_batch(doc)
-	reroute_on_move(doc)
-	_auto_link_reports_to(doc)
+	fill_secondary_reporting(doc)
 	fill_default_approvers(doc)
 
 
 def on_update(doc, method=None):
 	_sync_user_permissions(doc, method)
 	_propagate_pay_batch(doc)
+	_restamp_pending_approvals(doc)
+	_recompute_overtime_for_category(doc)
 
 
-def _auto_link_reports_to(doc):
-	"""A new joiner (or anyone saved without a manager) is linked to the nearest
-	approver of their Department's approval matrix: Level 1 first, then 2, 3.
-	An employee is never linked to themself."""
-	if doc.get("reports_to") or not doc.get("department"):
+def _recompute_overtime_for_category(doc):
+	"""Staff Category set or changed: overtime already stored on this person's recent
+	attendance (last 60 days) is re-derived, so nothing has to be run by hand."""
+	if doc.flags.in_insert or not doc.has_value_changed("custom_staff_category"):
 		return
-	from cooperheat.cooperheat.org import effective_matrix
+	from frappe.utils import add_days, today
 
-	rows = effective_matrix(doc.department, None if doc.is_new() else doc.name, doc.get("custom_assigned_location"))
-	for row in rows:
-		if row.approver and row.approver != doc.name:
-			doc.reports_to = row.approver
-			return
+	from cooperheat.cooperheat.overtime import recompute_range
+
+	recompute_range(add_days(today(), -60), today(), employee=doc.name, dry_run=False)
+
+
+def _restamp_pending_approvals(doc):
+	"""Reporting line changed: Attendance still waiting on the old approver moves with it."""
+	if doc.flags.in_insert:
+		return
+	if doc.has_value_changed("reports_to") or doc.has_value_changed("custom_secondary_reporting"):
+		from cooperheat.cooperheat.org import restamp_pending_attendance
+
+		restamp_pending_attendance(doc.name)
 
 
 def _default_pay_batch(doc):

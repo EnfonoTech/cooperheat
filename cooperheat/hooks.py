@@ -44,10 +44,13 @@ app_license = "mit"
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
-doctype_js = {"Employee": "public/js/employee.js"}
+doctype_js = {"Employee": "public/js/employee.js", "Department": "public/js/department.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-doctype_list_js = {"Employee Checkin": "public/js/employee_checkin_list.js"}
-# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
+doctype_list_js = {
+	"Employee Checkin": "public/js/employee_checkin_list.js",
+	"Department": "public/js/department_list.js",
+}
+doctype_tree_js = {"Department": "public/js/department_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
 # Svg Icons
@@ -159,6 +162,7 @@ fixtures = [
 					"Employee-custom_assigned_location",
 					"Employee-custom_work_schedule_section",
 					"Employee-custom_staff_category",
+					"Employee-custom_secondary_reporting",
 					"Attendance-custom_overtime_section",
 					"Attendance-custom_regular_hours",
 					"Attendance-custom_ot_hours",
@@ -280,8 +284,8 @@ doc_events = {
 		"on_update_after_submit": "cooperheat.cooperheat.overrides.attendance.on_update_after_submit",
 	},
 	"Department": {
+		"before_validate": "cooperheat.cooperheat.overrides.department.before_validate",
 		"validate": "cooperheat.cooperheat.overrides.department.validate",
-		"on_update": "cooperheat.cooperheat.overrides.department.on_update",
 	},
 	"Employee": {
 		"before_validate": "cooperheat.cooperheat.overrides.employee.before_validate",
@@ -291,7 +295,13 @@ doc_events = {
 		"autoname": "cooperheat.cooperheat.overrides.project.autoname",
 	},
 	"Leave Application": {
+		"before_validate": "cooperheat.cooperheat.approval_workflows.before_validate",
 		"validate": "cooperheat.cooperheat.overrides.leave_application.validate",
+		"on_update": "cooperheat.cooperheat.approval_workflows.on_update",
+	},
+	"Expense Claim": {
+		"before_validate": "cooperheat.cooperheat.approval_workflows.before_validate",
+		"on_update": "cooperheat.cooperheat.approval_workflows.on_update",
 	},
 	"User": {
 		"on_update": "cooperheat.cooperheat.permissions.scope.on_user_update",

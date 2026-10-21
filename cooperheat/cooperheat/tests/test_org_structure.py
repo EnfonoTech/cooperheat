@@ -120,7 +120,7 @@ class TestOrgStructure(FrappeTestCase):
 		e = make_employee("Tech", custom_product_line=self.ndt, custom_assigned_location=self.jubail)
 		self.assertEqual(e.custom_business_line, self.bl)
 		self.assertEqual(e.department, self.ndt)
-		self.assertEqual(e.reports_to, self.anil)
+		self.assertFalse(e.reports_to)  # the reporting line is set per employee, not by placement
 
 	def test_business_line_head_sits_on_the_business_line(self):
 		e = make_employee("Head", custom_business_line=self.bl)
@@ -140,8 +140,8 @@ class TestOrgStructure(FrappeTestCase):
 		self.assertEqual(e.custom_product_line, self.ndt)
 		self.assertEqual(e.custom_business_line, self.bl)
 
-	def test_leave_approver_filled_from_level_1(self):
-		e = make_employee("Leave", custom_product_line=self.ndt, custom_assigned_location=self.yanbu)
+	def test_leave_approver_follows_the_reporting_person(self):
+		e = make_employee("Leave", custom_product_line=self.ndt, custom_assigned_location=self.yanbu, reports_to=self.saleh)
 		saleh_user = frappe.db.get_value("Employee", self.saleh, "user_id")
 		self.assertEqual(e.leave_approver, saleh_user)
 		self.assertEqual(e.shift_request_approver, saleh_user)
@@ -154,8 +154,8 @@ class TestOrgStructure(FrappeTestCase):
 
 	# --- scope ---------------------------------------------------------------
 
-	def test_business_line_manager_sees_all_product_lines(self):
-		e = make_employee("Seen", custom_product_line=self.ndt, custom_assigned_location=self.jubail)
+	def test_manager_sees_the_product_line_people_who_report_up_to_him(self):
+		e = make_employee("Seen", custom_product_line=self.ndt, custom_assigned_location=self.jubail, reports_to=self.khalid)
 		khalid_user = frappe.db.get_value("Employee", self.khalid, "user_id")
 		visible = scope.get_scope(khalid_user)
 		self.assertIn(self.ndt, visible.departments)
@@ -166,19 +166,8 @@ class TestOrgStructure(FrappeTestCase):
 		names = {r[0] for r in rows}
 		self.assertEqual(names, {self.cndt, self.ndt})
 
-	def test_moving_location_reroutes_supervisor(self):
-		e = make_employee("Mover", custom_product_line=self.ndt, custom_assigned_location=self.jubail)
+	def test_moving_location_keeps_the_reporting_line(self):
+		e = make_employee("Mover", custom_product_line=self.ndt, custom_assigned_location=self.jubail, reports_to=self.anil)
+		e.custom_assigned_location = self.yanbu
+		e.save(ignore_permissions=True)
 		self.assertEqual(e.reports_to, self.anil)
-		e.custom_assigned_location = self.yanbu
-		e.save(ignore_permissions=True)
-		saleh_user = frappe.db.get_value("Employee", self.saleh, "user_id")
-		self.assertEqual(e.reports_to, self.saleh)
-		self.assertEqual(e.leave_approver, saleh_user)
-
-	def test_manual_reports_to_survives_a_move(self):
-		e = make_employee("Manual", custom_product_line=self.ndt, custom_assigned_location=self.jubail)
-		e.reports_to = self.irtaza
-		e.save(ignore_permissions=True)
-		e.custom_assigned_location = self.yanbu
-		e.save(ignore_permissions=True)
-		self.assertEqual(e.reports_to, self.irtaza)

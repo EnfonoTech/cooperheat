@@ -25,9 +25,9 @@ STRUCTURE = [
 	("Finance Division", "Division", None, 1),
 	("Finance", "Department", "Finance Division", 0),
 	("Procurement", "Department", "Finance Division", 1),
-	("Logistics", "Department", "Procurement", 0),
+	("Logistics", org.SUB_DEPARTMENT, "Procurement", 0),
 	("Store", "Department", "Finance Division", 1),
-	("Equipment, Tools & Assets", "Department", "Store", 0),
+	("Equipment, Tools & Assets", org.SUB_DEPARTMENT, "Store", 0),
 	("ICT", "Department", "Finance Division", 0),
 	("Cost & Estimation", "Department", "Finance Division", 0),
 	("Sales Division", "Division", None, 1),
@@ -41,8 +41,8 @@ STRUCTURE = [
 	("TPI", org.PRODUCT_LINE, "Inspection Business Line", 0),
 	("ANDT", org.PRODUCT_LINE, "Inspection Business Line", 0),
 	("CNDT", org.PRODUCT_LINE, "Inspection Business Line", 1),
-	("RSO Team", org.PRODUCT_LINE, "CNDT", 0),
-	("NDT Team", org.PRODUCT_LINE, "CNDT", 0),
+	("RSO Team", org.SUB_PRODUCT_LINE, "CNDT", 0),
+	("NDT Team", org.SUB_PRODUCT_LINE, "CNDT", 0),
 	("Specialized Mechanical Services Business Line", org.BUSINESS_LINE, None, 1),
 	("HTLS", org.PRODUCT_LINE, "Specialized Mechanical Services Business Line", 0),
 	("Online Leak Sealing", org.PRODUCT_LINE, "Specialized Mechanical Services Business Line", 0),
@@ -251,27 +251,14 @@ def uat_demo():
 	sup_jub = demo_person("NDT Supervisor Jubail", "ndt.jubail", custom_product_line=d("NDT Team"), custom_assigned_location="Jubail")
 	sup_yan = demo_person("NDT Supervisor Yanbu", "ndt.yanbu", custom_product_line=d("NDT Team"), custom_assigned_location="Yanbu")
 
-	def matrix(name, rows):
-		doc = frappe.get_doc("Department", d(name))
-		wanted = [(lvl, who, loc) for lvl, who, loc in rows]
-		have = [(r.approval_level, r.approver, r.location) for r in doc.approval_matrix]
-		if have == wanted:
-			return
-		doc.approval_matrix = []
-		for level, approver, location in rows:
-			doc.append(
-				"approval_matrix",
-				{"approval_level": level, "approver": approver, "approval_window_hours": 48, "location": location},
-			)
-		doc.save()
-
-	matrix("Inspection Business Line", [(2, insp_mgr, None), (3, irtaza, None)])
-	matrix("NDT Team", [(1, sup_jub, "Jubail"), (1, sup_yan, "Yanbu")])
-	matrix("Specialized Mechanical Services Business Line", [(2, khalid, None), (3, irtaza, None)])
-	matrix("Heat Treatment Business Line", [(3, irtaza, None)])
-	matrix("Fabrication Business Line", [(3, irtaza, None)])
-	matrix("Finance Division", [(1, mustafa, None), (3, irtaza, None)])
-	matrix("HR Division", [(1, irtaza, None)])
+	# Approvals follow the reporting line: NDT supervisors report to the Inspection Manager,
+	# crews to their location's supervisor; Irtaza is the Payroll Approver.
+	for sup in (sup_jub, sup_yan):
+		frappe.db.set_value("Employee", sup, "reports_to", insp_mgr, update_modified=False)
+	settings = frappe.get_single("Pay Sheet Settings")
+	settings.payroll_approver = irtaza
+	settings.flags.ignore_permissions = True
+	settings.save()
 
 	def place(employee, **values):
 		doc = frappe.get_doc("Employee", employee)
@@ -299,16 +286,18 @@ def uat_demo():
 				"custom_assigned_location": location,
 			}
 		).insert()
-	# Re-resolve manager + approvers for the demo people now that every matrix exists.
-	demo = set(frappe.get_all("Employee", filters={"department": d("NDT Team")}, pluck="name")) | {insp_mgr}
-	for name in demo:
-		frappe.db.set_value(
-			"Employee",
-			name,
-			{"reports_to": None, "leave_approver": None, "shift_request_approver": None, "expense_approver": None},
-			update_modified=False,
-		)
-		org.clear_cache()
+	# Crews report to the supervisor of their location; leave / shift / expense approvers follow.
+	for name, location in frappe.get_all(
+		"Employee", filters={"department": d("NDT Team")}, fields=["name", "custom_assigned_location"], as_list=True
+	):
+		boss = {"Jubail": sup_jub, "Yanbu": sup_yan}.get(location)
+		if boss and name not in (sup_jub, sup_yan):
+			frappe.db.set_value(
+				"Employee",
+				name,
+				{"reports_to": boss, "leave_approver": None, "shift_request_approver": None, "expense_approver": None},
+				update_modified=False,
+			)
 		frappe.get_doc("Employee", name).save()
 
 	# On UAT the seeded Leak Sealing team plays Online Leak Sealing; drop the empty twin.

@@ -36,6 +36,11 @@ def setup_custom_fields():
 			},
 		],
 	}
+	from cooperheat.cooperheat.approval_workflows import final_approver_field
+
+	for doctype, after in (("Leave Application", "leave_approver"), ("Expense Claim", "expense_approver")):
+		if frappe.db.exists("DocType", doctype):
+			custom_fields[doctype] = [dict(final_approver_field(), insert_after=after)]
 	create_custom_fields(custom_fields, update=True)
 
 
@@ -87,6 +92,10 @@ DEFAULT_SETTINGS = {
 	"gosi_rate_percent": 9.75,
 	"gosi_applicable_category": "Saudi",
 	"round_amounts": 1,
+	# Attendance approval windows (client rule 2026-10-20: 48 h supervisor, 72 h manager)
+	"immediate_approval_window_hours": 48,
+	"secondary_approval_window_hours": 72,
+	"payroll_approval_window_hours": 48,
 }
 
 
@@ -309,7 +318,6 @@ _LINK_CARDS = {
 	"My Team": [
 		("Supervisor Workspace", "Page", "supervisor-workspace"),
 		("Employee", "DocType", "Employee"),
-		("Department", "DocType", "Department"),
 		("Org Chart", "Page", "organizational-chart"),
 	],
 	"Attendance & Approvals": [
@@ -368,7 +376,6 @@ def ensure_supervisor_workspace():
 	shortcuts = [
 		("Supervisor Workspace", "Page", "supervisor-workspace", None),
 		("Employee", "DocType", "Employee", "List"),
-		("Department", "DocType", "Department", "List"),
 		("Project", "DocType", "Project", "List"),
 		("Employee Checkin", "DocType", "Employee Checkin", "List"),
 		("Attendance", "DocType", "Attendance", "List"),
@@ -434,6 +441,50 @@ def ensure_supervisor_workspace():
 	ws.save()
 
 
+def ensure_reporting_labels():
+	"""Employee.reports_to is the Direct Reporting (office) / Immediate Reporting (field)
+	person; approvals and the organisation chart both read it."""
+	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+	make_property_setter("Employee", "reports_to", "label", "Direct / Immediate Reporting", "Data")
+
+
+def ensure_slip_print_format():
+	"""Salary slip emails use the Cooperheat "Salary Slip" print format, never the plain
+	standard layout: made the document default and named in Pay Sheet Settings. Only when the
+	format exists on the site; an administrator's own choice is never overwritten."""
+	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+	name = "Salary Slip"
+	if not frappe.db.exists("Print Format", {"name": name, "doc_type": "Salary Slip", "disabled": 0}):
+		return
+	if not frappe.db.get_value("Property Setter", {"doc_type": "Salary Slip", "property": "default_print_format"}, "value"):
+		make_property_setter("Salary Slip", None, "default_print_format", name, "Data", for_doctype=True)
+	if frappe.db.exists("DocType", "Pay Sheet Settings") and not frappe.db.get_single_value("Pay Sheet Settings", "slip_print_format"):
+		frappe.db.set_single_value("Pay Sheet Settings", "slip_print_format", name)
+
+
+def ensure_no_automatic_slip_email():
+	"""Salary slips are sent only from Payroll Import, with the Cooperheat print format. The
+	standard HRMS option that e-mails every slip the moment it is submitted (always in the
+	default layout) is switched off (client decision 2026-10-21)."""
+	if frappe.db.exists("DocType", "Payroll Settings") and frappe.db.get_single_value(
+		"Payroll Settings", "email_salary_slip_to_employee"
+	):
+		frappe.db.set_single_value("Payroll Settings", "email_salary_slip_to_employee", 0)
+
+
+def ensure_division_menu():
+	"""One menu for the whole hierarchy: the HR workspace entry that opened the Department
+	list becomes "Division" and opens the Division screen (a plain drill-down, see
+	page/division). The DocType stays Department. Supervisors keep no Department entry."""
+	frappe.db.sql(
+		"UPDATE `tabWorkspace Link` SET label = %s, link_type = 'Page', link_to = 'division' "
+		"WHERE parent = %s AND link_to IN ('Department', 'division') AND type = 'Link'",
+		("Division", "HR"),
+	)
+
+
 def sync_scoped_user_permissions():
 	"""One-off clean-up of Employee/Department User Permissions held by
 	supervisors (see permissions/scope.py)."""
@@ -453,6 +504,13 @@ def after_migrate():
 	ensure_role_permissions()
 	ensure_project_display()
 	ensure_supervisor_workspace()
+	ensure_division_menu()
+	ensure_reporting_labels()
+	ensure_slip_print_format()
+	ensure_no_automatic_slip_email()
+	from cooperheat.cooperheat.approval_workflows import ensure_workflows
+
+	ensure_workflows()
 	from cooperheat.cooperheat.work_schedule import place_default_shift_field
 
 	place_default_shift_field()

@@ -291,7 +291,8 @@ class TestSupervisorWorkspaceAPI(HRTestCase):
 
 
 class TestHierarchyAndProjects(HRTestCase):
-	def test_new_joiner_is_linked_to_the_department_approver(self):
+	def test_new_joiner_is_not_linked_by_department(self):
+		"""Reporting lines are set per employee (Direct / Immediate Reporting), not guessed from the department."""
 		doc = frappe.get_doc(
 			{
 				"doctype": "Employee",
@@ -305,16 +306,6 @@ class TestHierarchyAndProjects(HRTestCase):
 				"status": "Active",
 			}
 		).insert(ignore_permissions=True)
-		self.assertEqual(doc.reports_to, emp_of("saleh"))
-
-	def test_department_without_matrix_leaves_reports_to_empty(self):
-		doc = frappe.get_doc(
-			{
-				"doctype": "Employee", "first_name": "No", "last_name": "Matrix", "gender": "Male",
-				"date_of_birth": "1995-05-05", "date_of_joining": today(), "company": dev_seed.COMPANY,
-				"department": NDT, "status": "Active",
-			}
-		).insert(ignore_permissions=True)
 		self.assertFalse(doc.reports_to)
 
 	def test_exceptions_report_lists_unlinked_ndt_staff(self):
@@ -322,8 +313,7 @@ class TestHierarchyAndProjects(HRTestCase):
 
 		rows = get_data(frappe._dict(department=NDT))
 		issues = {r["issue"] for r in rows}
-		self.assertIn("Department has no Level 1 approver", issues)
-		self.assertIn("No Reports To", issues)
+		self.assertIn("No Direct / Immediate Reporting", issues)
 
 	def test_project_is_named_after_the_client_job_code(self):
 		doc = frappe.get_doc(
