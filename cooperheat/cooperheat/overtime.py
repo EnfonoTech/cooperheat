@@ -28,11 +28,26 @@ def split_hours(total, staff_category, is_holiday) -> dict:
 	counted = min(total, MAX_DAY_HOURS)
 	if staff_category == FIELD:
 		if is_holiday:
-			return {"regular": 0.0, "ot": 0.0, "holiday_ot": flt(counted, 2), "basis": "Field staff: weekend / public holiday"}
+			return {
+				"regular": 0.0,
+				"ot": 0.0,
+				"holiday_ot": flt(counted, 2),
+				"basis": "Field staff: weekend / public holiday",
+			}
 		regular = min(counted, REGULAR_HOURS)
-		return {"regular": flt(regular, 2), "ot": flt(counted - regular, 2), "holiday_ot": 0.0, "basis": "Field staff"}
+		return {
+			"regular": flt(regular, 2),
+			"ot": flt(counted - regular, 2),
+			"holiday_ot": 0.0,
+			"basis": "Field staff",
+		}
 	if staff_category == OFFICE:
-		return {"regular": flt(counted, 2), "ot": 0.0, "holiday_ot": 0.0, "basis": "Office staff: no overtime"}
+		return {
+			"regular": flt(counted, 2),
+			"ot": 0.0,
+			"holiday_ot": 0.0,
+			"basis": "Office staff: no overtime",
+		}
 	return {"regular": flt(counted, 2), "ot": 0.0, "holiday_ot": 0.0, "basis": "Staff category not set"}
 
 
@@ -86,12 +101,20 @@ def recompute_range(from_date, to_date, employee=None, dry_run=True) -> dict:
 	filters = {"docstatus": 1, "attendance_date": ["between", [from_date, to_date]]}
 	if employee:
 		filters["employee"] = employee
-	rows = frappe.get_all("Attendance", filters=filters, fields=["name", "employee", "attendance_date", "working_hours"], limit=0)
+	rows = frappe.get_all(
+		"Attendance",
+		filters=filters,
+		fields=["name", "employee", "attendance_date", "working_hours"],
+		limit=0,
+	)
 	changed, sample = 0, []
 	for row in rows:
 		new = overtime_values(row)
 		old = frappe.db.get_value("Attendance", row.name, list(new), as_dict=True) or {}
-		if all(flt(old.get(k)) == flt(new[k]) for k in _OT_NUMBERS) and old.get("custom_ot_basis") == new["custom_ot_basis"]:
+		if (
+			all(flt(old.get(k)) == flt(new[k]) for k in _OT_NUMBERS)
+			and old.get("custom_ot_basis") == new["custom_ot_basis"]
+		):
 			continue
 		changed += 1
 		if len(sample) < 10:

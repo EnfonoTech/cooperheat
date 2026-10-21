@@ -14,5 +14,7 @@ def autoname(doc, method=None):
 	if not code:
 		return
 	if frappe.db.exists("Project", code):
-		frappe.throw(_("A Project with the code {0} already exists.").format(code), frappe.DuplicateEntryError)
+		frappe.throw(
+			_("A Project with the code {0} already exists.").format(code), frappe.DuplicateEntryError
+		)
 	doc.name = code

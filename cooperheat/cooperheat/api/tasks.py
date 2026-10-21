@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, now_datetime
 from frappe.model.workflow import apply_workflow
+from frappe.utils import get_datetime, now_datetime
 
 # ---------------------------------------------------------------------------
 # Window-lapse auto-advance (spec §3 / §7)

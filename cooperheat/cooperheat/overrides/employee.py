@@ -2,12 +2,12 @@
 # For license information, please see license.txt
 
 import frappe
+
 from cooperheat.cooperheat.permissions.scope import on_employee_update as _sync_user_permissions
 
 
 def before_validate(doc, method=None):
 	from cooperheat.cooperheat.org import fill_default_approvers, fill_secondary_reporting, sync_employee_org
-
 	from cooperheat.cooperheat.work_schedule import sync_work_schedule
 
 	sync_employee_org(doc)
@@ -49,7 +49,11 @@ def _restamp_pending_approvals(doc):
 def _default_pay_batch(doc):
 	"""New joiners go into the Main batch. Without a batch, a payroll run for
 	Main silently leaves them out."""
-	if doc.meta.has_field("custom_pay_batch") and not doc.get("custom_pay_batch") and frappe.db.exists("Pay Batch", "Main"):
+	if (
+		doc.meta.has_field("custom_pay_batch")
+		and not doc.get("custom_pay_batch")
+		and frappe.db.exists("Pay Batch", "Main")
+	):
 		doc.custom_pay_batch = "Main"
 
 
@@ -59,7 +63,9 @@ def _propagate_pay_batch(doc):
 	batch = doc.get("custom_pay_batch")
 	if not batch or not doc.has_value_changed("custom_pay_batch"):
 		return
-	for name in frappe.get_all("Employee Compensation", filters={"employee": doc.name, "is_active": 1}, pluck="name"):
+	for name in frappe.get_all(
+		"Employee Compensation", filters={"employee": doc.name, "is_active": 1}, pluck="name"
+	):
 		frappe.db.set_value("Employee Compensation", name, "pay_batch", batch, update_modified=False)
 
 
@@ -69,5 +75,8 @@ def effective_pay_batch(employee: str) -> str | None:
 	if batch:
 		return batch
 	return frappe.db.get_value(
-		"Employee Compensation", {"employee": employee, "is_active": 1}, "pay_batch", order_by="from_date desc"
+		"Employee Compensation",
+		{"employee": employee, "is_active": 1},
+		"pay_batch",
+		order_by="from_date desc",
 	)

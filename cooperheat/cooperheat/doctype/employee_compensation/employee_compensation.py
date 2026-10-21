@@ -25,8 +25,8 @@ class EmployeeCompensation(Document):
 
 	def derive_employee_category(self):
 		"""Set employee_category from the linked Employee's Nationality:
-		   nationality.is_local → Saudi, otherwise → Expat. Always overrides
-		   any manual value to keep it consistent with the Employee record."""
+		nationality.is_local → Saudi, otherwise → Expat. Always overrides
+		any manual value to keep it consistent with the Employee record."""
 		if not self.employee:
 			return
 		nationality = frappe.db.get_value("Employee", self.employee, "nationality")

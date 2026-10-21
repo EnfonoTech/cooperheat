@@ -29,7 +29,13 @@ DEFINITIONS = {
 }
 FINAL_APPROVER_FIELD = "custom_final_approver"
 
-_STATE_STYLE = {PENDING_1: "Warning", PENDING_2: "Warning", APPROVED: "Success", REJECTED: "Danger", CANCELLED: ""}
+_STATE_STYLE = {
+	PENDING_1: "Warning",
+	PENDING_2: "Warning",
+	APPROVED: "Success",
+	REJECTED: "Danger",
+	CANCELLED: "",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -62,10 +68,14 @@ def ensure_workflows():
 def _ensure_masters():
 	for name, style in _STATE_STYLE.items():
 		if not frappe.db.exists("Workflow State", name):
-			frappe.get_doc({"doctype": "Workflow State", "workflow_state_name": name, "style": style}).insert(ignore_permissions=True)
+			frappe.get_doc({"doctype": "Workflow State", "workflow_state_name": name, "style": style}).insert(
+				ignore_permissions=True
+			)
 	for action in ("Approve", "Reject"):
 		if not frappe.db.exists("Workflow Action Master", action):
-			frappe.get_doc({"doctype": "Workflow Action Master", "workflow_action_name": action}).insert(ignore_permissions=True)
+			frappe.get_doc({"doctype": "Workflow Action Master", "workflow_action_name": action}).insert(
+				ignore_permissions=True
+			)
 
 
 def _states(status_field, pending_value):
@@ -88,8 +98,8 @@ def _states(status_field, pending_value):
 
 
 def _transitions(approver_field):
-	mine = "doc.{0} == frappe.session.user".format(approver_field)
-	final = "doc.{0} == frappe.session.user".format(FINAL_APPROVER_FIELD)
+	mine = f"doc.{approver_field} == frappe.session.user"
+	final = f"doc.{FINAL_APPROVER_FIELD} == frappe.session.user"
 
 	def row(state, action, next_state, allowed, condition=None):
 		return {
@@ -121,7 +131,9 @@ def _ensure_workflow(doctype):
 		"override_status": 0,
 		"send_email_alert": 0,
 	}
-	for other in frappe.get_all("Workflow", filters={"document_type": doctype, "name": ["!=", name], "is_active": 1}, pluck="name"):
+	for other in frappe.get_all(
+		"Workflow", filters={"document_type": doctype, "name": ["!=", name], "is_active": 1}, pluck="name"
+	):
 		frappe.db.set_value("Workflow", other, "is_active", 0)  # only one active workflow per document type
 	if frappe.db.exists("Workflow", name):
 		wf = frappe.get_doc("Workflow", name)
@@ -146,25 +158,37 @@ def _backfill_open_requests(doctype):
 	_name, approver_field, status_field, pending_value = DEFINITIONS[doctype]
 	table = "tab" + doctype
 	frappe.db.sql(
-		"UPDATE `{0}` SET workflow_state = %s WHERE docstatus = 0 AND IFNULL(workflow_state, '') = '' "
-		"AND IFNULL(`{1}`, '') IN (%s, '')".format(table, status_field),
+		f"UPDATE `{table}` SET workflow_state = %s WHERE docstatus = 0 AND IFNULL(workflow_state, '') = '' "
+		f"AND IFNULL(`{status_field}`, '') IN (%s, '')",
 		(PENDING_1, pending_value),
 	)
 	if status_field == "status":
 		frappe.db.sql(
-			"UPDATE `{0}` SET workflow_state = %s WHERE docstatus = 0 AND IFNULL(workflow_state, '') = '' AND status = 'Cancelled'".format(table),
+			f"UPDATE `{table}` SET workflow_state = %s WHERE docstatus = 0 AND IFNULL(workflow_state, '') = '' AND status = 'Cancelled'",
 			(CANCELLED,),
 		)
 	# Open requests without an approver: the reporting person of the employee, when there is one
-	for rec in frappe.get_all(doctype, filters={"docstatus": 0, "workflow_state": PENDING_1}, fields=["name", "employee", approver_field]):
+	for rec in frappe.get_all(
+		doctype,
+		filters={"docstatus": 0, "workflow_state": PENDING_1},
+		fields=["name", "employee", approver_field],
+	):
 		if rec.get(approver_field):
 			continue
 		user = _reporting_user(rec.employee)
 		if user:
 			frappe.db.set_value(doctype, rec.name, approver_field, user, update_modified=False)
-	for rec in frappe.get_all(doctype, filters={"docstatus": 0, "workflow_state": ["in", [PENDING_1, PENDING_2]]}, fields=["name", "employee", approver_field]):
+	for rec in frappe.get_all(
+		doctype,
+		filters={"docstatus": 0, "workflow_state": ["in", [PENDING_1, PENDING_2]]},
+		fields=["name", "employee", approver_field],
+	):
 		frappe.db.set_value(
-			doctype, rec.name, FINAL_APPROVER_FIELD, _final_user(rec.employee, rec.get(approver_field)), update_modified=False
+			doctype,
+			rec.name,
+			FINAL_APPROVER_FIELD,
+			_final_user(rec.employee, rec.get(approver_field)),
+			update_modified=False,
 		)
 
 
@@ -226,7 +250,10 @@ def _pass_final_step(doc):
 		frappe.set_user("Administrator")
 		apply_workflow(frappe.get_doc(doc.doctype, doc.name), "Approve")
 	except Exception:
-		frappe.log_error(frappe.get_traceback(), "Final approval step could not pass by itself: {0} {1}".format(doc.doctype, doc.name))
+		frappe.log_error(
+			frappe.get_traceback(),
+			f"Final approval step could not pass by itself: {doc.doctype} {doc.name}",
+		)
 	finally:
 		frappe.set_user(user)
 
@@ -238,11 +265,11 @@ def _notify(doc, user):
 		frappe.sendmail(
 			recipients=[user],
 			subject=_("Action required: final approval of {0} {1}").format(_(doc.doctype), doc.name),
-			message=_("{0} {1} of {2} was approved by the reporting person and now needs your final approval.").format(
-				_(doc.doctype), doc.name, doc.get("employee_name") or doc.get("employee")
-			)
-			+ ' <a href="{0}">{1}</a>'.format(frappe.utils.get_url_to_form(doc.doctype, doc.name), _("Open")),
+			message=_(
+				"{0} {1} of {2} was approved by the reporting person and now needs your final approval."
+			).format(_(doc.doctype), doc.name, doc.get("employee_name") or doc.get("employee"))
+			+ ' <a href="{}">{}</a>'.format(frappe.utils.get_url_to_form(doc.doctype, doc.name), _("Open")),
 			now=False,
 		)
 	except Exception:
-		frappe.log_error(frappe.get_traceback(), "Final approval email failed: {0} {1}".format(doc.doctype, doc.name))
+		frappe.log_error(frappe.get_traceback(), f"Final approval email failed: {doc.doctype} {doc.name}")

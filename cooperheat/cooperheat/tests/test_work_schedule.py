@@ -1,6 +1,6 @@
 """Office / Field staff category drives holiday list and default shift.
 
-    bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_work_schedule
+bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_work_schedule
 """
 
 import frappe
@@ -60,7 +60,9 @@ class TestWorkSchedule(FrappeTestCase):
 		e = make_employee("Stale", custom_staff_category="Field Staff")
 		frappe.db.set_value("Employee", e.name, "holiday_list", None)
 		roll_over_calendars()
-		self.assertEqual(frappe.db.get_value("Employee", e.name, "holiday_list"), holiday_list_name("Field", self.year))
+		self.assertEqual(
+			frappe.db.get_value("Employee", e.name, "holiday_list"), holiday_list_name("Field", self.year)
+		)
 
 	def test_new_employee_defaults_to_main_pay_batch(self):
 		if not frappe.db.exists("Pay Batch", "Main"):

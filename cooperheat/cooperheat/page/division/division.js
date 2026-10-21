@@ -58,7 +58,11 @@ class DivisionScreen {
 
 	refresh() {
 		frappe
-			.xcall(DV_API + "division_view", { node: this.node, kind: this.kind, company: this.company })
+			.xcall(DV_API + "division_view", {
+				node: this.node,
+				kind: this.kind,
+				company: this.company,
+			})
 			.then((data) => this.render(data));
 	}
 
@@ -78,7 +82,11 @@ class DivisionScreen {
 		const $children = $(`<div class="dv-grid"></div>`);
 		d.children.forEach((c) => $children.append(this.card(c)));
 		if (d.children.length) {
-			$root.append(`<div class="dv-h">${d.node ? __("Inside {0}", [frappe.utils.escape_html(d.node.label)]) : ""}</div>`);
+			$root.append(
+				`<div class="dv-h">${
+					d.node ? __("Inside {0}", [frappe.utils.escape_html(d.node.label)]) : ""
+				}</div>`
+			);
 			$root.append($children);
 		}
 		if (d.node) $root.append(this.employees(d));
@@ -102,11 +110,15 @@ class DivisionScreen {
 
 	crumbs(d) {
 		const $c = $(`<div class="dv-crumbs"></div>`);
-		const add = (label, fn) => $(`<a>${frappe.utils.escape_html(label)}</a>`).on("click", fn).appendTo($c);
+		const add = (label, fn) =>
+			$(`<a>${frappe.utils.escape_html(label)}</a>`)
+				.on("click", fn)
+				.appendTo($c);
 		add(__("Division"), () => this.go(this.kind, null));
 		d.breadcrumb.forEach((b, i) => {
 			$c.append(`<span class="sep">›</span>`);
-			if (i === d.breadcrumb.length - 1) $c.append(`<span class="cur">${frappe.utils.escape_html(b.label)}</span>`);
+			if (i === d.breadcrumb.length - 1)
+				$c.append(`<span class="cur">${frappe.utils.escape_html(b.label)}</span>`);
 			else add(b.label, () => this.go(this.kind, b.name));
 		});
 		return $c;
@@ -116,7 +128,10 @@ class DivisionScreen {
 		const $t = $(`<div class="dv-tabs"></div>`);
 		DV_TABS.forEach((t) => {
 			if (t.key === "Other" && !d.old_departments && this.kind !== "Other") return;
-			const extra = t.key === "Other" && d.old_departments ? `<span class="cnt">${d.old_departments}</span>` : "";
+			const extra =
+				t.key === "Other" && d.old_departments
+					? `<span class="cnt">${d.old_departments}</span>`
+					: "";
 			$(`<a class="dv-tab ${t.key === this.kind ? "active" : ""}">${t.label}${extra}</a>`)
 				.on("click", () => this.go(t.key, null))
 				.appendTo($t);
@@ -134,7 +149,9 @@ class DivisionScreen {
 	}
 
 	card(c) {
-		const sub = c.sub_units ? ` · ${dv_plural(c.sub_units, __("sub-unit"), __("sub-units"))}` : "";
+		const sub = c.sub_units
+			? ` · ${dv_plural(c.sub_units, __("sub-unit"), __("sub-units"))}`
+			: "";
 		return $(`<div class="dv-card">
 			<div class="dv-name">${frappe.utils.escape_html(c.label)}</div>
 			<div class="dv-meta">${frappe.utils.escape_html(__(c.unit_type || ""))}</div>
@@ -144,9 +161,15 @@ class DivisionScreen {
 
 	employees(d) {
 		const $s = $(`<div></div>`);
-		$s.append(`<div class="dv-h">${__("Employees placed here")} (${d.employees.length})</div>`);
+		$s.append(
+			`<div class="dv-h">${__("Employees placed here")} (${d.employees.length})</div>`
+		);
 		if (!d.employees.length) {
-			$s.append(`<div class="dv-empty small">${__("No employee is placed directly on {0}.", [frappe.utils.escape_html(d.node.label)])}</div>`);
+			$s.append(
+				`<div class="dv-empty small">${__("No employee is placed directly on {0}.", [
+					frappe.utils.escape_html(d.node.label),
+				])}</div>`
+			);
 			return $s;
 		}
 		const rows = d.employees
@@ -160,7 +183,9 @@ class DivisionScreen {
 			)
 			.join("");
 		const $table = $(`<table class="table table-bordered dv-table">
-			<thead><tr><th>${__("Employee")}</th><th>${__("Designation")}</th><th>${__("Staff Category")}</th><th>${__("Reports To")}</th></tr></thead>
+			<thead><tr><th>${__("Employee")}</th><th>${__("Designation")}</th><th>${__(
+			"Staff Category"
+		)}</th><th>${__("Reports To")}</th></tr></thead>
 			<tbody>${rows}</tbody></table>`);
 		$table.find("tr[data-emp]").on("click", function () {
 			frappe.set_route("Form", "Employee", $(this).data("emp"));

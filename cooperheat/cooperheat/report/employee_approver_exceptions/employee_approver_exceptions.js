@@ -1,6 +1,11 @@
 frappe.query_reports["Employee Approver Exceptions"] = {
 	filters: [
-		{ fieldname: "department", label: __("Department"), fieldtype: "Link", options: "Department" },
+		{
+			fieldname: "department",
+			label: __("Department"),
+			fieldtype: "Link",
+			options: "Department",
+		},
 		{
 			fieldname: "issue",
 			label: __("Issue"),

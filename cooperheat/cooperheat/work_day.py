@@ -42,14 +42,22 @@ def group_by_work_date(logs, max_hours: int = MAX_SHIFT_HOURS) -> dict:
 def _fetch(employees, day, filters=None, fields=None):
 	day = getdate(day)
 	flt_ = [
-		["employee", "in" if isinstance(employees, (list, tuple, set)) else "=", list(employees) if isinstance(employees, (list, tuple, set)) else employees],
+		[
+			"employee",
+			"in" if isinstance(employees, list | tuple | set) else "=",
+			list(employees) if isinstance(employees, list | tuple | set) else employees,
+		],
 		["time", ">=", str(add_days(day, -1)) + " 00:00:00"],
 		["time", "<=", str(add_days(day, 1)) + " 23:59:59"],
 		*(filters or []),
 	]
 	cols = ["employee", "log_type", "time", *(fields or [])]
 	return frappe.get_all(
-		"Employee Checkin", filters=flt_, fields=list(dict.fromkeys(cols)), order_by="employee asc, time asc", limit=0
+		"Employee Checkin",
+		filters=flt_,
+		fields=list(dict.fromkeys(cols)),
+		order_by="employee asc, time asc",
+		limit=0,
 	)
 
 

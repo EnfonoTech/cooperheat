@@ -32,7 +32,14 @@ def _d(**kw):
 
 def _ctx(**kw):
 	base = dict(
-		sheets={}, slips={}, by_period={}, employees={}, queues={}, latest_queue={}, recipient={}, row_slip={},
+		sheets={},
+		slips={},
+		by_period={},
+		employees={},
+		queues={},
+		latest_queue={},
+		recipient={},
+		row_slip={},
 	)
 	base.update(kw)
 	return frappe._dict(base)
@@ -40,9 +47,21 @@ def _ctx(**kw):
 
 def _row(**kw):
 	base = dict(
-		name="row1", employee="E1", code="C1", employee_name="Emp One", payroll_sheet="PS1", row_status="Created",
-		message="", salary_slip="", slip_status="", slip_error="", email_status="", email_to="",
-		email_sent_on=None, email_error="", email_queue="",
+		name="row1",
+		employee="E1",
+		code="C1",
+		employee_name="Emp One",
+		payroll_sheet="PS1",
+		row_status="Created",
+		message="",
+		salary_slip="",
+		slip_status="",
+		slip_error="",
+		email_status="",
+		email_to="",
+		email_sent_on=None,
+		email_error="",
+		email_queue="",
 	)
 	base.update(kw)
 	return frappe._dict(base)
@@ -50,7 +69,12 @@ def _row(**kw):
 
 class TestEmployeeEmail(FrappeTestCase):
 	def test_preferred_then_company_then_personal_then_login(self):
-		emp = _d(prefered_email="pref@x.com", company_email="co@x.com", personal_email="me@x.com", user_id="u@x.com")
+		emp = _d(
+			prefered_email="pref@x.com",
+			company_email="co@x.com",
+			personal_email="me@x.com",
+			user_id="u@x.com",
+		)
 		self.assertEqual(sd.employee_email(emp), "pref@x.com")
 		emp.prefered_email = ""
 		self.assertEqual(sd.employee_email(emp), "co@x.com")
@@ -60,7 +84,12 @@ class TestEmployeeEmail(FrappeTestCase):
 		self.assertEqual(sd.employee_email(emp), "u@x.com")
 
 	def test_invalid_addresses_are_skipped_not_used(self):
-		emp = _d(prefered_email="not-an-email", company_email="", personal_email="ok@x.com", user_id="Administrator")
+		emp = _d(
+			prefered_email="not-an-email",
+			company_email="",
+			personal_email="ok@x.com",
+			user_id="Administrator",
+		)
 		self.assertEqual(sd.employee_email(emp), "ok@x.com")
 		self.assertEqual(sd.employee_email(_d(user_id="Administrator", personal_email="nope")), "")
 		self.assertEqual(sd.employee_email(_d()), "")
@@ -70,8 +99,16 @@ class TestRowState(FrappeTestCase):
 	"""_state() derives the row from Payroll Sheet / Salary Slip / Email Queue - no database needed."""
 
 	def sheet(self, docstatus=1, slip=None):
-		return _d(name="PS1", docstatus=docstatus, salary_slip=slip, employee="E1", month="September", year=2026,
-			net_payable=100, currency="SAR")
+		return _d(
+			name="PS1",
+			docstatus=docstatus,
+			salary_slip=slip,
+			employee="E1",
+			month="September",
+			year=2026,
+			net_payable=100,
+			currency="SAR",
+		)
 
 	def slip(self, name="SS1", docstatus=1):
 		return _d(name=name, docstatus=docstatus, employee="E1", net_pay=100)
@@ -100,12 +137,17 @@ class TestRowState(FrappeTestCase):
 			(self.sheet(docstatus=1, slip="SS1"), self.slip(docstatus=2), "Cancelled"),
 		]
 		for sheet, slip, expected in cases:
-			ctx = dict(sheets={"PS1": sheet}, employees={"E1": self.emp()}, row_slip={"row1": slip} if slip else {})
+			ctx = dict(
+				sheets={"PS1": sheet}, employees={"E1": self.emp()}, row_slip={"row1": slip} if slip else {}
+			)
 			self.assertEqual(self.state(row, **ctx)["slip_status"], expected, expected)
 
 	def test_missing_address_shows_as_skipped_once_a_slip_exists(self):
-		ctx = dict(sheets={"PS1": self.sheet(slip="SS1")}, row_slip={"row1": self.slip(docstatus=0)},
-			employees={"E1": self.emp(prefered_email="")})
+		ctx = dict(
+			sheets={"PS1": self.sheet(slip="SS1")},
+			row_slip={"row1": self.slip(docstatus=0)},
+			employees={"E1": self.emp(prefered_email="")},
+		)
 		st = self.state(_row(), **ctx)
 		self.assertEqual((st["email_status"], st["email_to"]), ("Skipped", ""))
 		self.assertIn("No email address", st["email_error"])
@@ -117,14 +159,21 @@ class TestRowState(FrappeTestCase):
 	def test_address_is_shown_before_any_slip_exists(self):
 		ctx = dict(sheets={"PS1": self.sheet()}, employees={"E1": self.emp()})
 		st = self.state(_row(), **ctx)
-		self.assertEqual((st["slip_status"], st["email_to"], st["email_status"]), ("Not Created", "e1@x.com", ""))
+		self.assertEqual(
+			(st["slip_status"], st["email_to"], st["email_status"]), ("Not Created", "e1@x.com", "")
+		)
 		ctx["employees"]["E1"] = self.emp(prefered_email="")
 		st = self.state(_row(), **ctx)
-		self.assertEqual((st["email_to"], st["email_status"]), ("", ""))  # flagged in the summary, not as Skipped
+		self.assertEqual(
+			(st["email_to"], st["email_status"]), ("", "")
+		)  # flagged in the summary, not as Skipped
 
 	def submitted_ctx(self, **extra):
-		ctx = dict(sheets={"PS1": self.sheet(slip="SS1")}, row_slip={"row1": self.slip()},
-			employees={"E1": self.emp()})
+		ctx = dict(
+			sheets={"PS1": self.sheet(slip="SS1")},
+			row_slip={"row1": self.slip()},
+			employees={"E1": self.emp()},
+		)
 		ctx.update(extra)
 		return ctx
 
@@ -139,7 +188,13 @@ class TestRowState(FrappeTestCase):
 		st = self.state(row, **self.submitted_ctx(queues={"Q1": q()}))
 		self.assertEqual(st["email_status"], "Queued")
 
-		retrying = _d(name="Q1", status="Not Sent", error="Traceback\nSMTPServerDisconnected: gone", modified=modified, retry=2)
+		retrying = _d(
+			name="Q1",
+			status="Not Sent",
+			error="Traceback\nSMTPServerDisconnected: gone",
+			modified=modified,
+			retry=2,
+		)
 		st = self.state(row, **self.submitted_ctx(queues={"Q1": retrying}))
 		self.assertEqual(st["email_status"], "Queued")
 		self.assertIn("Retry 2", st["email_error"])
@@ -147,9 +202,17 @@ class TestRowState(FrappeTestCase):
 
 		sent = _d(name="Q1", status="Sent", error="", modified=modified, retry=0)
 		st = self.state(row, **self.submitted_ctx(queues={"Q1": sent}))
-		self.assertEqual((st["email_status"], st["email_sent_on"], st["email_to"]), ("Sent", modified, "e1@x.com"))
+		self.assertEqual(
+			(st["email_status"], st["email_sent_on"], st["email_to"]), ("Sent", modified, "e1@x.com")
+		)
 
-		failed = _d(name="Q1", status="Error", error="Traceback\nsmtplib.SMTPRecipientsRefused: bad", modified=modified, retry=3)
+		failed = _d(
+			name="Q1",
+			status="Error",
+			error="Traceback\nsmtplib.SMTPRecipientsRefused: bad",
+			modified=modified,
+			retry=3,
+		)
 		st = self.state(row, **self.submitted_ctx(queues={"Q1": failed}))
 		self.assertEqual(st["email_status"], "Failed")
 		self.assertEqual(st["email_error"], "smtplib.SMTPRecipientsRefused: bad")
@@ -159,9 +222,13 @@ class TestRowState(FrappeTestCase):
 		hrms_mail = _d(name="Q9", status="Sent", error="", modified=modified, retry=0)
 		st = self.state(
 			_row(),
-			**self.submitted_ctx(queues={"Q9": hrms_mail}, latest_queue={"SS1": hrms_mail}, recipient={"Q9": "sent-to@x.com"}),
+			**self.submitted_ctx(
+				queues={"Q9": hrms_mail}, latest_queue={"SS1": hrms_mail}, recipient={"Q9": "sent-to@x.com"}
+			),
 		)
-		self.assertEqual((st["email_status"], st["email_queue"], st["email_to"]), ("Sent", "Q9", "sent-to@x.com"))
+		self.assertEqual(
+			(st["email_status"], st["email_queue"], st["email_to"]), ("Sent", "Q9", "sent-to@x.com")
+		)
 
 	def test_a_failed_attempt_is_not_overwritten_by_an_older_queue_entry(self):
 		old = _d(name="Q1", status="Sent", error="", modified=now_datetime(), retry=0)
@@ -170,7 +237,9 @@ class TestRowState(FrappeTestCase):
 		self.assertEqual((st["email_status"], st["email_error"]), ("Failed", "PDF failed"))
 
 	def test_purged_queue_entries(self):
-		sent_row = _row(email_queue="GONE", email_status="Sent", email_to="e1@x.com", email_sent_on=now_datetime())
+		sent_row = _row(
+			email_queue="GONE", email_status="Sent", email_to="e1@x.com", email_sent_on=now_datetime()
+		)
 		self.assertEqual(self.state(sent_row, **self.submitted_ctx())["email_status"], "Sent")
 		queued_row = _row(email_queue="GONE", email_status="Queued", email_to="e1@x.com")
 		st = self.state(queued_row, **self.submitted_ctx())
@@ -238,9 +307,15 @@ class TestPipeline(FrappeTestCase):
 		cls.addClassCleanup(cls.commit_patch.stop)
 
 		# frappe.sendmail needs an outgoing account to build the queue entry; nothing is ever sent under tests
-		cls.mail_patch = patch.dict(frappe.local.conf, {
-			"mail_server": "localhost", "mail_port": 25, "mail_login": "payroll-tests@example.com", "mail_password": "unused",
-		})
+		cls.mail_patch = patch.dict(
+			frappe.local.conf,
+			{
+				"mail_server": "localhost",
+				"mail_port": 25,
+				"mail_login": "payroll-tests@example.com",
+				"mail_password": "unused",
+			},
+		)
 		cls.mail_patch.start()
 		cls.addClassCleanup(cls.mail_patch.stop)
 		frappe.local.outgoing_email_account = {}
@@ -248,17 +323,23 @@ class TestPipeline(FrappeTestCase):
 		# the current month, in a company that has a Fiscal Year for it (HRMS needs one to build a slip)
 		cls.today = getdate()
 		cls.month, cls.year = MONTHS[cls.today.month - 1], cls.today.year
-		cls.company = next((c for c in frappe.get_all("Company", pluck="name") if cls.has_fiscal_year(c)), None)
+		cls.company = next(
+			(c for c in frappe.get_all("Company", pluck="name") if cls.has_fiscal_year(c)), None
+		)
 		if not cls.company:
 			raise unittest.SkipTest("needs a Company with a Fiscal Year covering this month")
 		cls.currency = frappe.get_cached_value("Company", cls.company, "default_currency")
 
 		# HRMS refuses to build a slip for an employee with no holiday list (own or the company's)
 		cls.holiday_list = f"ZZ Test Holidays {uuid.uuid4().hex[:6]}"
-		frappe.get_doc({
-			"doctype": "Holiday List", "holiday_list_name": cls.holiday_list,
-			"from_date": f"{cls.year}-01-01", "to_date": f"{cls.year}-12-31",
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Holiday List",
+				"holiday_list_name": cls.holiday_list,
+				"from_date": f"{cls.year}-01-01",
+				"to_date": f"{cls.year}-12-31",
+			}
+		).insert(ignore_permissions=True)
 
 		structure = f"ZZ Test Structure {uuid.uuid4().hex[:6]}"
 		ss = frappe.new_doc("Salary Structure")
@@ -287,15 +368,29 @@ class TestPipeline(FrappeTestCase):
 		cls.emp_plain = cls.make_employee("Plain", company_email=f"plain.{uuid.uuid4().hex[:5]}@example.com")
 		cls.sheets = {e.name: cls.make_sheet(e) for e in (cls.emp_ok, cls.emp_none, cls.emp_plain)}
 
-		imp = frappe.get_doc({
-			"doctype": "Payroll Import", "company": cls.company, "month": cls.month, "year": cls.year,
-			"posting_date": cls.today, "file": "/files/zz-test.xlsx", "status": "Completed",
-		})
+		imp = frappe.get_doc(
+			{
+				"doctype": "Payroll Import",
+				"company": cls.company,
+				"month": cls.month,
+				"year": cls.year,
+				"posting_date": cls.today,
+				"file": "/files/zz-test.xlsx",
+				"status": "Completed",
+			}
+		)
 		for i, e in enumerate((cls.emp_ok, cls.emp_none, cls.emp_plain), 1):
-			imp.append("rows", {
-				"doc_no": str(i), "code": e.employee_number, "employee": e.name, "employee_name": e.employee_name,
-				"payroll_sheet": cls.sheets[e.name], "row_status": "Created",
-			})
+			imp.append(
+				"rows",
+				{
+					"doc_no": str(i),
+					"code": e.employee_number,
+					"employee": e.name,
+					"employee_name": e.employee_name,
+					"payroll_sheet": cls.sheets[e.name],
+					"row_status": "Created",
+				},
+			)
 		imp.flags.ignore_permissions = True
 		imp.insert()
 		cls.imp = imp.name
@@ -313,18 +408,36 @@ class TestPipeline(FrappeTestCase):
 	@classmethod
 	def make_employee(cls, first_name, **extra):
 		code = f"ZZT{uuid.uuid4().hex[:6]}"
-		emp = frappe.get_doc({
-			"doctype": "Employee", "employee_number": code, "first_name": first_name, "last_name": code,
-			"gender": "Male", "date_of_birth": "1980-01-01", "date_of_joining": "2010-01-01",
-			"company": cls.company, "status": "Active", "prefered_contact_email": "Company Email",
-			"holiday_list": cls.holiday_list, **extra,
-		})
+		emp = frappe.get_doc(
+			{
+				"doctype": "Employee",
+				"employee_number": code,
+				"first_name": first_name,
+				"last_name": code,
+				"gender": "Male",
+				"date_of_birth": "1980-01-01",
+				"date_of_joining": "2010-01-01",
+				"company": cls.company,
+				"status": "Active",
+				"prefered_contact_email": "Company Email",
+				"holiday_list": cls.holiday_list,
+				**extra,
+			}
+		)
 		emp.flags.ignore_permissions = True
 		emp.insert()
-		frappe.get_doc({
-			"doctype": "Employee Compensation", "employee": emp.name, "from_date": "2010-01-01", "is_active": 1,
-			"currency": cls.currency, "employee_category": "Expat", "basic": 5000, "housing_allowance": 1000,
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Employee Compensation",
+				"employee": emp.name,
+				"from_date": "2010-01-01",
+				"is_active": 1,
+				"currency": cls.currency,
+				"employee_category": "Expat",
+				"basic": 5000,
+				"housing_allowance": 1000,
+			}
+		).insert(ignore_permissions=True)
 		return emp
 
 	@classmethod
@@ -333,8 +446,13 @@ class TestPipeline(FrappeTestCase):
 		from cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet import get_employee_compensation
 
 		ps = _make_payroll_sheet(
-			company=cls.company, employee=emp.name, month=cls.month, year=cls.year, posting_date=cls.today,
-			row={"days": 30}, comp_data=get_employee_compensation(emp.name, cls.today),
+			company=cls.company,
+			employee=emp.name,
+			month=cls.month,
+			year=cls.year,
+			posting_date=cls.today,
+			row={"days": 30},
+			comp_data=get_employee_compensation(emp.name, cls.today),
 		)
 		ps.submit()
 		return ps.name
@@ -353,7 +471,9 @@ class TestPipeline(FrappeTestCase):
 			sd.run_bulk(self.imp, "create_slips", {})
 		rows = self.rows()
 		self.assertEqual(
-			{r.slip_status for r in rows.values()}, {"Draft"}, {r.employee: r.slip_error for r in rows.values()}
+			{r.slip_status for r in rows.values()},
+			{"Draft"},
+			{r.employee: r.slip_error for r in rows.values()},
 		)
 		self.assertTrue(all(r.salary_slip for r in rows.values()))
 		self.assertEqual(rows[self.emp_none.name].email_status, "Skipped")
@@ -384,17 +504,23 @@ class TestPipeline(FrappeTestCase):
 		self.assertEqual(queue.reference_doctype, "Salary Slip")
 		self.assertEqual(queue.reference_name, ok.salary_slip)
 		self.assertEqual([r.recipient for r in queue.recipients], [self.emp_ok.company_email])
-		self.assertIn("Payslip-test.pdf", queue.message)  # the queue keeps the full MIME message, PDF included
+		self.assertIn(
+			"Payslip-test.pdf", queue.message
+		)  # the queue keeps the full MIME message, PDF included
 
 		# 4. the row follows the queue: retry -> sent -> error, and a rerun never double-queues
-		frappe.db.set_value("Email Queue", ok.email_queue, {"status": "Not Sent", "retry": 1, "error": "x\nSMTP hiccup"})
+		frappe.db.set_value(
+			"Email Queue", ok.email_queue, {"status": "Not Sent", "retry": 1, "error": "x\nSMTP hiccup"}
+		)
 		sd.sync_rows(self.imp)
 		row = self.rows()[self.emp_ok.name]
 		self.assertEqual(row.email_status, "Queued")
 		self.assertIn("SMTP hiccup", row.email_error)
 
 		frappe.db.set_value("Email Queue", ok.email_queue, {"status": "Sent", "error": ""})
-		frappe.db.set_value("Email Queue", plain.email_queue, {"status": "Error", "error": "x\nsmtplib.SMTPDataError: 550"})
+		frappe.db.set_value(
+			"Email Queue", plain.email_queue, {"status": "Error", "error": "x\nsmtplib.SMTPDataError: 550"}
+		)
 		sd.sync_rows(self.imp)
 		rows = self.rows()
 		self.assertEqual(rows[self.emp_ok.name].email_status, "Sent")
@@ -434,7 +560,9 @@ class TestPipeline(FrappeTestCase):
 		emp = self.make_employee("Mismatch", company_email="mismatch@example.com")
 		sheet = self.make_sheet(emp)
 		sheet_net = frappe.db.get_value("Payroll Sheet", sheet, "net_payable")
-		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		slip = frappe.get_attr(
+			"cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip"
+		)(sheet)
 
 		sd.assert_slip_matches_sheet(slip, sheet)  # equal: fine
 		frappe.db.set_value("Salary Slip", slip, "net_pay", sheet_net + 1700)
@@ -447,7 +575,9 @@ class TestPipeline(FrappeTestCase):
 	def test_the_error_names_the_unmapped_field(self):
 		# a field with an amount but no Component Mapping row is left off the slip - say so
 		settings = frappe.get_single("Pay Sheet Settings")
-		settings.component_mapping = [m for m in settings.component_mapping if m.payroll_field != "service_allowance"]
+		settings.component_mapping = [
+			m for m in settings.component_mapping if m.payroll_field != "service_allowance"
+		]
 		settings.flags.ignore_permissions = True
 		settings.save()
 
@@ -455,7 +585,9 @@ class TestPipeline(FrappeTestCase):
 		frappe.db.set_value("Employee Compensation", {"employee": emp.name}, "service_allowance", 300)
 		sheet = self.make_sheet(emp)
 		self.assertEqual(frappe.db.get_value("Payroll Sheet", sheet, "service_allowance"), 300)
-		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		slip = frappe.get_attr(
+			"cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip"
+		)(sheet)
 		with self.assertRaises(frappe.ValidationError) as ctx:
 			sd.assert_slip_matches_sheet(slip, sheet)
 		message = str(ctx.exception)
@@ -473,8 +605,12 @@ class TestPipeline(FrappeTestCase):
 		emp = self.make_employee("Shared", company_email="shared@example.com")
 		frappe.db.set_value("Employee Compensation", {"employee": emp.name}, "other_allowance", 100)
 		sheet = self.make_sheet(emp)
-		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
-		frappe.db.set_value("Salary Slip", slip, "net_pay", 1)  # force a disagreement that has no component cause
+		slip = frappe.get_attr(
+			"cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip"
+		)(sheet)
+		frappe.db.set_value(
+			"Salary Slip", slip, "net_pay", 1
+		)  # force a disagreement that has no component cause
 		with self.assertRaises(frappe.ValidationError) as ctx:
 			sd.assert_slip_matches_sheet(slip, sheet)
 		self.assertNotIn("Other Allowance:", str(ctx.exception))
@@ -483,9 +619,16 @@ class TestPipeline(FrappeTestCase):
 		# same net, but one line up and another down: the payslip would still be wrong
 		emp = self.make_employee("Offset", company_email="offset@example.com")
 		sheet = self.make_sheet(emp)
-		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		slip = frappe.get_attr(
+			"cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip"
+		)(sheet)
 		sd.assert_slip_matches_sheet(slip, sheet)  # untouched: fine
-		rows = frappe.get_all("Salary Detail", filters={"parent": slip, "parentfield": "earnings"}, fields=["name", "amount"], order_by="idx")
+		rows = frappe.get_all(
+			"Salary Detail",
+			filters={"parent": slip, "parentfield": "earnings"},
+			fields=["name", "amount"],
+			order_by="idx",
+		)
 		self.assertGreaterEqual(len(rows), 2)
 		frappe.db.set_value("Salary Detail", rows[0].name, "amount", rows[0].amount + 100)
 		frappe.db.set_value("Salary Detail", rows[1].name, "amount", rows[1].amount - 100)
@@ -496,20 +639,41 @@ class TestPipeline(FrappeTestCase):
 	def test_bulk_submit_checks_again_after_submit(self):
 		emp = self.make_employee("Late", company_email="latecheck@example.com")
 		sheet = self.make_sheet(emp)
-		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
-		imp = frappe.get_doc({
-			"doctype": "Payroll Import", "company": self.company, "month": self.month, "year": self.year,
-			"posting_date": self.today, "file": "/files/zz-test4.xlsx", "status": "Completed",
-		})
-		imp.append("rows", {
-			"doc_no": "1", "code": emp.employee_number, "employee": emp.name, "employee_name": emp.employee_name,
-			"payroll_sheet": sheet, "row_status": "Created",
-		})
+		slip = frappe.get_attr(
+			"cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip"
+		)(sheet)
+		imp = frappe.get_doc(
+			{
+				"doctype": "Payroll Import",
+				"company": self.company,
+				"month": self.month,
+				"year": self.year,
+				"posting_date": self.today,
+				"file": "/files/zz-test4.xlsx",
+				"status": "Completed",
+			}
+		)
+		imp.append(
+			"rows",
+			{
+				"doc_no": "1",
+				"code": emp.employee_number,
+				"employee": emp.name,
+				"employee_name": emp.employee_name,
+				"payroll_sheet": sheet,
+				"row_status": "Created",
+			},
+		)
 		imp.flags.ignore_permissions = True
 		imp.insert()
 		# passes before the submit, fails after it (HRMS recalculated something on submit)
-		with patch.object(sd, "_set_bulk"), patch.object(
-			sd, "assert_slip_matches_sheet", side_effect=[None, frappe.ValidationError("changed on submit")]
+		with (
+			patch.object(sd, "_set_bulk"),
+			patch.object(
+				sd,
+				"assert_slip_matches_sheet",
+				side_effect=[None, frappe.ValidationError("changed on submit")],
+			),
 		):
 			sd.run_bulk(imp.name, "submit_slips", {})
 		row = sd._rows(imp.name)[0]
@@ -520,17 +684,33 @@ class TestPipeline(FrappeTestCase):
 	def test_bulk_submit_leaves_a_mismatched_draft_alone(self):
 		emp = self.make_employee("Drift", company_email="drift@example.com")
 		sheet = self.make_sheet(emp)
-		slip = frappe.get_attr("cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip")(sheet)
+		slip = frappe.get_attr(
+			"cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip"
+		)(sheet)
 		frappe.db.set_value("Salary Slip", slip, "net_pay", 999)  # someone edited the draft after it was made
 
-		imp = frappe.get_doc({
-			"doctype": "Payroll Import", "company": self.company, "month": self.month, "year": self.year,
-			"posting_date": self.today, "file": "/files/zz-test3.xlsx", "status": "Completed",
-		})
-		imp.append("rows", {
-			"doc_no": "1", "code": emp.employee_number, "employee": emp.name, "employee_name": emp.employee_name,
-			"payroll_sheet": sheet, "row_status": "Created",
-		})
+		imp = frappe.get_doc(
+			{
+				"doctype": "Payroll Import",
+				"company": self.company,
+				"month": self.month,
+				"year": self.year,
+				"posting_date": self.today,
+				"file": "/files/zz-test3.xlsx",
+				"status": "Completed",
+			}
+		)
+		imp.append(
+			"rows",
+			{
+				"doc_no": "1",
+				"code": emp.employee_number,
+				"employee": emp.name,
+				"employee_name": emp.employee_name,
+				"payroll_sheet": sheet,
+				"row_status": "Created",
+			},
+		)
 		imp.flags.ignore_permissions = True
 		imp.insert()
 		with patch.object(sd, "_set_bulk"):
@@ -548,15 +728,29 @@ class TestPipeline(FrappeTestCase):
 		good = self.make_employee("Good", company_email="good@example.com")
 		good_sheet = self.make_sheet(good)
 
-		imp = frappe.get_doc({
-			"doctype": "Payroll Import", "company": self.company, "month": self.month, "year": self.year,
-			"posting_date": self.today, "file": "/files/zz-test2.xlsx", "status": "Completed",
-		})
+		imp = frappe.get_doc(
+			{
+				"doctype": "Payroll Import",
+				"company": self.company,
+				"month": self.month,
+				"year": self.year,
+				"posting_date": self.today,
+				"file": "/files/zz-test2.xlsx",
+				"status": "Completed",
+			}
+		)
 		for i, (e, sheet) in enumerate(((late, late_sheet), (good, good_sheet)), 1):
-			imp.append("rows", {
-				"doc_no": str(i), "code": e.employee_number, "employee": e.name, "employee_name": e.employee_name,
-				"payroll_sheet": sheet, "row_status": "Created",
-			})
+			imp.append(
+				"rows",
+				{
+					"doc_no": str(i),
+					"code": e.employee_number,
+					"employee": e.name,
+					"employee_name": e.employee_name,
+					"payroll_sheet": sheet,
+					"row_status": "Created",
+				},
+			)
 		imp.flags.ignore_permissions = True
 		imp.insert()
 

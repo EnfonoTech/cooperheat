@@ -12,6 +12,6 @@ def execute():
 
 	removed = sync_all_user_permissions()
 	frappe.logger("cooperheat").info("removed stale User Permissions of scoped users: " + json.dumps(removed))
-	print("cooperheat: removed %d User Permission row(s) of supervisors/managers" % len(removed))
+	print(f"cooperheat: removed {len(removed)} User Permission row(s) of supervisors/managers")
 	for row in removed:
 		print("   ", row["user"], row["allow"], row["for_value"])

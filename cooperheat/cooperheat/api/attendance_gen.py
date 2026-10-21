@@ -82,7 +82,8 @@ def _generate(from_date, to_date, limit: int) -> dict:
 	result = {"created": 0, "skipped": 0, "errors": 0, "no_approver": 0, "incomplete": 0}
 	missing: set[str] = set()  # employees skipped because nobody can approve their day
 	idle = timedelta(
-		hours=cint(frappe.conf.get("cooperheat_attendance_same_day_idle_hours")) or DEFAULT_SAME_DAY_IDLE_HOURS
+		hours=cint(frappe.conf.get("cooperheat_attendance_same_day_idle_hours"))
+		or DEFAULT_SAME_DAY_IDLE_HOURS
 	)
 	current = now_datetime()
 	today_str = str(getdate(today()))
@@ -95,7 +96,10 @@ def _generate(from_date, to_date, limit: int) -> dict:
 	logs = frappe.get_all(
 		"Employee Checkin",
 		filters={
-			"time": ["between", [str(add_days(from_date, -1)) + " 00:00:00", str(add_days(to_date, 1)) + " 23:59:59"]],
+			"time": [
+				"between",
+				[str(add_days(from_date, -1)) + " 00:00:00", str(add_days(to_date, 1)) + " 23:59:59"],
+			],
 			"skip_auto_attendance": 0,
 		},
 		fields=["name", "employee", "log_type", "time", "attendance"],
@@ -198,4 +202,3 @@ def _create_attendance(employee: str, day: str, day_logs: list) -> str:
 	# Attendance.on_submit (_populate_site_hours) links the day's check-ins to the new
 	# Attendance, which also keeps HRMS auto-attendance from booking them again.
 	return doc.name
-

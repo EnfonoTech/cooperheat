@@ -1,6 +1,6 @@
 """Shift-date grouping (pure logic, no database).
 
-    bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_work_day
+bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_work_day
 """
 
 from datetime import date, datetime
@@ -92,7 +92,11 @@ class TestNightShiftAttendance(FrappeTestCase):
 		self._wipe()
 
 	def _wipe(self):
-		atts = frappe.get_all("Attendance", filters={"employee": self.emp, "attendance_date": ["between", [self.THU, self.SAT]]}, pluck="name")
+		atts = frappe.get_all(
+			"Attendance",
+			filters={"employee": self.emp, "attendance_date": ["between", [self.THU, self.SAT]]},
+			pluck="name",
+		)
 		if atts:
 			frappe.db.delete("Attendance Site Hours", {"parent": ["in", atts]})
 			frappe.db.delete("Attendance", {"name": ["in", atts]})
@@ -104,7 +108,13 @@ class TestNightShiftAttendance(FrappeTestCase):
 
 	def _punch(self, kind, when):
 		frappe.get_doc(
-			{"doctype": "Employee Checkin", "employee": self.emp, "log_type": kind, "time": when, "skip_auto_attendance": 0}
+			{
+				"doctype": "Employee Checkin",
+				"employee": self.emp,
+				"log_type": kind,
+				"time": when,
+				"skip_auto_attendance": 0,
+			}
 		).insert(ignore_permissions=True)
 
 	def _generate(self):
@@ -115,8 +125,18 @@ class TestNightShiftAttendance(FrappeTestCase):
 			a.attendance_date.isoformat(): a
 			for a in frappe.get_all(
 				"Attendance",
-				filters={"employee": self.emp, "attendance_date": ["between", [self.THU, self.SAT]], "docstatus": 1},
-				fields=["attendance_date", "working_hours", "custom_regular_hours", "custom_ot_hours", "custom_holiday_ot_hours"],
+				filters={
+					"employee": self.emp,
+					"attendance_date": ["between", [self.THU, self.SAT]],
+					"docstatus": 1,
+				},
+				fields=[
+					"attendance_date",
+					"working_hours",
+					"custom_regular_hours",
+					"custom_ot_hours",
+					"custom_holiday_ot_hours",
+				],
 			)
 		}
 
@@ -151,4 +171,10 @@ class TestNightShiftAttendance(FrappeTestCase):
 	def test_out_after_midnight_needs_no_same_day_in(self):
 		self._punch("IN", self.THU + " 22:00:00")
 		self._punch("OUT", self.FRI + " 02:00:00")  # would have been refused as an OUT with no IN today
-		self.assertEqual(frappe.db.count("Employee Checkin", {"employee": self.emp, "time": ["between", [self.THU + " 00:00:00", self.SAT + " 23:59:59"]]}), 2)
+		self.assertEqual(
+			frappe.db.count(
+				"Employee Checkin",
+				{"employee": self.emp, "time": ["between", [self.THU + " 00:00:00", self.SAT + " 23:59:59"]]},
+			),
+			2,
+		)

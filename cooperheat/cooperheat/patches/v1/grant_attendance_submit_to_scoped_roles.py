@@ -5,11 +5,13 @@ def execute():
 	"""Approving an Attendance through the workflow needs the `submit` right. Rows
 	made before this was added (and a missing row) get it; rows that already have
 	it are untouched."""
-	from cooperheat.setup import SCOPED_ROLE_NAMES, ensure_roles, _grant
+	from cooperheat.setup import SCOPED_ROLE_NAMES, _grant, ensure_roles
 
 	ensure_roles()
 	for role in SCOPED_ROLE_NAMES:
-		row = frappe.db.get_value("Custom DocPerm", {"parent": "Attendance", "role": role, "permlevel": 0}, "name")
+		row = frappe.db.get_value(
+			"Custom DocPerm", {"parent": "Attendance", "role": role, "permlevel": 0}, "name"
+		)
 		if row:
 			frappe.db.set_value("Custom DocPerm", row, "submit", 1)
 		else:

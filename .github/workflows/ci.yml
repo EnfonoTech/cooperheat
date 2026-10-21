@@ -77,23 +77,24 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Install MariaDB Client
-        run: sudo apt-get install mariadb-client-10.6
+        run: sudo apt-get install -y mariadb-client
 
       - name: Setup
         run: |
           pip install frappe-bench
-          bench init --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
+          bench init --skip-redis-config-generation --skip-assets --frappe-branch version-15 --python "$(which python)" ~/frappe-bench
           mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
           mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
 
       - name: Install
         working-directory: /home/runner/frappe-bench
         run: |
+          bench get-app erpnext --branch version-15
+          bench get-app hrms --branch version-15
           bench get-app cooperheat $GITHUB_WORKSPACE
           bench setup requirements --dev
           bench new-site --db-root-password root --admin-password admin test_site
-          bench --site test_site install-app cooperheat
-          bench build
+          bench --site test_site install-app erpnext hrms cooperheat
         env:
           CI: 'Yes'
 
@@ -101,6 +102,12 @@ jobs:
         working-directory: /home/runner/frappe-bench
         run: |
           bench --site test_site set-config allow_tests true
-          bench --site test_site run-tests --app cooperheat
+          # cooperheat needs ERPNext and HRMS (v15). Most of its test modules run against the seeded
+          # developer site (cooperheat.cooperheat.dev_seed: demo company, users, employees), which an
+          # empty CI site does not have; only the modules that need no seed data run here. The rest
+          # run on the UAT site: bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.<module>
+          bench --site test_site run-tests --module cooperheat.cooperheat.tests.test_overtime
+          bench --site test_site run-tests --module cooperheat.cooperheat.tests.test_work_day
+          bench --site test_site run-tests --module cooperheat.cooperheat.tests.test_leave_client_approval
         env:
           TYPE: server

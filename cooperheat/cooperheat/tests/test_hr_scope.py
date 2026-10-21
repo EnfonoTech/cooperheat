@@ -26,9 +26,15 @@ def emp_of(key):
 
 def team_of(dept, sandbox=False):
 	"""Technicians of a department. ``sandbox`` adds the check-in-free test technicians."""
-	names = set(frappe.get_all("Employee", filters={"department": dept, "user_id": ["like", "tech%"]}, pluck="name"))
+	names = set(
+		frappe.get_all("Employee", filters={"department": dept, "user_id": ["like", "tech%"]}, pluck="name")
+	)
 	if sandbox:
-		names |= set(frappe.get_all("Employee", filters={"department": dept, "user_id": ["like", "sandbox%"]}, pluck="name"))
+		names |= set(
+			frappe.get_all(
+				"Employee", filters={"department": dept, "user_id": ["like", "sandbox%"]}, pluck="name"
+			)
+		)
 	return names
 
 
@@ -107,14 +113,23 @@ class TestScoping(HRTestCase):
 		frappe.set_user(dev_seed.email("anil"))
 		doc = frappe.get_doc("Department", LS)
 		before = len(doc.approval_matrix)
-		doc.append("approval_matrix", {"approval_level": 1, "approver": emp_of("saleh"), "approval_window_hours": 24})
+		doc.append(
+			"approval_matrix", {"approval_level": 1, "approver": emp_of("saleh"), "approval_window_hours": 24}
+		)
 		doc.save()
 		try:
 			self.assertEqual(len(frappe.get_doc("Department", LS).approval_matrix), before + 1)
 		finally:  # the test DB is shared across tests - put the matrix back
 			frappe.set_user("Administrator")
 			d = frappe.get_doc("Department", LS)
-			d.set("approval_matrix", [r for r in d.approval_matrix if not (r.approval_level == 1 and r.approver == emp_of("saleh"))])
+			d.set(
+				"approval_matrix",
+				[
+					r
+					for r in d.approval_matrix
+					if not (r.approval_level == 1 and r.approver == emp_of("saleh"))
+				],
+			)
 			d.save()
 
 	def test_supervisor_cannot_replace_a_more_senior_approver(self):
@@ -134,14 +149,26 @@ class TestScoping(HRTestCase):
 		emp = frappe.get_doc("Employee", emp_of("anil"))
 		emp.create_user_permission = 1
 		emp.save()
-		rows = frappe.get_all("User Permission", filters={"user": dev_seed.email("anil"), "allow": "Employee"})
+		rows = frappe.get_all(
+			"User Permission", filters={"user": dev_seed.email("anil"), "allow": "Employee"}
+		)
 		self.assertFalse(rows)
 
 	def test_no_self_or_department_user_permissions_for_supervisors(self):
 		frappe.set_user("Administrator")
-		frappe.get_doc({"doctype": "User Permission", "user": dev_seed.email("anil"), "allow": "Department", "for_value": LS}).insert()
+		frappe.get_doc(
+			{
+				"doctype": "User Permission",
+				"user": dev_seed.email("anil"),
+				"allow": "Department",
+				"for_value": LS,
+			}
+		).insert()
 		self.assertEqual(len(scope.sync_user_permissions(dev_seed.email("anil"))), 1)
-		rows = frappe.get_all("User Permission", filters={"user": dev_seed.email("anil"), "allow": ["in", ["Employee", "Department"]]})
+		rows = frappe.get_all(
+			"User Permission",
+			filters={"user": dev_seed.email("anil"), "allow": ["in", ["Employee", "Department"]]},
+		)
 		self.assertFalse(rows)
 		# a plain technician keeps the HRMS "Employee = self" restriction
 		self.assertEqual(scope.sync_user_permissions("tech101" + dev_seed.DOMAIN), [])
@@ -160,7 +187,7 @@ class TestEditWindow(HRTestCase):
 		).insert(ignore_permissions=True)
 
 	def _tech(self, n):
-		return frappe.db.get_value("Employee", {"employee_number": "T%d" % n}, "name")
+		return frappe.db.get_value("Employee", {"employee_number": f"T{n}"}, "name")
 
 	def test_supervisor_can_edit_within_48h_but_not_after(self):
 		recent = self._checkin(self._tech(119), 10)
@@ -180,7 +207,11 @@ class TestEditWindow(HRTestCase):
 		doc = frappe.get_doc("Employee Checkin", old.name)
 		doc.time = add_to_date(doc.time, minutes=15)
 		doc.save()
-		comments = frappe.get_all("Comment", filters={"reference_doctype": "Employee Checkin", "reference_name": old.name}, pluck="content")
+		comments = frappe.get_all(
+			"Comment",
+			filters={"reference_doctype": "Employee Checkin", "reference_name": old.name},
+			pluck="content",
+		)
 		self.assertTrue(any("Time changed" in c for c in comments))
 
 	def test_cannot_move_a_checkin_into_the_future(self):
@@ -228,7 +259,14 @@ class TestAttendanceGeneration(HRTestCase):
 	def test_open_checkin_day_is_not_turned_into_attendance(self):
 		tech = frappe.db.get_value("Employee", {"employee_number": "T114"}, "name")
 		frappe.db.delete("Employee Checkin", {"employee": tech})
-		frappe.get_doc({"doctype": "Employee Checkin", "employee": tech, "log_type": "IN", "time": add_days(today(), -1) + " 07:00:00"}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Employee Checkin",
+				"employee": tech,
+				"log_type": "IN",
+				"time": add_days(today(), -1) + " 07:00:00",
+			}
+		).insert(ignore_permissions=True)
 		attendance_gen.generate(add_days(today(), -3), today())
 		self.assertFalse(frappe.db.exists("Attendance", {"employee": tech, "docstatus": 1}))
 
@@ -309,7 +347,9 @@ class TestHierarchyAndProjects(HRTestCase):
 		self.assertFalse(doc.reports_to)
 
 	def test_exceptions_report_lists_unlinked_ndt_staff(self):
-		from cooperheat.cooperheat.report.employee_approver_exceptions.employee_approver_exceptions import get_data
+		from cooperheat.cooperheat.report.employee_approver_exceptions.employee_approver_exceptions import (
+			get_data,
+		)
 
 		rows = get_data(frappe._dict(department=NDT))
 		issues = {r["issue"] for r in rows}
@@ -317,12 +357,22 @@ class TestHierarchyAndProjects(HRTestCase):
 
 	def test_project_is_named_after_the_client_job_code(self):
 		doc = frappe.get_doc(
-			{"doctype": "Project", "project_name": "Test Job", "custom_project_code": "NRT-9999", "company": dev_seed.COMPANY}
+			{
+				"doctype": "Project",
+				"project_name": "Test Job",
+				"custom_project_code": "NRT-9999",
+				"company": dev_seed.COMPANY,
+			}
 		).insert(ignore_permissions=True)
 		self.assertEqual(doc.name, "NRT-9999")
 		with self.assertRaises(frappe.DuplicateEntryError):
 			frappe.get_doc(
-				{"doctype": "Project", "project_name": "Dup", "custom_project_code": "NRT-9999", "company": dev_seed.COMPANY}
+				{
+					"doctype": "Project",
+					"project_name": "Dup",
+					"custom_project_code": "NRT-9999",
+					"company": dev_seed.COMPANY,
+				}
 			).insert(ignore_permissions=True)
 
 	def test_supervisor_can_create_project_but_not_delete(self):
@@ -351,7 +401,14 @@ class TestPayBatch(HRTestCase):
 			frappe.get_doc({"doctype": "Pay Batch", "batch_name": "Sponsor A"}).insert()
 		emp = frappe.db.get_value("Employee", {"employee_number": "T103"}, "name")
 		frappe.db.set_value("Employee", emp, "custom_pay_batch", "Main")
-		doc = frappe._dict(pay_batch="Sponsor A", month="October", year=2026, posting_date=today(), company=dev_seed.COMPANY, submit_after_create=0)
+		doc = frappe._dict(
+			pay_batch="Sponsor A",
+			month="October",
+			year=2026,
+			posting_date=today(),
+			company=dev_seed.COMPANY,
+			submit_after_create=0,
+		)
 		status, sheet, employee, message = _process_row(doc, {"code": "T103"})
 		self.assertEqual(status, "Skipped")
 		self.assertIn("Sponsor A", message)
@@ -365,7 +422,7 @@ class TestPayBatch(HRTestCase):
 
 class TestReviewHardening(HRTestCase):
 	def _tech(self, n):
-		return frappe.db.get_value("Employee", {"employee_number": "T%d" % n}, "name")
+		return frappe.db.get_value("Employee", {"employee_number": f"T{n}"}, "name")
 
 	def test_plain_employee_cannot_use_the_workspace_api(self):
 		frappe.set_user("tech101" + dev_seed.DOMAIN)
@@ -383,7 +440,12 @@ class TestReviewHardening(HRTestCase):
 	def test_supervisor_cannot_insert_an_old_checkin_for_a_technician(self):
 		frappe.set_user(dev_seed.email("anil"))
 		doc = frappe.get_doc(
-			{"doctype": "Employee Checkin", "employee": self._tech(119), "log_type": "IN", "time": add_to_date(now_datetime(), hours=-70)}
+			{
+				"doctype": "Employee Checkin",
+				"employee": self._tech(119),
+				"log_type": "IN",
+				"time": add_to_date(now_datetime(), hours=-70),
+			}
 		)
 		with self.assertRaises(frappe.ValidationError):
 			doc.insert()
@@ -392,7 +454,12 @@ class TestReviewHardening(HRTestCase):
 		frappe.set_user(dev_seed.email("anil"))
 		frappe.db.delete("Employee Checkin", {"employee": emp_of("anil")})
 		doc = frappe.get_doc(
-			{"doctype": "Employee Checkin", "employee": emp_of("anil"), "log_type": "IN", "time": add_to_date(now_datetime(), hours=-72)}
+			{
+				"doctype": "Employee Checkin",
+				"employee": emp_of("anil"),
+				"log_type": "IN",
+				"time": add_to_date(now_datetime(), hours=-72),
+			}
 		)
 		doc.insert()  # an offline punch draining late is a normal check-in, not a supervisor edit
 		self.assertTrue(doc.name)
@@ -401,7 +468,12 @@ class TestReviewHardening(HRTestCase):
 		frappe.set_user("Administrator")
 		frappe.db.delete("Employee Checkin", {"employee": self._tech(120)})
 		old = frappe.get_doc(
-			{"doctype": "Employee Checkin", "employee": self._tech(120), "log_type": "IN", "time": add_to_date(now_datetime(), hours=-60)}
+			{
+				"doctype": "Employee Checkin",
+				"employee": self._tech(120),
+				"log_type": "IN",
+				"time": add_to_date(now_datetime(), hours=-60),
+			}
 		).insert()
 		frappe.set_user(dev_seed.email("anil"))
 		doc = frappe.get_doc("Employee Checkin", old.name)
@@ -411,10 +483,22 @@ class TestReviewHardening(HRTestCase):
 
 	def test_edit_blocked_once_the_attendance_is_approved(self):
 		attendance_gen.generate(add_days(today(), -3), today())
-		att = frappe.get_all("Attendance", filters={"department": LS, "attendance_date": add_days(today(), -1), "docstatus": 1}, pluck="name")[0]
+		att = frappe.get_all(
+			"Attendance",
+			filters={"department": LS, "attendance_date": add_days(today(), -1), "docstatus": 1},
+			pluck="name",
+		)[0]
 		frappe.db.set_value("Attendance", att, "workflow_state", "Approved")
 		emp, day = frappe.db.get_value("Attendance", att, ["employee", "attendance_date"])
-		log = frappe.get_all("Employee Checkin", filters={"employee": emp, "log_type": "IN", "time": ["between", [str(day) + " 00:00:00", str(day) + " 23:59:59"]]}, pluck="name")[0]
+		log = frappe.get_all(
+			"Employee Checkin",
+			filters={
+				"employee": emp,
+				"log_type": "IN",
+				"time": ["between", [str(day) + " 00:00:00", str(day) + " 23:59:59"]],
+			},
+			pluck="name",
+		)[0]
 		frappe.set_user(dev_seed.email("anil"))
 		doc = frappe.get_doc("Employee Checkin", log)
 		with self.assertRaises(frappe.ValidationError):
@@ -432,16 +516,24 @@ class TestReviewHardening(HRTestCase):
 		frappe.db.delete("Attendance", {"employee": tech})
 		start = now.replace(hour=0, minute=30, second=0, microsecond=0)
 		for log_type, t in (("IN", start), ("OUT", add_to_date(now, hours=-1))):
-			frappe.get_doc({"doctype": "Employee Checkin", "employee": tech, "log_type": log_type, "time": t}).insert(ignore_permissions=True)
+			frappe.get_doc(
+				{"doctype": "Employee Checkin", "employee": tech, "log_type": log_type, "time": t}
+			).insert(ignore_permissions=True)
 		attendance_gen.generate(today(), today())
 		self.assertFalse(frappe.db.exists("Attendance", {"employee": tech}))  # lunch-break OUT: too early
-		frappe.db.set_value("Employee Checkin", {"employee": tech, "log_type": "OUT"}, "time", add_to_date(now, hours=-4))
+		frappe.db.set_value(
+			"Employee Checkin", {"employee": tech, "log_type": "OUT"}, "time", add_to_date(now, hours=-4)
+		)
 		attendance_gen.generate(today(), today())
 		self.assertTrue(frappe.db.exists("Attendance", {"employee": tech, "docstatus": 1}))
 
 	def test_cancelled_attendance_is_not_recreated(self):
 		attendance_gen.generate(add_days(today(), -3), today())
-		att = frappe.get_all("Attendance", filters={"department": LS, "attendance_date": add_days(today(), -1), "docstatus": 1}, pluck="name")[0]
+		att = frappe.get_all(
+			"Attendance",
+			filters={"department": LS, "attendance_date": add_days(today(), -1), "docstatus": 1},
+			pluck="name",
+		)[0]
 		frappe.get_doc("Attendance", att).cancel()
 		again = attendance_gen.generate(add_days(today(), -3), today())
 		self.assertEqual(again["created"], 0)
@@ -454,7 +546,9 @@ class TestReviewHardening(HRTestCase):
 
 	def test_self_permission_is_restored_when_the_supervisor_role_is_removed(self):
 		mail = "tech101" + dev_seed.DOMAIN
-		for up in frappe.get_all("User Permission", filters={"user": mail, "allow": "Employee"}, pluck="name"):
+		for up in frappe.get_all(
+			"User Permission", filters={"user": mail, "allow": "Employee"}, pluck="name"
+		):
 			frappe.delete_doc("User Permission", up, force=True, ignore_permissions=True)
 		scope.restore_self_permission(mail)
 		self.assertTrue(frappe.db.exists("User Permission", {"user": mail, "allow": "Employee"}))
@@ -488,19 +582,29 @@ class TestMobileApprovalFlow(HRTestCase):
 		self.assertTrue(pending)
 		yesterday = add_days(today(), -1)
 		# only yesterday's records are inside the 48h correction window
-		name = next(a["name"] for a in pending if str(frappe.db.get_value("Attendance", a["name"], "attendance_date")) == yesterday)
+		name = next(
+			a["name"]
+			for a in pending
+			if str(frappe.db.get_value("Attendance", a["name"], "attendance_date")) == yesterday
+		)
 		detail = approvals.detail(name)
 		first_in = next(c for c in detail["checkins"] if c["log_type"] == "IN")
 		hours_before = frappe.db.get_value("Attendance", name, "working_hours")
 
 		# move the IN 30 minutes later (the app sends UTC ISO strings)
 		moved = add_to_date(frappe.db.get_value("Employee Checkin", first_in["name"], "time"), minutes=30)
-		approvals.update_checkin_times(name, [{"checkin": first_in["name"], "time": approvals._naive_site_to_utc_iso(moved)}])
+		approvals.update_checkin_times(
+			name, [{"checkin": first_in["name"], "time": approvals._naive_site_to_utc_iso(moved)}]
+		)
 		self.assertEqual(frappe.db.get_value("Employee Checkin", first_in["name"], "time"), moved)
-		self.assertAlmostEqual(frappe.db.get_value("Attendance", name, "working_hours"), hours_before - 0.5, places=1)
+		self.assertAlmostEqual(
+			frappe.db.get_value("Attendance", name, "working_hours"), hours_before - 0.5, places=1
+		)
 
 		approvals.approve(name)
-		self.assertEqual(frappe.db.get_value("Attendance", name, "workflow_state"), "Pending Level 2 Approval")
+		self.assertEqual(
+			frappe.db.get_value("Attendance", name, "workflow_state"), "Pending Level 2 Approval"
+		)
 		self.assertEqual(frappe.db.get_value("Attendance", name, "current_approver"), emp_of("khalid"))
 
 	def test_other_supervisor_cannot_approve(self):
@@ -524,8 +628,8 @@ class TestWorkspaceUIBackend(HRTestCase):
 		frappe.set_user(dev_seed.email("anil"))
 		team = {t["employee"]: t for t in supervisor.get_team(add_days(today(), -1))}
 		tech = team[sorted(team_of(LS))[0]]
-		self.assertEqual(tech["pending"], 2)       # yesterday + the day before
-		self.assertEqual(tech["pending_day"], 1)   # only the selected day
+		self.assertEqual(tech["pending"], 2)  # yesterday + the day before
+		self.assertEqual(tech["pending_day"], 1)  # only the selected day
 		today_view = supervisor.get_team(today())
 		self.assertTrue(all(t["pending_day"] == 0 for t in today_view))
 
@@ -535,7 +639,10 @@ class TestWorkspaceUIBackend(HRTestCase):
 		one = supervisor.get_pending_grouped(day, scope="day")
 		earlier = supervisor.get_pending_grouped(day, scope="earlier")
 		everything = supervisor.get_pending_grouped(day, scope="all")
-		count = lambda groups: sum(len(g["items"]) for g in groups)
+
+		def count(groups):
+			return sum(len(g["items"]) for g in groups)
+
 		self.assertEqual(count(one), len(team_of(LS)))
 		self.assertEqual(count(earlier), len(team_of(LS)))
 		self.assertEqual(count(everything), count(one) + count(earlier))
@@ -553,17 +660,24 @@ class TestWorkspaceUIBackend(HRTestCase):
 		res = supervisor.approve_attendance(name)
 		self.assertEqual(res["state"], "Pending Level 2 Approval")
 		frappe.set_user(dev_seed.email("khalid"))
-		self.assertEqual(supervisor.get_pending_grouped(add_days(today(), -1), scope="day")[0]["items"][0]["attendance"], name)
+		self.assertEqual(
+			supervisor.get_pending_grouped(add_days(today(), -1), scope="day")[0]["items"][0]["attendance"],
+			name,
+		)
 
 	def test_approve_many_reports_each_failure_and_keeps_going(self):
 		frappe.set_user(dev_seed.email("anil"))
-		items = [i["attendance"] for g in supervisor.get_pending_grouped(add_days(today(), -1), scope="day") for i in g["items"]][:3]
+		items = [
+			i["attendance"]
+			for g in supervisor.get_pending_grouped(add_days(today(), -1), scope="day")
+			for i in g["items"]
+		][:3]
 		frappe.set_user(dev_seed.email("saleh"))
 		res = supervisor.approve_many(items)  # not Saleh's team / not assigned to him
 		self.assertEqual(res["approved"], [])
 		self.assertEqual(len(res["failed"]), 3)
 		frappe.set_user(dev_seed.email("anil"))
-		res = supervisor.approve_many(items + ["NO-SUCH-ATT"])
+		res = supervisor.approve_many([*items, "NO-SUCH-ATT"])
 		self.assertEqual(len(res["approved"]), 3)
 		self.assertEqual(len(res["failed"]), 1)
 
@@ -582,7 +696,10 @@ class TestWorkspaceUIBackend(HRTestCase):
 
 	def test_workspace_has_number_cards_and_link_cards(self):
 		ws = frappe.get_doc("Workspace", "Supervisor Desk")
-		self.assertEqual({r.number_card_name for r in ws.number_cards}, {"Team Pending Approvals", "Team Check-ins Today", "Team Members"})
+		self.assertEqual(
+			{r.number_card_name for r in ws.number_cards},
+			{"Team Pending Approvals", "Team Check-ins Today", "Team Members"},
+		)
 		cards = [r.label for r in ws.links if r.type == "Card Break"]
 		self.assertEqual(cards, ["My Team", "Attendance & Approvals", "Projects & Sites", "HR Tools"])
 		self.assertIn('"type": "card"', ws.content)

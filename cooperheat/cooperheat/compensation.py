@@ -64,7 +64,9 @@ def get_for_employee(employee: str) -> dict:
 	_check_access("read")
 	if not frappe.db.exists("Employee", employee):
 		frappe.throw(_("Employee {0} was not found.").format(employee))
-	records = frappe.get_all(DT, filters={"employee": employee}, pluck="name", order_by="from_date desc, creation desc")
+	records = frappe.get_all(
+		DT, filters={"employee": employee}, pluck="name", order_by="from_date desc, creation desc"
+	)
 	docs = [frappe.get_doc(DT, name) for name in records]
 	current = next((d for d in docs if cint(d.is_active) and getdate(d.from_date) <= getdate(today())), None)
 	return {
@@ -89,9 +91,15 @@ def save(employee: str, values, from_date=None, record=None, notes=None) -> dict
 		if doc.employee != employee:
 			frappe.throw(_("{0} does not belong to {1}.").format(record, employee))
 		if from_date and getdate(from_date) != getdate(doc.from_date):
-			clash = frappe.db.get_value(DT, {"employee": employee, "from_date": getdate(from_date), "name": ["!=", record]})
+			clash = frappe.db.get_value(
+				DT, {"employee": employee, "from_date": getdate(from_date), "name": ["!=", record]}
+			)
 			if clash:
-				frappe.throw(_("Another compensation record exists for {0} from {1}: {2}").format(employee, from_date, clash))
+				frappe.throw(
+					_("Another compensation record exists for {0} from {1}: {2}").format(
+						employee, from_date, clash
+					)
+				)
 			doc.from_date = from_date
 	else:
 		_check_access("create")
@@ -100,15 +108,28 @@ def save(employee: str, values, from_date=None, record=None, notes=None) -> dict
 		clash = frappe.db.get_value(DT, {"employee": employee, "from_date": getdate(from_date)})
 		if clash:
 			frappe.throw(
-				_("A compensation record already exists for {0} from {1}: {2}. Use Correct this record to change it.").format(
-					employee, from_date, clash
-				)
+				_(
+					"A compensation record already exists for {0} from {1}: {2}. Use Correct this record to change it."
+				).format(employee, from_date, clash)
 			)
-		latest = frappe.get_all(DT, filters={"employee": employee}, fields=["currency"], order_by="from_date desc", limit=1)
+		latest = frappe.get_all(
+			DT, filters={"employee": employee}, fields=["currency"], order_by="from_date desc", limit=1
+		)
 		doc = frappe.new_doc(DT)
-		doc.update({"employee": employee, "from_date": from_date, "is_active": 1, "currency": latest[0].currency if latest else "SAR"})
+		doc.update(
+			{
+				"employee": employee,
+				"from_date": from_date,
+				"is_active": 1,
+				"currency": latest[0].currency if latest else "SAR",
+			}
+		)
 	if not frappe.db.get_value("Employee", employee, "nationality"):
-		frappe.throw(_("Set the Nationality on the Overview tab first: it decides the Saudi / Expat category used for GOSI."))
+		frappe.throw(
+			_(
+				"Set the Nationality on the Overview tab first: it decides the Saudi / Expat category used for GOSI."
+			)
+		)
 	doc.update(values)
 	if notes is not None:
 		doc.notes = notes

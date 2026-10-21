@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe.utils import cint, flt
+
 from cooperheat.cooperheat.api.tasks import process_attendance_approval_windows
 
 
@@ -9,6 +10,7 @@ def get_approval_matrix_approver(department=None, level=1, employee=None):
 	"""Return the approver employee and their linked user for an employee + level
 	(from the employee's own reporting line; *department* is ignored)."""
 	from cooperheat.cooperheat.overrides.attendance import _get_matrix, _row_for_level
+
 	matrix = _get_matrix(department, employee)
 	row = _row_for_level(matrix, cint(level))
 	if not row:
@@ -64,7 +66,7 @@ def get_assigned_projects(employee, date):
 	)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def recalculate_site_hours(attendance_name):
 	"""Recalculate and refresh the site hours table on a submitted Attendance record.
 
@@ -74,8 +76,11 @@ def recalculate_site_hours(attendance_name):
 
 	is_hr_manager = "HR Manager" in frappe.get_roles(frappe.session.user)
 	if not is_hr_manager:
-		from cooperheat.cooperheat.overrides.attendance import _get_matrix, _row_for_level, _approver_user
-		att = frappe.db.get_value("Attendance", attendance_name, ["workflow_state", "department", "employee"], as_dict=True)
+		from cooperheat.cooperheat.overrides.attendance import _approver_user, _get_matrix, _row_for_level
+
+		att = frappe.db.get_value(
+			"Attendance", attendance_name, ["workflow_state", "department", "employee"], as_dict=True
+		)
 		level_map = {
 			"Pending Level 1 Approval": 1,
 			"Pending Level 2 Approval": 2,
@@ -83,14 +88,19 @@ def recalculate_site_hours(attendance_name):
 		}
 		level = level_map.get(att.workflow_state if att else "")
 		if not level:
-			frappe.throw(_("Only HR Managers can recalculate site hours on an approved or non-pending record."))
+			frappe.throw(
+				_("Only HR Managers can recalculate site hours on an approved or non-pending record.")
+			)
 		matrix = _get_matrix(att.department, att.employee)
 		row = _row_for_level(matrix, level)
 		if not row or _approver_user(row.approver) != frappe.session.user:
-			frappe.throw(_("Only the Level {0} approver or an HR Manager can recalculate site hours.").format(level))
+			frappe.throw(
+				_("Only the Level {0} approver or an HR Manager can recalculate site hours.").format(level)
+			)
 
 	doc = frappe.get_doc("Attendance", attendance_name)
-	from cooperheat.cooperheat.overrides.attendance import _populate_site_hours, _correct_status_on_submitted
+	from cooperheat.cooperheat.overrides.attendance import _correct_status_on_submitted, _populate_site_hours
+
 	_populate_site_hours(doc)
 	# Reload to pick up the working_hours written by _populate_site_hours, then
 	# re-run the status correction so Half Day / Present is set correctly.
@@ -139,8 +149,17 @@ def get_pending_level3_records(employee=None, department=None, from_date=None, t
 	records = frappe.get_all(
 		"Attendance",
 		filters=filters,
-		fields=["name", "employee", "employee_name", "attendance_date",
-				"department", "in_time", "out_time", "working_hours", "status"],
+		fields=[
+			"name",
+			"employee",
+			"employee_name",
+			"attendance_date",
+			"department",
+			"in_time",
+			"out_time",
+			"working_hours",
+			"status",
+		],
 		order_by="attendance_date asc, employee asc",
 		limit=500,
 	)
@@ -169,7 +188,7 @@ def get_pending_level3_records(employee=None, department=None, from_date=None, t
 	return records
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def level3_approve_attendance(name, in_time=None, out_time=None, working_hours=None, status=None):
 	"""Update editable fields (if changed) and apply Level 3 Approve workflow action.
 
@@ -216,7 +235,7 @@ def level3_approve_attendance(name, in_time=None, out_time=None, working_hours=N
 	return {"status": "approved"}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def bulk_level3_approve():
 	"""Approve every Attendance record in 'Pending Level 3 Approval'. Payroll Approver / HR Manager only."""
 	from frappe.model.workflow import apply_workflow
@@ -249,5 +268,3 @@ def bulk_level3_approve():
 			errors.append(name)
 
 	return {"count": approved, "errors": errors}
-
-
