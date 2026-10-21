@@ -75,28 +75,55 @@ QUEUE_STATUS = {
 SLIP_STATUS = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
 
 ROW_FIELDS = [
-	"name", "idx", "doc_no", "code", "employee", "employee_name", "payroll_sheet", "row_status", "message",
-	"salary_slip", "slip_status", "slip_error",
-	"email_status", "email_to", "email_sent_on", "email_error", "email_queue",
+	"name",
+	"idx",
+	"doc_no",
+	"code",
+	"employee",
+	"employee_name",
+	"payroll_sheet",
+	"row_status",
+	"message",
+	"salary_slip",
+	"slip_status",
+	"slip_error",
+	"email_status",
+	"email_to",
+	"email_sent_on",
+	"email_error",
+	"email_queue",
 ]
 
 # The columns compute_rows() derives and sync_rows() writes back onto each row.
 STATE_FIELDS = [
-	"salary_slip", "slip_status", "slip_error",
-	"email_status", "email_to", "email_sent_on", "email_error", "email_queue",
+	"salary_slip",
+	"slip_status",
+	"slip_error",
+	"email_status",
+	"email_to",
+	"email_sent_on",
+	"email_error",
+	"email_queue",
 ]
 
 SHEET_FIELDS = ["name", "docstatus", "salary_slip", "employee", "month", "year", "net_payable", "currency"]
 SLIP_FIELDS = ["name", "docstatus", "employee", "start_date", "end_date", "net_pay", "currency"]
 QUEUE_FIELDS = ["name", "status", "error", "modified", "retry"]
 EMPLOYEE_FIELDS = [
-	"name", "employee_name", "department", "prefered_email", "company_email", "personal_email", "user_id",
+	"name",
+	"employee_name",
+	"department",
+	"prefered_email",
+	"company_email",
+	"personal_email",
+	"user_id",
 ]
 
 
 # ---------------------------------------------------------------------------
 # Row state (single source of truth)
 # ---------------------------------------------------------------------------
+
 
 def employee_email(emp):
 	"""First usable address: the preferred one, then company, personal, then the login id."""
@@ -129,8 +156,12 @@ def _rows(name, row_names=None):
 	if row_names:
 		filters["name"] = ["in", list(row_names)]
 	return frappe.get_all(
-		ROW_DT, filters=filters, fields=ROW_FIELDS, order_by="idx asc, creation asc",
-		parent_doctype=IMPORT_DT, limit_page_length=0,
+		ROW_DT,
+		filters=filters,
+		fields=ROW_FIELDS,
+		order_by="idx asc, creation asc",
+		parent_doctype=IMPORT_DT,
+		limit_page_length=0,
 	)
 
 
@@ -146,7 +177,14 @@ def _never_mailed(r):
 def _load(rows):
 	"""Batch-read everything the row states depend on - a handful of queries, not N per row."""
 	ctx = frappe._dict(
-		sheets={}, slips={}, by_period={}, employees={}, queues={}, latest_queue={}, recipient={}, row_slip={},
+		sheets={},
+		slips={},
+		by_period={},
+		employees={},
+		queues={},
+		latest_queue={},
+		recipient={},
+		row_slip={},
 	)
 
 	sheet_names = sorted({r.payroll_sheet for r in rows if r.payroll_sheet})
@@ -175,7 +213,9 @@ def _load(rows):
 				"start_date": [">=", min(p[0] for p in periods)],
 				"end_date": ["<=", max(p[1] for p in periods)],
 			},
-			fields=SLIP_FIELDS, order_by="creation asc", limit_page_length=0,
+			fields=SLIP_FIELDS,
+			order_by="creation asc",
+			limit_page_length=0,
 		):
 			# oldest first, so the newest slip for a period wins
 			ctx.by_period[(s.employee, getdate(s.start_date), getdate(s.end_date))] = s
@@ -192,10 +232,15 @@ def _load(rows):
 		# a cancelled back-link with nothing newer still shows up, as "Cancelled"
 		ctx.row_slip[r.name] = slip or linked_slip
 
-	emp_names = {r.employee for r in rows if r.employee} | {s.employee for s in ctx.sheets.values() if s.employee}
+	emp_names = {r.employee for r in rows if r.employee} | {
+		s.employee for s in ctx.sheets.values() if s.employee
+	}
 	if emp_names:
 		for e in frappe.get_all(
-			"Employee", filters={"name": ["in", sorted(emp_names)]}, fields=EMPLOYEE_FIELDS, limit_page_length=0
+			"Employee",
+			filters={"name": ["in", sorted(emp_names)]},
+			fields=EMPLOYEE_FIELDS,
+			limit_page_length=0,
 		):
 			ctx.employees[e.name] = e
 
@@ -207,22 +252,28 @@ def _load(rows):
 			ctx.queues[q.name] = q
 
 	# Rows never mailed from here may still have been mailed by HRMS when the slip was submitted.
-	unmailed = sorted({
-		ctx.row_slip[r.name].name for r in rows if _never_mailed(r) and _live(ctx.row_slip.get(r.name))
-	})
+	unmailed = sorted(
+		{ctx.row_slip[r.name].name for r in rows if _never_mailed(r) and _live(ctx.row_slip.get(r.name))}
+	)
 	if unmailed:
 		for q in frappe.get_all(
 			"Email Queue",
 			filters={"reference_doctype": SLIP_DT, "reference_name": ["in", unmailed]},
-			fields=[*QUEUE_FIELDS, "reference_name"], order_by="creation asc", limit_page_length=0,
+			fields=[*QUEUE_FIELDS, "reference_name"],
+			order_by="creation asc",
+			limit_page_length=0,
 		):
 			ctx.latest_queue[q.reference_name] = q
 			ctx.queues[q.name] = q
 
 	if ctx.queues:
 		for rc in frappe.get_all(
-			"Email Queue Recipient", filters={"parent": ["in", sorted(ctx.queues)]},
-			fields=["parent", "recipient"], parent_doctype="Email Queue", order_by="idx asc", limit_page_length=0,
+			"Email Queue Recipient",
+			filters={"parent": ["in", sorted(ctx.queues)]},
+			fields=["parent", "recipient"],
+			parent_doctype="Email Queue",
+			order_by="idx asc",
+			limit_page_length=0,
 		):
 			ctx.recipient.setdefault(rc.parent, rc.recipient)
 
@@ -249,7 +300,11 @@ def _state(r, ctx):
 	slip_error = cstr(r.slip_error) if slip_status in ("Sheet Draft", "Not Created", "Draft") else ""
 	has_slip = slip_status in ("Draft", "Submitted")
 	# the address is shown as soon as there is a sheet, so a missing one can be fixed before slips exist
-	address = employee_email(emp) if (emp and slip_status in ("Sheet Draft", "Not Created", "Draft", "Submitted")) else ""
+	address = (
+		employee_email(emp)
+		if (emp and slip_status in ("Sheet Draft", "Not Created", "Draft", "Submitted"))
+		else ""
+	)
 
 	q = ctx.queues.get(r.email_queue) if r.email_queue else None
 	if not q and _never_mailed(r) and _live(slip):
@@ -274,10 +329,16 @@ def _state(r, ctx):
 	elif r.email_queue:
 		# the queue entry is gone (log clean-up removes old ones)
 		if r.email_status == "Sent":
-			email.update(email_queue=r.email_queue, email_status="Sent", email_to=r.email_to, email_sent_on=r.email_sent_on)
+			email.update(
+				email_queue=r.email_queue,
+				email_status="Sent",
+				email_to=r.email_to,
+				email_sent_on=r.email_sent_on,
+			)
 		else:
 			email.update(
-				email_status="Failed", email_to=r.email_to or address,
+				email_status="Failed",
+				email_to=r.email_to or address,
 				email_error=_("The queued email no longer exists. Send it again."),
 			)
 	elif r.email_status == "Failed" and has_slip:
@@ -332,18 +393,38 @@ def sync_rows(name, row_names=None):
 # Summary
 # ---------------------------------------------------------------------------
 
+
 def _summary(name):
 	rows = _rows(name)
 	s = frappe._dict(
-		rows=len(rows), with_sheet=0, sheet_draft=0, not_created=0,
-		slip_draft=0, slip_submitted=0, slip_cancelled=0,
-		mail_pending=0, mail_queued=0, mail_sent=0, mail_failed=0, mail_skipped=0, no_address=0, needs_sync=0,
+		rows=len(rows),
+		with_sheet=0,
+		sheet_draft=0,
+		not_created=0,
+		slip_draft=0,
+		slip_submitted=0,
+		slip_cancelled=0,
+		mail_pending=0,
+		mail_queued=0,
+		mail_sent=0,
+		mail_failed=0,
+		mail_skipped=0,
+		no_address=0,
+		needs_sync=0,
 	)
 	slip_key = {
-		"Sheet Draft": "sheet_draft", "Not Created": "not_created", "Draft": "slip_draft",
-		"Submitted": "slip_submitted", "Cancelled": "slip_cancelled",
+		"Sheet Draft": "sheet_draft",
+		"Not Created": "not_created",
+		"Draft": "slip_draft",
+		"Submitted": "slip_submitted",
+		"Cancelled": "slip_cancelled",
 	}
-	mail_key = {"Queued": "mail_queued", "Sent": "mail_sent", "Failed": "mail_failed", "Skipped": "mail_skipped"}
+	mail_key = {
+		"Queued": "mail_queued",
+		"Sent": "mail_sent",
+		"Failed": "mail_failed",
+		"Skipped": "mail_skipped",
+	}
 
 	for r in rows:
 		if not r.payroll_sheet:
@@ -365,9 +446,15 @@ def _summary(name):
 		elif r.slip_status == "Submitted":
 			s.mail_pending += 1
 
-	bulk = frappe.db.get_value(
-		IMPORT_DT, name, ["status", "bulk_action", "bulk_status", "bulk_message", "bulk_updated_on"], as_dict=True
-	) or {}
+	bulk = (
+		frappe.db.get_value(
+			IMPORT_DT,
+			name,
+			["status", "bulk_action", "bulk_status", "bulk_message", "bulk_updated_on"],
+			as_dict=True,
+		)
+		or {}
+	)
 	active = bulk.get("bulk_status") in ("Queued", "Running")
 	s["import_status"] = bulk.get("status")
 	s["bulk"] = {
@@ -384,6 +471,7 @@ def _summary(name):
 # Whitelisted API
 # ---------------------------------------------------------------------------
 
+
 def _check_access(name):
 	frappe.only_for(ALLOWED_ROLES)
 	if not frappe.db.exists(IMPORT_DT, name):
@@ -398,7 +486,7 @@ def get_summary(name: str):
 	return _summary(name)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def refresh_status(name: str):
 	"""Re-read slips and mail status from the source documents and store them on the rows."""
 	_check_access(name)
@@ -407,7 +495,7 @@ def refresh_status(name: str):
 	return {"changed": changed, "summary": _summary(name)}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def start_bulk(name: str, action: str, options=None):
 	"""Queue one pipeline step for the whole import. Returns at once; poll get_summary for progress."""
 	_check_access(name)
@@ -423,11 +511,18 @@ def start_bulk(name: str, action: str, options=None):
 	if action == "send_emails":
 		_assert_outgoing_email()
 
-	_set_bulk(name, bulk_action=ACTIONS[action], bulk_status="Queued", bulk_message=_("Waiting for a worker..."))
+	_set_bulk(
+		name, bulk_action=ACTIONS[action], bulk_status="Queued", bulk_message=_("Waiting for a worker...")
+	)
 	job = frappe.enqueue(
 		"cooperheat.cooperheat.doctype.payroll_import.slip_dispatch.run_bulk",
-		queue="long", timeout=7200, job_id=f"payroll_import_bulk::{name}", deduplicate=True,
-		name=name, action=action, options=dict(options),
+		queue="long",
+		timeout=7200,
+		job_id=f"payroll_import_bulk::{name}",
+		deduplicate=True,
+		name=name,
+		action=action,
+		options=dict(options),
 	)
 	if not job:
 		frappe.throw(_("An action for this import is already queued. Wait for it to finish."))
@@ -468,6 +563,7 @@ def resend_email(name: str, row: str):
 # Background job
 # ---------------------------------------------------------------------------
 
+
 def _is_stale(updated_on):
 	return not updated_on or time_diff_in_seconds(now_datetime(), updated_on) > STALE_AFTER_SECONDS
 
@@ -480,20 +576,29 @@ def _set_bulk(name, **fields):
 
 def _assert_outgoing_email():
 	account = frappe.db.get_value(
-		"Email Account", {"enable_outgoing": 1, "default_outgoing": 1}, ["name", "awaiting_password"], as_dict=True
+		"Email Account",
+		{"enable_outgoing": 1, "default_outgoing": 1},
+		["name", "awaiting_password"],
+		as_dict=True,
 	)
 	if not account and not frappe.conf.get("mail_server"):
-		frappe.throw(_("No default outgoing Email Account is set up. Configure one under Email Account first."))
+		frappe.throw(
+			_("No default outgoing Email Account is set up. Configure one under Email Account first.")
+		)
 	if account and cint(account.awaiting_password):
 		frappe.throw(
-			_("Email Account {0} is still awaiting its password. Save the password there first.").format(account.name)
+			_("Email Account {0} is still awaiting its password. Save the password there first.").format(
+				account.name
+			)
 		)
 
 
 def _eligible(action, state, options):
 	slip_status = state["slip_status"]
 	if action == "create_slips":
-		return slip_status == "Not Created" or (slip_status == "Sheet Draft" and cint(options.get("submit_sheets")))
+		return slip_status == "Not Created" or (
+			slip_status == "Sheet Draft" and cint(options.get("submit_sheets"))
+		)
 	if action == "submit_slips":
 		return slip_status == "Draft"
 	if action == "send_emails":
@@ -531,7 +636,8 @@ def run_bulk(name, action, options=None):
 		frappe.db.rollback()
 		frappe.log_error(title=f"Payroll Import {name}: {label} stopped", message=frappe.get_traceback())
 		_set_bulk(
-			name, bulk_status="Failed",
+			name,
+			bulk_status="Failed",
 			bulk_message=_("{0} stopped unexpectedly after {1} employee(s). See the Error Log.").format(
 				label, counts.ok + counts.failed + counts.skipped
 			),
@@ -576,7 +682,9 @@ def _process(name, action, r, state, options):
 	if outcome == "failed":
 		if action == "send_emails":
 			frappe.db.set_value(
-				ROW_DT, r.name, {"email_status": "Failed", "email_error": error, "email_queue": ""},
+				ROW_DT,
+				r.name,
+				{"email_status": "Failed", "email_error": error, "email_queue": ""},
 				update_modified=False,
 			)
 		else:
@@ -609,6 +717,7 @@ def _error_text(e):
 # Steps
 # ---------------------------------------------------------------------------
 
+
 @contextmanager
 def _mailing_is_separate():
 	"""HRMS mails a slip from Salary Slip.on_submit when Payroll Settings has "Email Salary
@@ -637,7 +746,8 @@ def _live_formula_row(structure, component):
 	rows = frappe.get_all(
 		"Salary Detail",
 		filters={"parent": structure, "salary_component": component, "amount_based_on_formula": 1},
-		fields=["condition"], parent_doctype="Salary Structure",
+		fields=["condition"],
+		parent_doctype="Salary Structure",
 	)
 	return any(not cstr(r.condition).strip() for r in rows)
 
@@ -665,7 +775,10 @@ def _slip_differences(slip_name, sheet):
 		expected[component] = expected.get(component, 0.0) + flt(sheet.get(field))
 	got: dict[str, float] = {}
 	for r in frappe.get_all(
-		"Salary Detail", filters={"parent": slip_name}, fields=["salary_component", "amount"], parent_doctype=SLIP_DT
+		"Salary Detail",
+		filters={"parent": slip_name},
+		fields=["salary_component", "amount"],
+		parent_doctype=SLIP_DT,
 	):
 		got[r.salary_component] = got.get(r.salary_component, 0.0) + flt(r.amount)
 
@@ -745,10 +858,14 @@ def _step_send(r, state):
 		return "skipped"
 	queue = queue_slip_email(state["salary_slip"], address)
 	frappe.db.set_value(
-		ROW_DT, r.name,
+		ROW_DT,
+		r.name,
 		{
-			"email_queue": queue, "email_status": "Queued", "email_to": address,
-			"email_error": "", "email_sent_on": None,
+			"email_queue": queue,
+			"email_status": "Queued",
+			"email_to": address,
+			"email_error": "",
+			"email_sent_on": None,
 		},
 		update_modified=False,
 	)
@@ -761,6 +878,7 @@ STEPS = {"create_slips": _step_create, "submit_slips": _step_submit}
 # ---------------------------------------------------------------------------
 # Email
 # ---------------------------------------------------------------------------
+
 
 def slip_print_format():
 	"""The Print Format for the emailed PDF: Pay Sheet Settings, else "Salary Slip" if present."""
@@ -809,14 +927,20 @@ def queue_slip_email(slip_name, address):
 
 		password = generate_password_for_pdf(settings.password_policy, slip.employee)
 		if not settings.email_template:
-			message += "<p>" + _(
-				"Note: Your salary slip is password protected, the password to unlock the PDF is of the format {0}."
-			).format(settings.password_policy) + "</p>"
+			message += (
+				"<p>"
+				+ _(
+					"Note: Your salary slip is password protected, the password to unlock the PDF is of the format {0}."
+				).format(settings.password_policy)
+				+ "</p>"
+			)
 
 	attachment = frappe.attach_print(
-		SLIP_DT, slip.name,
+		SLIP_DT,
+		slip.name,
 		file_name=f"Payslip-{slip.employee}-{getdate(slip.start_date).strftime('%B-%Y')}",
-		print_format=slip_print_format(), password=password,
+		print_format=slip_print_format(),
+		password=password,
 	)
 	queued = frappe.sendmail(
 		recipients=[address],

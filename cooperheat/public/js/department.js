@@ -4,7 +4,9 @@ frappe.ui.form.on("Department", {
 		if (frm.is_new() || !frm.doc.parent_department) return;
 		frm.add_custom_button(__("Open in Division"), () => {
 			const kind = cooperheat_kind_of(frm.doc.custom_unit_type);
-			frappe.set_route(...["division", kind, kind === "Other" ? null : frm.doc.name].filter(Boolean));
+			frappe.set_route(
+				...["division", kind, kind === "Other" ? null : frm.doc.name].filter(Boolean)
+			);
 		});
 		cooperheat_department_overview(frm);
 	},
@@ -24,16 +26,18 @@ frappe.ui.form.on("Department", {
 	},
 	parent_department(frm) {
 		if (!frm.doc.parent_department || frm.doc.custom_unit_type) return;
-		frappe.db.get_value("Department", frm.doc.parent_department, "custom_unit_type").then((r) => {
-			const child = cooperheat_child_type((r.message || {}).custom_unit_type);
-			if (child && !frm.doc.custom_unit_type) frm.set_value("custom_unit_type", child);
-		});
+		frappe.db
+			.get_value("Department", frm.doc.parent_department, "custom_unit_type")
+			.then((r) => {
+				const child = cooperheat_child_type((r.message || {}).custom_unit_type);
+				if (child && !frm.doc.custom_unit_type) frm.set_value("custom_unit_type", child);
+			});
 	},
 });
 
 const COOPERHEAT_CHILD_TYPE = {
-	"Division": "Department",
-	"Department": "Sub-Department",
+	Division: "Department",
+	Department: "Sub-Department",
 	"Sub-Department": "Sub-Department",
 	"Business Line": "Product Line",
 	"Product Line": "Sub-Product Line",
@@ -42,7 +46,8 @@ const COOPERHEAT_CHILD_TYPE = {
 
 function cooperheat_kind_of(unit_type) {
 	if (["Division", "Department", "Sub-Department"].includes(unit_type)) return "Division";
-	if (["Business Line", "Product Line", "Sub-Product Line"].includes(unit_type)) return "Business Line";
+	if (["Business Line", "Product Line", "Sub-Product Line"].includes(unit_type))
+		return "Business Line";
 	return "Other";
 }
 
@@ -61,7 +66,10 @@ function cooperheat_department_overview(frm) {
 			if (child_type && frm.doc.docstatus < 1 && frappe.model.can_create("Department")) {
 				frm.add_custom_button(__("Add {0}", [__(child_type)]), () => {
 					frappe.cooperheat_return_to_tree = false;
-					frappe.cooperheat_return_to_division = { kind: cooperheat_kind_of(child_type), node: frm.doc.name };
+					frappe.cooperheat_return_to_division = {
+						kind: cooperheat_kind_of(child_type),
+						node: frm.doc.name,
+					};
 					frappe.new_doc("Department", {
 						parent_department: frm.doc.name,
 						company: frm.doc.company,
@@ -71,19 +79,25 @@ function cooperheat_department_overview(frm) {
 			}
 			let html;
 			if (!data.children.length) {
-				html = `<div class="text-muted">${__("Nothing under {0} yet.", [frappe.utils.escape_html(frm.doc.department_name)])}</div>`;
+				html = `<div class="text-muted">${__("Nothing under {0} yet.", [
+					frappe.utils.escape_html(frm.doc.department_name),
+				])}</div>`;
 			} else {
 				const rows = data.children
 					.map(
 						(c) => `<tr>
-							<td><a href="/app/department/${encodeURIComponent(c.name)}">${frappe.utils.escape_html(c.department_name)}</a></td>
+							<td><a href="/app/department/${encodeURIComponent(c.name)}">${frappe.utils.escape_html(
+							c.department_name
+						)}</a></td>
 							<td class="text-muted">${frappe.utils.escape_html(__(c.custom_unit_type || ""))}</td>
 							<td class="text-right">${cint(c.employees)}</td>
 						</tr>`
 					)
 					.join("");
 				html = `<table class="table table-sm" style="margin:0">
-					<thead><tr><th>${__("Name")}</th><th>${__("Type")}</th><th class="text-right">${__("Employees")}</th></tr></thead>
+					<thead><tr><th>${__("Name")}</th><th>${__("Type")}</th><th class="text-right">${__(
+					"Employees"
+				)}</th></tr></thead>
 					<tbody>${rows}</tbody></table>`;
 			}
 			frm.dashboard.add_section(html, __("Contains ({0})", [data.children.length]));

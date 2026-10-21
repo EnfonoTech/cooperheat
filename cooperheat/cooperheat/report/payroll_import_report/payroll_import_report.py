@@ -3,69 +3,78 @@ from frappe import _
 
 
 def execute(filters=None):
-    filters = frappe._dict(filters or {})
-    columns = get_columns()
-    data = get_data(filters)
-    return columns, data
+	filters = frappe._dict(filters or {})
+	columns = get_columns()
+	data = get_data(filters)
+	return columns, data
 
 
 def get_columns():
-    return [
-        {"label": _("DocNo"),      "fieldname": "doc_no",    "fieldtype": "Data",     "width": 130},
-        {"label": _("Code"),       "fieldname": "code",      "fieldtype": "Link",     "options": "Employee", "width": 120},
-        {"label": _("Month"),      "fieldname": "month",     "fieldtype": "Data",     "width": 100},
-        {"label": _("Total Present Days"), "fieldname": "days", "fieldtype": "Float",    "precision": 1, "width": 130},
-        {"label": _("OT"),         "fieldname": "ot",        "fieldtype": "Float",    "precision": 2, "width": 80},
-        {"label": _("HOT"),        "fieldname": "hot",       "fieldtype": "Float",    "precision": 2, "width": 80},
-        {"label": _("Expenses"),   "fieldname": "expenses",  "fieldtype": "Currency", "width": 100},
-        {"label": _("Other"),      "fieldname": "other",     "fieldtype": "Currency", "width": 90},
-        {"label": _("Vacation"),   "fieldname": "vacation",  "fieldtype": "Float",    "precision": 2, "width": 90},
-        {"label": _("Bonus"),      "fieldname": "bonus",     "fieldtype": "Currency", "width": 90},
-        {"label": _("Airfare"),    "fieldname": "airfare",   "fieldtype": "Currency", "width": 90},
-        {"label": _("Otherded"),   "fieldname": "otherded",  "fieldtype": "Currency", "width": 100},
-        {"label": _("Housingded"), "fieldname": "housingded","fieldtype": "Currency", "width": 110},
-    ]
+	return [
+		{"label": _("DocNo"), "fieldname": "doc_no", "fieldtype": "Data", "width": 130},
+		{"label": _("Code"), "fieldname": "code", "fieldtype": "Link", "options": "Employee", "width": 120},
+		{"label": _("Month"), "fieldname": "month", "fieldtype": "Data", "width": 100},
+		{
+			"label": _("Total Present Days"),
+			"fieldname": "days",
+			"fieldtype": "Float",
+			"precision": 1,
+			"width": 130,
+		},
+		{"label": _("OT"), "fieldname": "ot", "fieldtype": "Float", "precision": 2, "width": 80},
+		{"label": _("HOT"), "fieldname": "hot", "fieldtype": "Float", "precision": 2, "width": 80},
+		{"label": _("Expenses"), "fieldname": "expenses", "fieldtype": "Currency", "width": 100},
+		{"label": _("Other"), "fieldname": "other", "fieldtype": "Currency", "width": 90},
+		{"label": _("Vacation"), "fieldname": "vacation", "fieldtype": "Float", "precision": 2, "width": 90},
+		{"label": _("Bonus"), "fieldname": "bonus", "fieldtype": "Currency", "width": 90},
+		{"label": _("Airfare"), "fieldname": "airfare", "fieldtype": "Currency", "width": 90},
+		{"label": _("Otherded"), "fieldname": "otherded", "fieldtype": "Currency", "width": 100},
+		{"label": _("Housingded"), "fieldname": "housingded", "fieldtype": "Currency", "width": 110},
+	]
 
 
 def get_data(filters):
-    from_date = filters.get("from_date")
-    to_date = filters.get("to_date")
-    company = filters.get("company") or None
+	from_date = filters.get("from_date")
+	to_date = filters.get("to_date")
+	company = filters.get("company") or None
 
-    days_map = {(r.employee, r.month): r for r in _get_days(from_date, to_date, company)}
-    ot_map = _get_ot(from_date, to_date, company)
-    hot_map = _get_hot(from_date, to_date, company)
+	days_map = {(r.employee, r.month): r for r in _get_days(from_date, to_date, company)}
+	ot_map = _get_ot(from_date, to_date, company)
+	hot_map = _get_hot(from_date, to_date, company)
 
-    all_keys = set(days_map) | set(ot_map) | set(hot_map)
-    doc_prefix = "PIR"
+	all_keys = set(days_map) | set(ot_map) | set(hot_map)
+	doc_prefix = "PIR"
 
-    rows = []
-    for idx, key in enumerate(sorted(all_keys), start=1):
-        emp, month_key = key
-        d = days_map.get(key)
-        month_label = f"{month_key[5:7]}/{month_key[0:4]}"  # YYYY-MM -> MM/YYYY
-        rows.append({
-            "doc_no":     f"{doc_prefix}-{month_key.replace('-', '')}-{idx:04d}",
-            "code":       d.code if d else emp,
-            "month":      month_label,
-            "days":       round(float(d.days or 0), 1) if d else 0,
-            "ot":         round(float(ot_map.get(key) or 0), 2),
-            "hot":        round(float(hot_map.get(key) or 0), 2),
-            "expenses":   0,
-            "other":      0,
-            "vacation":   0,
-            "bonus":      0,
-            "airfare":    0,
-            "otherded":   0,
-            "housingded": 0,
-        })
+	rows = []
+	for idx, key in enumerate(sorted(all_keys), start=1):
+		emp, month_key = key
+		d = days_map.get(key)
+		month_label = f"{month_key[5:7]}/{month_key[0:4]}"  # YYYY-MM -> MM/YYYY
+		rows.append(
+			{
+				"doc_no": f"{doc_prefix}-{month_key.replace('-', '')}-{idx:04d}",
+				"code": d.code if d else emp,
+				"month": month_label,
+				"days": round(float(d.days or 0), 1) if d else 0,
+				"ot": round(float(ot_map.get(key) or 0), 2),
+				"hot": round(float(hot_map.get(key) or 0), 2),
+				"expenses": 0,
+				"other": 0,
+				"vacation": 0,
+				"bonus": 0,
+				"airfare": 0,
+				"otherded": 0,
+				"housingded": 0,
+			}
+		)
 
-    return rows
+	return rows
 
 
 def _get_days(from_date, to_date, company=None):
-    company_cond = "AND emp.company = %(company)s" if company else ""
-    return frappe.db.sql(f"""
+	company_cond = "AND emp.company = %(company)s" if company else ""
+	return frappe.db.sql(
+		f"""
         SELECT
             a.employee,
             emp.name AS code,
@@ -85,12 +94,16 @@ def _get_days(from_date, to_date, company=None):
           {company_cond}
         GROUP BY a.employee, emp.name, DATE_FORMAT(a.attendance_date, '%%Y-%%m')
         ORDER BY emp.name, month
-    """, {"from_date": from_date, "to_date": to_date, "company": company}, as_dict=True)
+    """,
+		{"from_date": from_date, "to_date": to_date, "company": company},
+		as_dict=True,
+	)
 
 
 def _get_ot(from_date, to_date, company=None):
-    company_cond = "AND emp.company = %(company)s" if company else ""
-    rows = frappe.db.sql(f"""
+	company_cond = "AND emp.company = %(company)s" if company else ""
+	rows = frappe.db.sql(
+		f"""
         SELECT employee, month, ROUND(SUM(ot_hours), 2) AS ot_hours
         FROM (
             SELECT
@@ -143,14 +156,18 @@ def _get_ot(from_date, to_date, company=None):
                     AND DATE(ec2.time) = att.attendance_date)
         ) ot_union
         GROUP BY employee, month
-    """, {"from_date": from_date, "to_date": to_date, "company": company}, as_dict=True)
+    """,
+		{"from_date": from_date, "to_date": to_date, "company": company},
+		as_dict=True,
+	)
 
-    return {(r.employee, r.month): r.ot_hours or 0 for r in rows}
+	return {(r.employee, r.month): r.ot_hours or 0 for r in rows}
 
 
 def _get_hot(from_date, to_date, company=None):
-    company_cond = "AND emp.company = %(company)s" if company else ""
-    rows = frappe.db.sql(f"""
+	company_cond = "AND emp.company = %(company)s" if company else ""
+	rows = frappe.db.sql(
+		f"""
         SELECT employee, month, ROUND(SUM(hot_hours), 2) AS hot_hours
         FROM (
             SELECT
@@ -190,6 +207,9 @@ def _get_hot(from_date, to_date, company=None):
                     AND DATE(ec2.time) = att.attendance_date)
         ) hot_union
         GROUP BY employee, month
-    """, {"from_date": from_date, "to_date": to_date, "company": company}, as_dict=True)
+    """,
+		{"from_date": from_date, "to_date": to_date, "company": company},
+		as_dict=True,
+	)
 
-    return {(r.employee, r.month): r.hot_hours or 0 for r in rows}
+	return {(r.employee, r.month): r.hot_hours or 0 for r in rows}

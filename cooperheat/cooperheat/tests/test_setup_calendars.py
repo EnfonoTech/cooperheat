@@ -9,9 +9,7 @@ YEAR = 2031
 
 
 def weekly_off_weekdays(holiday_list):
-	rows = frappe.get_all(
-		"Holiday", filters={"parent": holiday_list, "weekly_off": 1}, pluck="holiday_date"
-	)
+	rows = frappe.get_all("Holiday", filters={"parent": holiday_list, "weekly_off": 1}, pluck="holiday_date")
 	return {d.weekday() for d in rows}, len(rows)
 
 

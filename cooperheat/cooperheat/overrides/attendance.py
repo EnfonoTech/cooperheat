@@ -1,6 +1,16 @@
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, get_url_to_form, now, now_datetime, get_datetime, time_diff_in_hours, add_to_date, getdate
+from frappe.utils import (
+	add_to_date,
+	cint,
+	flt,
+	get_datetime,
+	get_url_to_form,
+	getdate,
+	now,
+	now_datetime,
+	time_diff_in_hours,
+)
 
 # ---------------------------------------------------------------------------
 # Authorization map: (prev_workflow_state, next_workflow_state) → required level
@@ -61,11 +71,11 @@ def validate(doc, method):
 	_validate_hours_edit_authorization(doc)
 	_recalculate_site_hours_from_times(doc)  # recalc row hours and sync parent times from child table
 	_validate_payable_vs_billable_hours(doc)
-	_fill_checkin_times(doc)                 # fill in_time/out_time from checkins (draft only)
-	_recalculate_working_hours(doc)          # recalc parent working_hours (skipped if site hours exist)
+	_fill_checkin_times(doc)  # fill in_time/out_time from checkins (draft only)
+	_recalculate_working_hours(doc)  # recalc parent working_hours (skipped if site hours exist)
 	from cooperheat.cooperheat.overtime import apply_to_doc
 
-	apply_to_doc(doc)                        # regular / overtime / holiday overtime hours
+	apply_to_doc(doc)  # regular / overtime / holiday overtime hours
 	_set_status_from_thresholds(doc)
 	_sync_current_approver(doc)
 
@@ -163,12 +173,15 @@ def _set_status_from_thresholds(doc):
 	threshold_absent = 0.0
 	threshold_half_day = 0.0
 	if shift_type:
-		st = frappe.db.get_value(
-			"Shift Type",
-			shift_type,
-			["working_hours_threshold_for_absent", "working_hours_threshold_for_half_day"],
-			as_dict=True,
-		) or {}
+		st = (
+			frappe.db.get_value(
+				"Shift Type",
+				shift_type,
+				["working_hours_threshold_for_absent", "working_hours_threshold_for_half_day"],
+				as_dict=True,
+			)
+			or {}
+		)
 		threshold_absent = flt(st.get("working_hours_threshold_for_absent"))
 		threshold_half_day = flt(st.get("working_hours_threshold_for_half_day"))
 	hours = flt(doc.working_hours)
@@ -197,12 +210,15 @@ def _correct_status_on_submitted(doc):
 	threshold_absent = 0.0
 	threshold_half_day = 0.0
 	if shift_type:
-		st = frappe.db.get_value(
-			"Shift Type",
-			shift_type,
-			["working_hours_threshold_for_absent", "working_hours_threshold_for_half_day"],
-			as_dict=True,
-		) or {}
+		st = (
+			frappe.db.get_value(
+				"Shift Type",
+				shift_type,
+				["working_hours_threshold_for_absent", "working_hours_threshold_for_half_day"],
+				as_dict=True,
+			)
+			or {}
+		)
 		threshold_absent = flt(st.get("working_hours_threshold_for_absent"))
 		threshold_half_day = flt(st.get("working_hours_threshold_for_half_day"))
 	hours = flt(doc.working_hours)
@@ -235,11 +251,15 @@ def fix_all_attendance_status():
 		threshold_absent = 0.0
 		threshold_half_day = 0.0
 		if r.shift:
-			st = frappe.db.get_value(
-				"Shift Type", r.shift,
-				["working_hours_threshold_for_absent", "working_hours_threshold_for_half_day"],
-				as_dict=True,
-			) or {}
+			st = (
+				frappe.db.get_value(
+					"Shift Type",
+					r.shift,
+					["working_hours_threshold_for_absent", "working_hours_threshold_for_half_day"],
+					as_dict=True,
+				)
+				or {}
+			)
 			threshold_absent = flt(st.get("working_hours_threshold_for_absent"))
 			threshold_half_day = flt(st.get("working_hours_threshold_for_half_day"))
 		hours = flt(r.working_hours)
@@ -287,7 +307,9 @@ def _auto_advance_if_no_approver(doc):
 
 		apply_workflow(frappe.get_doc("Attendance", doc.name), action)
 	except Exception:
-		frappe.log_error(frappe.get_traceback(), "Auto-advance of an empty approval level failed: " + doc.name)
+		frappe.log_error(
+			frappe.get_traceback(), "Auto-advance of an empty approval level failed: " + doc.name
+		)
 
 
 def _get_matrix(department: str | None, employee: str | None = None) -> list:
@@ -352,7 +374,8 @@ def _sync_current_approver(doc):
 	if doc.get("current_approver") != row.approver:
 		approver_name = frappe.db.get_value("Employee", row.approver, "employee_name") or row.approver
 		frappe.db.set_value(
-			"Attendance", doc.name,
+			"Attendance",
+			doc.name,
 			{
 				"current_approver": row.approver,
 				"current_approver_name": approver_name,
@@ -375,11 +398,10 @@ def _checkin_times_changed(doc) -> bool:
 	doc_rows = doc.get("custom_site_hours") or []
 	if len(db_rows) != len(doc_rows):
 		return True
-	for db_row, doc_row in zip(db_rows, doc_rows):
-		if (
-			str(db_row.check_in_time or "") != str(doc_row.get("check_in_time") or "")
-			or str(db_row.check_out_time or "") != str(doc_row.get("check_out_time") or "")
-		):
+	for db_row, doc_row in zip(db_rows, doc_rows, strict=False):
+		if str(db_row.check_in_time or "") != str(doc_row.get("check_in_time") or "") or str(
+			db_row.check_out_time or ""
+		) != str(doc_row.get("check_out_time") or ""):
 			return True
 	return False
 
@@ -437,16 +459,16 @@ def _validate_payable_vs_billable_hours(doc):
 		if has_customer:
 			if hours < payroll_hours:
 				frappe.throw(
-					_("Row #{0}: Payable Hours ({1}) cannot exceed Billable Hours ({2}) when the Project Site.").format(
-						row.idx, payroll_hours, hours
-					)
+					_(
+						"Row #{0}: Payable Hours ({1}) cannot exceed Billable Hours ({2}) when the Project Site."
+					).format(row.idx, payroll_hours, hours)
 				)
 		else:
 			if payroll_hours <= hours:
 				frappe.throw(
-					_("Row #{0}: Payable Hours ({1}) must be greater than Billable Hours ({2}) when the Project Site").format(
-						row.idx, payroll_hours, hours
-					)
+					_(
+						"Row #{0}: Payable Hours ({1}) must be greater than Billable Hours ({2}) when the Project Site"
+					).format(row.idx, payroll_hours, hours)
 				)
 
 
@@ -463,9 +485,7 @@ def _validate_hours_edit_authorization(doc):
 		return
 
 	# Read current DB values directly — get_doc_before_save() is unreliable on submitted docs
-	db_vals = frappe.db.get_value(
-		"Attendance", doc.name, ["in_time", "out_time", "status"], as_dict=True
-	)
+	db_vals = frappe.db.get_value("Attendance", doc.name, ["in_time", "out_time", "status"], as_dict=True)
 	if not db_vals:
 		return
 
@@ -506,9 +526,7 @@ def _validate_hours_edit_authorization(doc):
 	if frappe.session.user != approver_user:
 		emp_name = frappe.db.get_value("Employee", row.approver, "employee_name") or row.approver
 		frappe.throw(
-			_("Attendance can only be corrected by the Level {0} approver: {1}.").format(
-				level, emp_name
-			)
+			_("Attendance can only be corrected by the Level {0} approver: {1}.").format(level, emp_name)
 		)
 
 
@@ -525,9 +543,7 @@ def _recalculate_working_hours(doc):
 	if not (doc.in_time and doc.out_time):
 		return
 	db_vals = frappe.db.get_value("Attendance", doc.name, ["in_time", "out_time"], as_dict=True)
-	if db_vals and (
-		str(doc.in_time) != str(db_vals.in_time) or str(doc.out_time) != str(db_vals.out_time)
-	):
+	if db_vals and (str(doc.in_time) != str(db_vals.in_time) or str(doc.out_time) != str(db_vals.out_time)):
 		doc.working_hours = time_diff_in_hours(doc.out_time, doc.in_time)
 
 
@@ -551,9 +567,10 @@ def _update_working_hours_from_site_hours(doc):
 	in_times = [r.check_in_time for r in rows if r.check_in_time]
 	out_times = [r.check_out_time for r in rows if r.check_out_time]
 
-	current = frappe.db.get_value(
-		"Attendance", doc.name, ["working_hours", "in_time", "out_time"], as_dict=True
-	) or {}
+	current = (
+		frappe.db.get_value("Attendance", doc.name, ["working_hours", "in_time", "out_time"], as_dict=True)
+		or {}
+	)
 
 	updates = {}
 	if flt(current.get("working_hours")) != total:
@@ -601,17 +618,19 @@ def _validate_approver_authorization(doc):
 			# Nobody holds Secondary Reporting / Payroll: that step passes by itself
 			return
 		frappe.throw(
-			_("{0} has no Direct / Immediate Reporting person. "
-			  "Set it on the Employee record before this can be approved.").format(doc.employee)
+			_(
+				"{0} has no Direct / Immediate Reporting person. "
+				"Set it on the Employee record before this can be approved."
+			).format(doc.employee)
 		)
 
 	approver_user = _approver_user(row.approver)
 	if not approver_user:
 		frappe.throw(
-			_("Employee {0} (Level {1} approver) has no linked User account. "
-			  "Please link a User to that Employee before proceeding.").format(
-				row.approver, required_level
-			)
+			_(
+				"Employee {0} (Level {1} approver) has no linked User account. "
+				"Please link a User to that Employee before proceeding."
+			).format(row.approver, required_level)
 		)
 
 	# Only Administrator can bypass the approver restriction
@@ -653,7 +672,7 @@ def _send_notification_for_level(doc, level: int):
 	try:
 		frappe.sendmail(
 			recipients=[recipient],
-			subject=_("Action Required – Attendance Level {0} Approval: {1}").format(level, doc.name),
+			subject=_("Action Required – Attendance Level {0} Approval: {1}").format(level, doc.name),  # noqa: RUF001
 			message=_(
 				"""<p>Dear {approver_name},</p>
 <p>An Attendance record requires your <strong>Level {level} approval</strong>.</p>
@@ -707,9 +726,7 @@ def _get_project_for_attendance(doc) -> str | None:
 	}
 	if doc.shift:
 		filters["shift_type"] = doc.shift
-	return frappe.db.get_value(
-		"Shift Assignment", filters, "custom_project_", order_by="start_date desc"
-	)
+	return frappe.db.get_value("Shift Assignment", filters, "custom_project_", order_by="start_date desc")
 
 
 def _populate_site_hours(doc) -> None:
@@ -747,20 +764,20 @@ def _populate_site_hours(doc) -> None:
 		project_name = ""
 		if project:
 			project_name = frappe.db.get_value("Project", project, "project_name") or ""
-		activity_entries = [
-			c.activity_log for c in logs if c.log_type == "OUT" and c.activity_log
-		]
+		activity_entries = [c.activity_log for c in logs if c.log_type == "OUT" and c.activity_log]
 		activity_log = "\n".join(activity_entries)
 		in_times = [get_datetime(c.time) for c in logs if c.log_type == "IN"]
 		out_times = [get_datetime(c.time) for c in logs if c.log_type == "OUT"]
-		site_rows.append({
-			"project": project,
-			"project_name": project_name,
-			"hours": hours,
-			"activity_log": activity_log,
-			"check_in_time": min(in_times) if in_times else None,
-			"check_out_time": max(out_times) if out_times else None,
-		})
+		site_rows.append(
+			{
+				"project": project,
+				"project_name": project_name,
+				"hours": hours,
+				"activity_log": activity_log,
+				"check_in_time": min(in_times) if in_times else None,
+				"check_out_time": max(out_times) if out_times else None,
+			}
+		)
 		total_hours += hours
 
 	if not site_rows:
@@ -774,7 +791,9 @@ def _populate_site_hours(doc) -> None:
 		pluck="name",
 	)
 	if unlinked:
-		frappe.db.set_value("Employee Checkin", {"name": ["in", unlinked]}, "attendance", doc.name, update_modified=False)
+		frappe.db.set_value(
+			"Employee Checkin", {"name": ["in", unlinked]}, "attendance", doc.name, update_modified=False
+		)
 
 	frappe.db.delete("Attendance Site Hours", {"parent": doc.name})
 	for idx, row in enumerate(site_rows, start=1):
@@ -792,9 +811,7 @@ def _populate_site_hours(doc) -> None:
 		child.db_insert()
 
 	doc.working_hours = flt(total_hours, 2)
-	frappe.db.set_value(
-		"Attendance", doc.name, "working_hours", flt(total_hours, 2), update_modified=False
-	)
+	frappe.db.set_value("Attendance", doc.name, "working_hours", flt(total_hours, 2), update_modified=False)
 	from cooperheat.cooperheat.overtime import persist
 
 	persist(doc)

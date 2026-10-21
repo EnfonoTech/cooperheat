@@ -1,6 +1,6 @@
 """Overtime rules (pure) and attendance wiring.
 
-    bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_overtime
+bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_overtime
 """
 
 from datetime import datetime
@@ -59,7 +59,10 @@ class TestAttendanceOvertime(FrappeTestCase):
 		frappe.db.set_value(
 			"Employee",
 			emp,
-			{"custom_staff_category": category, "holiday_list": "Field Staff 2026" if category == FIELD else "Office Staff 2026"},
+			{
+				"custom_staff_category": category,
+				"holiday_list": "Field Staff 2026" if category == FIELD else "Office Staff 2026",
+			},
 			update_modified=False,
 		)
 		doc = frappe.get_doc(
@@ -88,8 +91,12 @@ class TestAttendanceOvertime(FrappeTestCase):
 
 	def test_field_staff_friday_is_holiday_overtime(self):
 		doc = self._attendance(FIELD, 9, "2026-10-09")  # a Friday: weekly off in the Field calendar
-		self.assertEqual((doc.custom_regular_hours, doc.custom_ot_hours, doc.custom_holiday_ot_hours), (0, 0, 9))
+		self.assertEqual(
+			(doc.custom_regular_hours, doc.custom_ot_hours, doc.custom_holiday_ot_hours), (0, 0, 9)
+		)
 
 	def test_field_staff_saturday_is_a_normal_day(self):
 		doc = self._attendance(FIELD, 9, "2026-10-10")  # Saturday: only the office is off
-		self.assertEqual((doc.custom_regular_hours, doc.custom_ot_hours, doc.custom_holiday_ot_hours), (8, 1, 0))
+		self.assertEqual(
+			(doc.custom_regular_hours, doc.custom_ot_hours, doc.custom_holiday_ot_hours), (8, 1, 0)
+		)

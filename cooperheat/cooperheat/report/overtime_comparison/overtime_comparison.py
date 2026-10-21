@@ -12,8 +12,18 @@ from frappe import _
 from frappe.utils import flt
 
 MONTHS = [
-	"January", "February", "March", "April", "May", "June",
-	"July", "August", "September", "October", "November", "December",
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
 ]
 
 
@@ -24,17 +34,53 @@ def execute(filters=None):
 
 def get_columns():
 	return [
-		{"label": _("Employee"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 110},
+		{
+			"label": _("Employee"),
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"options": "Employee",
+			"width": 110,
+		},
 		{"label": _("Name"), "fieldname": "employee_name", "fieldtype": "Data", "width": 170},
 		{"label": _("Staff Category"), "fieldname": "staff_category", "fieldtype": "Data", "width": 110},
 		{"label": _("Days"), "fieldname": "days", "fieldtype": "Int", "width": 60},
-		{"label": _("Hours Worked"), "fieldname": "hours", "fieldtype": "Float", "precision": 2, "width": 100},
-		{"label": _("System OT (x1.5)"), "fieldname": "sys_ot", "fieldtype": "Float", "precision": 2, "width": 110},
-		{"label": _("System Holiday OT (x2)"), "fieldname": "sys_hot", "fieldtype": "Float", "precision": 2, "width": 130},
+		{
+			"label": _("Hours Worked"),
+			"fieldname": "hours",
+			"fieldtype": "Float",
+			"precision": 2,
+			"width": 100,
+		},
+		{
+			"label": _("System OT (x1.5)"),
+			"fieldname": "sys_ot",
+			"fieldtype": "Float",
+			"precision": 2,
+			"width": 110,
+		},
+		{
+			"label": _("System Holiday OT (x2)"),
+			"fieldname": "sys_hot",
+			"fieldtype": "Float",
+			"precision": 2,
+			"width": 130,
+		},
 		{"label": _("Excel OT"), "fieldname": "xl_ot", "fieldtype": "Float", "precision": 2, "width": 90},
 		{"label": _("Excel HOT"), "fieldname": "xl_hot", "fieldtype": "Float", "precision": 2, "width": 90},
-		{"label": _("OT Difference"), "fieldname": "diff_ot", "fieldtype": "Float", "precision": 2, "width": 110},
-		{"label": _("HOT Difference"), "fieldname": "diff_hot", "fieldtype": "Float", "precision": 2, "width": 110},
+		{
+			"label": _("OT Difference"),
+			"fieldname": "diff_ot",
+			"fieldtype": "Float",
+			"precision": 2,
+			"width": 110,
+		},
+		{
+			"label": _("HOT Difference"),
+			"fieldname": "diff_hot",
+			"fieldtype": "Float",
+			"precision": 2,
+			"width": 110,
+		},
 	]
 
 
@@ -95,7 +141,12 @@ def get_data(filters):
 	if rows:
 		for s in frappe.get_all(
 			"Payroll Sheet",
-			filters={"employee": ["in", list(rows)], "year": int(filters.year), "month": filters.month, "docstatus": ["<", 2]},
+			filters={
+				"employee": ["in", list(rows)],
+				"year": int(filters.year),
+				"month": filters.month,
+				"docstatus": ["<", 2],
+			},
 			fields=["employee", "normal_ot_hours", "holiday_ot_hours"],
 		):
 			rows[s.employee]["xl_ot"] += flt(s.normal_ot_hours)

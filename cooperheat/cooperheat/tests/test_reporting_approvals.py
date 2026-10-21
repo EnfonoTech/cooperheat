@@ -92,26 +92,40 @@ class ReportingTestCase(HRTestCase):
 class TestApprovalChain(ReportingTestCase):
 	def test_field_staff_chain_and_windows(self):
 		anil, khalid, irtaza = self.people()
-		emp = make_employee("FieldA", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid)
+		emp = make_employee(
+			"FieldA", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid
+		)
 		chain = org.approval_chain(emp.name)
-		self.assertEqual([(r.approval_level, r.approver) for r in chain], [(1, anil), (2, khalid), (3, irtaza)])
+		self.assertEqual(
+			[(r.approval_level, r.approver) for r in chain], [(1, anil), (2, khalid), (3, irtaza)]
+		)
 		self.assertEqual([r.approval_window_hours for r in chain], [48, 72, 48])
 
 	def test_office_staff_have_no_secondary_step(self):
 		anil, khalid, irtaza = self.people()
-		emp = make_employee("OfficeA", custom_staff_category=OFFICE, reports_to=khalid, custom_secondary_reporting=anil)
-		self.assertEqual([(r.approval_level, r.approver) for r in org.approval_chain(emp.name)], [(1, khalid), (3, irtaza)])
+		emp = make_employee(
+			"OfficeA", custom_staff_category=OFFICE, reports_to=khalid, custom_secondary_reporting=anil
+		)
+		self.assertEqual(
+			[(r.approval_level, r.approver) for r in org.approval_chain(emp.name)], [(1, khalid), (3, irtaza)]
+		)
 
 	def test_without_a_payroll_approver_the_chain_ends_at_the_reporting_line(self):
 		anil, khalid, _ = self.people()
 		set_payroll(None)
-		emp = make_employee("FieldB", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid)
+		emp = make_employee(
+			"FieldB", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid
+		)
 		self.assertEqual([r.approval_level for r in org.approval_chain(emp.name)], [1, 2])
 
 	def test_nobody_approves_their_own_or_twice(self):
 		anil, khalid, irtaza = self.people()
-		emp = make_employee("FieldC", custom_staff_category=FIELD, reports_to=khalid, custom_secondary_reporting=khalid)
-		self.assertEqual([(r.approval_level, r.approver) for r in org.approval_chain(emp.name)], [(1, khalid), (3, irtaza)])
+		emp = make_employee(
+			"FieldC", custom_staff_category=FIELD, reports_to=khalid, custom_secondary_reporting=khalid
+		)
+		self.assertEqual(
+			[(r.approval_level, r.approver) for r in org.approval_chain(emp.name)], [(1, khalid), (3, irtaza)]
+		)
 		boss = make_employee("PayrollSelf", custom_staff_category=OFFICE, reports_to=anil)
 		set_payroll(boss.name)
 		self.assertEqual([r.approval_level for r in org.approval_chain(boss.name)], [1])
@@ -152,7 +166,9 @@ class TestApprovalChain(ReportingTestCase):
 
 	def test_a_secondary_set_by_hand_is_kept(self):
 		anil, khalid, irtaza = self.people()
-		emp = make_employee("FieldE", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=irtaza)
+		emp = make_employee(
+			"FieldE", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=irtaza
+		)
 		self.assertEqual(emp.custom_secondary_reporting, irtaza)
 
 	def test_leave_expense_shift_approvers_follow_reports_to(self):
@@ -170,9 +186,14 @@ class TestApprovalChain(ReportingTestCase):
 class TestAttendanceFlow(ReportingTestCase):
 	def test_field_staff_go_supervisor_then_manager_then_payroll(self):
 		anil, khalid, irtaza = self.people()
-		emp = make_employee("FlowField", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid)
+		emp = make_employee(
+			"FlowField", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid
+		)
 		name = new_attendance(emp.name)
-		self.assertEqual((state(name), frappe.db.get_value("Attendance", name, "current_approver")), ("Pending Level 1 Approval", anil))
+		self.assertEqual(
+			(state(name), frappe.db.get_value("Attendance", name, "current_approver")),
+			("Pending Level 1 Approval", anil),
+		)
 		self.assertEqual(frappe.db.get_value("Attendance", name, "approval_window_hours"), 48)
 
 		frappe.set_user(dev_seed.email("khalid"))
@@ -224,7 +245,9 @@ class TestAttendanceFlow(ReportingTestCase):
 
 	def test_changing_reports_to_moves_waiting_records(self):
 		anil, khalid, _ = self.people()
-		emp = make_employee("FlowMove", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid)
+		emp = make_employee(
+			"FlowMove", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid
+		)
 		name = new_attendance(emp.name)
 		doc = frappe.get_doc("Employee", emp.name)
 		doc.reports_to = emp_of("saleh")
@@ -246,10 +269,20 @@ class TestGenerationAndReports(ReportingTestCase):
 	def test_employee_without_a_reporting_person_is_skipped_and_counted(self):
 		emp = make_employee("NoBoss", custom_staff_category=FIELD)
 		frappe.get_doc(
-			{"doctype": "Employee Checkin", "employee": emp.name, "log_type": "IN", "time": today() + " 06:00:00"}
+			{
+				"doctype": "Employee Checkin",
+				"employee": emp.name,
+				"log_type": "IN",
+				"time": today() + " 06:00:00",
+			}
 		).insert(ignore_permissions=True)
 		frappe.get_doc(
-			{"doctype": "Employee Checkin", "employee": emp.name, "log_type": "OUT", "time": today() + " 07:00:00"}
+			{
+				"doctype": "Employee Checkin",
+				"employee": emp.name,
+				"log_type": "OUT",
+				"time": today() + " 07:00:00",
+			}
 		).insert(ignore_permissions=True)
 		res = attendance_gen.generate(today(), today())
 		self.assertGreaterEqual(res["no_approver"], 1)
@@ -264,7 +297,10 @@ class TestGenerationAndReports(ReportingTestCase):
 			filters={
 				"docstatus": 1,
 				"workflow_state": "Pending Level 1 Approval",
-				"employee": ["in", frappe.get_all("Employee", filters={"reports_to": emp_of("anil")}, pluck="name")],
+				"employee": [
+					"in",
+					frappe.get_all("Employee", filters={"reports_to": emp_of("anil")}, pluck="name"),
+				],
 			},
 			fields=["current_approver"],
 		)
@@ -273,7 +309,9 @@ class TestGenerationAndReports(ReportingTestCase):
 			self.assertEqual(r.current_approver, emp_of("anil"))
 
 	def test_exceptions_report_lists_the_reporting_gaps(self):
-		from cooperheat.cooperheat.report.employee_approver_exceptions.employee_approver_exceptions import get_data
+		from cooperheat.cooperheat.report.employee_approver_exceptions.employee_approver_exceptions import (
+			get_data,
+		)
 
 		make_employee("GapNoBoss", custom_staff_category=FIELD)
 		anil = emp_of("anil")
@@ -287,7 +325,12 @@ class TestGenerationAndReports(ReportingTestCase):
 class TestScopeFollowsReporting(ReportingTestCase):
 	def test_secondary_reporting_gives_sight_of_the_employee(self):
 		anil, khalid, _ = self.people()
-		emp = make_employee("ScopeSecondary", custom_staff_category=FIELD, reports_to=emp_of("saleh"), custom_secondary_reporting=anil)
+		emp = make_employee(
+			"ScopeSecondary",
+			custom_staff_category=FIELD,
+			reports_to=emp_of("saleh"),
+			custom_secondary_reporting=anil,
+		)
 		frappe.set_user(dev_seed.email("anil"))
 		self.assertIn(emp.name, frappe.get_list("Employee", pluck="name", limit_page_length=1000))
 

@@ -85,13 +85,21 @@ def setup_shifts(year=None):
 		holiday_list = holiday_list_name(kind, year)
 		holiday_list = holiday_list if frappe.db.exists("Holiday List", holiday_list) else None
 		if frappe.db.exists("Shift Type", name):
-			current = frappe.db.get_value("Shift Type", name, ["start_time", "end_time", "enable_auto_attendance"], as_dict=True)
-			if str(current.start_time) != start or str(current.end_time) != end or current.enable_auto_attendance:
+			current = frappe.db.get_value(
+				"Shift Type", name, ["start_time", "end_time", "enable_auto_attendance"], as_dict=True
+			)
+			if (
+				str(current.start_time) != start
+				or str(current.end_time) != end
+				or current.enable_auto_attendance
+			):
 				# Direct write: HRMS refuses to edit a shift while check-ins wait for ITS auto
 				# attendance, which this site does not use (attendance comes from cooperheat).
 				values = {"start_time": start, "end_time": end, "enable_auto_attendance": 0}
 				if kind == "Field":
-					values.update(begin_check_in_before_shift_start_time=0, allow_check_out_after_shift_end_time=0)
+					values.update(
+						begin_check_in_before_shift_start_time=0, allow_check_out_after_shift_end_time=0
+					)
 				frappe.db.set_value("Shift Type", name, values)
 				frappe.clear_document_cache("Shift Type", name)
 				changed.append(name)

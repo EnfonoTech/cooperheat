@@ -1,6 +1,6 @@
 """The Division screen: plain drill-down data (tabs, sub-units, employees, breadcrumb).
 
-    bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_division_screen
+bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_division_screen
 """
 
 import frappe
@@ -59,7 +59,10 @@ class TestDivisionScreen(FrappeTestCase):
 		self.assertEqual([c["name"] for c in self.view(self.pl, "Business Line")["children"]], [self.sub_pl])
 		leaf = self.view(self.sub_pl, "Business Line")
 		self.assertEqual([e["name"] for e in leaf["employees"]], [self.e1.name])
-		self.assertEqual(leaf["employees"][0]["reports_to_name"], frappe.db.get_value("Employee", self.boss, "employee_name"))
+		self.assertEqual(
+			leaf["employees"][0]["reports_to_name"],
+			frappe.db.get_value("Employee", self.boss, "employee_name"),
+		)
 		self.assertEqual(leaf["add_type"], org.SUB_PRODUCT_LINE)
 
 	def test_counts_include_everything_below(self):

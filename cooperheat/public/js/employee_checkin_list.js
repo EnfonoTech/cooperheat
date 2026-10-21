@@ -4,7 +4,8 @@
 // Employee's connections, a report), the "All check-ins" button, or the Back button.
 // HRMS defines its own onload (Fetch Shifts); keep it and add ours.
 (function () {
-	const settings = (frappe.listview_settings["Employee Checkin"] = frappe.listview_settings["Employee Checkin"] || {});
+	const settings = (frappe.listview_settings["Employee Checkin"] =
+		frappe.listview_settings["Employee Checkin"] || {});
 	const hrms_onload = settings.onload;
 	settings.onload = function (listview) {
 		if (hrms_onload) hrms_onload.call(this, listview);
@@ -16,6 +17,8 @@
 			return;
 		}
 		frappe.cooperheat_checkin_list = false;
-		listview.page.add_inner_button(__("By employee"), () => frappe.set_route("supervisor-workspace"));
+		listview.page.add_inner_button(__("By employee"), () =>
+			frappe.set_route("supervisor-workspace")
+		);
 	};
 })();

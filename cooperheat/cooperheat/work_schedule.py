@@ -59,7 +59,9 @@ def roll_over_calendars():
 def place_default_shift_field():
 	"""Show HRMS's Default Shift inside the Work Schedule section (after_migrate)."""
 	name = "Employee-default_shift"
-	if frappe.db.exists("Custom Field", name) and frappe.db.exists("Custom Field", "Employee-custom_staff_category"):
+	if frappe.db.exists("Custom Field", name) and frappe.db.exists(
+		"Custom Field", "Employee-custom_staff_category"
+	):
 		if frappe.db.get_value("Custom Field", name, "insert_after") != "custom_staff_category":
 			frappe.db.set_value("Custom Field", name, "insert_after", "custom_staff_category")
 			frappe.clear_cache(doctype="Employee")

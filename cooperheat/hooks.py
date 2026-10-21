@@ -138,18 +138,16 @@ fixtures = [
 					"Project-supervisor_approval_window",
 					"Project-total_expense_claim",
 					# Shift Assignment
-			
 					"Shift Assignment-custom_section_break_hu5yo",
 					"Shift Assignment-custom_project_sites",
 					# Attendance Request
 					"Attendance Request-custom_sites_section",
 					"Attendance Request-custom_assigned_sites",
-
 					"Project-level_2_approval_window",
-                   	"Employee-custom_id_type",
-                    "Employee-custom_site_id",
-                    "Employee-custom_column_break_z4stf",
-                    "Employee-custom_expairy_date",
+					"Employee-custom_id_type",
+					"Employee-custom_site_id",
+					"Employee-custom_column_break_z4stf",
+					"Employee-custom_expairy_date",
 					# Leave Application
 					"Leave Application-custom_client_approval_section",
 					"Leave Application-custom_client_approval_required",
@@ -178,28 +176,32 @@ fixtures = [
 	{
 		"dt": "Property Setter",
 		"filters": [
-			["name", "in", [
-				# Attendance
-				"Attendance-in_time-allow_on_submit",
-				"Attendance-in_time-read_only",
-				"Attendance-in_time-depends_on",
-				"Attendance-out_time-allow_on_submit",
-				"Attendance-out_time-read_only",
-				"Attendance-out_time-depends_on",
-				"Attendance-working_hours-allow_on_submit",
-				"Attendance-working_hours-read_only",
-				"Attendance-working_hours-depends_on",
-				"Attendance-status-allow_on_submit",
-				"Attendance-status-read_only",
-				# Project
-				"Project-main-field_order",
-				"Project-customer-label",
-				"Project-naming_series-options",
-				"Project-status-hidden",
-				# Shift Assignment
-				"Shift Assignment-main-field_order",
-				"Shift Assignment-shift_location-fetch_from",
-			]],
+			[
+				"name",
+				"in",
+				[
+					# Attendance
+					"Attendance-in_time-allow_on_submit",
+					"Attendance-in_time-read_only",
+					"Attendance-in_time-depends_on",
+					"Attendance-out_time-allow_on_submit",
+					"Attendance-out_time-read_only",
+					"Attendance-out_time-depends_on",
+					"Attendance-working_hours-allow_on_submit",
+					"Attendance-working_hours-read_only",
+					"Attendance-working_hours-depends_on",
+					"Attendance-status-allow_on_submit",
+					"Attendance-status-read_only",
+					# Project
+					"Project-main-field_order",
+					"Project-customer-label",
+					"Project-naming_series-options",
+					"Project-status-hidden",
+					# Shift Assignment
+					"Shift Assignment-main-field_order",
+					"Shift Assignment-shift_location-fetch_from",
+				],
+			],
 		],
 	},
 	{

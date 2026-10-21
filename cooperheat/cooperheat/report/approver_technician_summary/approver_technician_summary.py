@@ -22,14 +22,32 @@ def execute(filters=None):
 
 def get_columns():
 	return [
-		{"label": _("Employee"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 160},
+		{
+			"label": _("Employee"),
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"options": "Employee",
+			"width": 160,
+		},
 		{"label": _("Name"), "fieldname": "employee_name", "fieldtype": "Data", "width": 180},
 		{"label": _("Type"), "fieldname": "row_type", "fieldtype": "Data", "width": 130},
-		{"label": _("Department"), "fieldname": "department", "fieldtype": "Link", "options": "Department", "width": 170},
+		{
+			"label": _("Department"),
+			"fieldname": "department",
+			"fieldtype": "Link",
+			"options": "Department",
+			"width": 170,
+		},
 		{"label": _("No. of Technicians"), "fieldname": "technician_count", "fieldtype": "Int", "width": 140},
 		{"label": _("Technician Names"), "fieldname": "technician_names", "fieldtype": "Data", "width": 280},
 		{"label": _("Employee Number"), "fieldname": "employee_number", "fieldtype": "Data", "width": 130},
-		{"label": _("Designation"), "fieldname": "designation", "fieldtype": "Link", "options": "Designation", "width": 130},
+		{
+			"label": _("Designation"),
+			"fieldname": "designation",
+			"fieldtype": "Link",
+			"options": "Designation",
+			"width": 130,
+		},
 		{"label": _("Assigned Sites (Today)"), "fieldname": "sites", "fieldtype": "Data", "width": 220},
 		{"label": _("Pending Approvals"), "fieldname": "pending_approvals", "fieldtype": "Int", "width": 130},
 		{"label": _("Mobile"), "fieldname": "cell_number", "fieldtype": "Data", "width": 120},
@@ -43,8 +61,14 @@ def get_data(filters):
 		"Employee",
 		filters={"status": "Active"},
 		fields=[
-			"name", "employee_name", "department", "employee_number", "designation", "cell_number",
-			"reports_to", "custom_secondary_reporting",
+			"name",
+			"employee_name",
+			"department",
+			"employee_number",
+			"designation",
+			"cell_number",
+			"reports_to",
+			"custom_secondary_reporting",
 		],
 		order_by="employee_name asc",
 	)
@@ -83,29 +107,33 @@ def get_data(filters):
 	data = []
 	for (approver, level), techs in sorted(blocks.items(), key=lambda kv: (kv[0][1], kv[0][0])):
 		info = approver_info.get(approver)
-		data.append({
-			"employee": approver,
-			"employee_name": info.employee_name if info else approver,
-			"row_type": _("Level {0} Approver").format(level),
-			"department": info.department if info else None,
-			"technician_count": len(techs),
-			"technician_names": ", ".join(t.employee_name or t.name for t in techs),
-			"pending_approvals": sum(pending.get((approver, t.name), 0) for t in techs),
-			"indent": 0,
-		})
+		data.append(
+			{
+				"employee": approver,
+				"employee_name": info.employee_name if info else approver,
+				"row_type": _("Level {0} Approver").format(level),
+				"department": info.department if info else None,
+				"technician_count": len(techs),
+				"technician_names": ", ".join(t.employee_name or t.name for t in techs),
+				"pending_approvals": sum(pending.get((approver, t.name), 0) for t in techs),
+				"indent": 0,
+			}
+		)
 		for t in techs:
-			data.append({
-				"employee": t.name,
-				"employee_name": t.employee_name,
-				"row_type": _("Technician"),
-				"department": t.department,
-				"employee_number": t.employee_number,
-				"designation": t.designation,
-				"sites": sites.get(t.name, ""),
-				"pending_approvals": pending.get((approver, t.name), 0),
-				"cell_number": t.cell_number,
-				"indent": 1,
-			})
+			data.append(
+				{
+					"employee": t.name,
+					"employee_name": t.employee_name,
+					"row_type": _("Technician"),
+					"department": t.department,
+					"employee_number": t.employee_number,
+					"designation": t.designation,
+					"sites": sites.get(t.name, ""),
+					"pending_approvals": pending.get((approver, t.name), 0),
+					"cell_number": t.cell_number,
+					"indent": 1,
+				}
+			)
 	return data
 
 
@@ -113,7 +141,8 @@ def _get_sites_today(employees):
 	"""Projects on each employee's active Shift Assignment for today."""
 	if not employees:
 		return {}
-	rows = frappe.db.sql("""
+	rows = frappe.db.sql(
+		"""
 		SELECT sa.employee,
 			GROUP_CONCAT(DISTINCT COALESCE(NULLIF(p.custom_project_code, ''), sap.project)
 				ORDER BY sap.project SEPARATOR ', ') AS sites
@@ -127,7 +156,10 @@ def _get_sites_today(employees):
 		  AND sa.start_date <= %(today)s
 		  AND (sa.end_date IS NULL OR sa.end_date >= %(today)s)
 		GROUP BY sa.employee
-	""", {"employees": employees, "today": today()}, as_dict=True)
+	""",
+		{"employees": employees, "today": today()},
+		as_dict=True,
+	)
 	return {r.employee: r.sites for r in rows}
 
 
@@ -135,12 +167,16 @@ def _get_pending_counts(approvers):
 	"""Submitted Attendance currently waiting on each approver, per employee."""
 	if not approvers:
 		return {}
-	rows = frappe.db.sql("""
+	rows = frappe.db.sql(
+		"""
 		SELECT current_approver, employee, COUNT(*) AS cnt
 		FROM `tabAttendance`
 		WHERE docstatus = 1
 		  AND workflow_state IN %(states)s
 		  AND current_approver IN %(approvers)s
 		GROUP BY current_approver, employee
-	""", {"states": PENDING_STATES, "approvers": approvers}, as_dict=True)
+	""",
+		{"states": PENDING_STATES, "approvers": approvers},
+		as_dict=True,
+	)
 	return {(r.current_approver, r.employee): r.cnt for r in rows}

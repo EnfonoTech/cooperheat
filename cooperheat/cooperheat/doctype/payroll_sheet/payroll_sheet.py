@@ -10,14 +10,33 @@ from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
 MONTHS = [
-	"January", "February", "March", "April", "May", "June",
-	"July", "August", "September", "October", "November", "December",
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
 ]
 
 EARNING_FIELDS = [
-	"basic", "housing_allowance", "transport_allowance", "living_allowance",
-	"service_allowance", "driving_allowance", "merit_award", "aramco_certification",
-	"supervisor_allowance", "education_allowance", "rso_allowance", "rpp_allowance",
+	"basic",
+	"housing_allowance",
+	"transport_allowance",
+	"living_allowance",
+	"service_allowance",
+	"driving_allowance",
+	"merit_award",
+	"aramco_certification",
+	"supervisor_allowance",
+	"education_allowance",
+	"rso_allowance",
+	"rpp_allowance",
 	"other_allowance",
 ]
 
@@ -26,27 +45,42 @@ PRORATED_EARNING_FIELDS = list(EARNING_FIELDS)
 
 # Recurring deductions sourced from the Employee Compensation master.
 COMP_DEDUCTION_FIELDS = [
-	"general_advance", "housing_advance",
-	"transport_deduction", "education_deduction", "retention_deduction",
+	"general_advance",
+	"housing_advance",
+	"transport_deduction",
+	"education_deduction",
+	"retention_deduction",
 ]
 
 # Variable per-month deductions sourced from the Excel import.
 # Not prorated by worked_days — they're whatever the Excel says.
 VARIABLE_DEDUCTION_FIELDS = [
-	"housing_deduction", "other_deduction",
+	"housing_deduction",
+	"other_deduction",
 ]
 
 DEDUCTION_FIELDS = COMP_DEDUCTION_FIELDS + VARIABLE_DEDUCTION_FIELDS
 
 SPECIAL_EARNINGS = [
-	"others", "bonus", "expenses", "air_fare",
-	"vacation_pay", "gratuity", "retention",
+	"others",
+	"bonus",
+	"expenses",
+	"air_fare",
+	"vacation_pay",
+	"gratuity",
+	"retention",
 ]
 
 # Fields copied from the Compensation record to the Payroll Sheet.
-COMPENSATION_COPY_FIELDS = EARNING_FIELDS + COMP_DEDUCTION_FIELDS + [
-	"pay_batch", "employee_category", "currency",
-]
+COMPENSATION_COPY_FIELDS = (
+	EARNING_FIELDS
+	+ COMP_DEDUCTION_FIELDS
+	+ [
+		"pay_batch",
+		"employee_category",
+		"currency",
+	]
+)
 
 
 def month_index(month_name):
@@ -106,9 +140,14 @@ class PayrollSheet(Document):
 		for f in EARNING_FIELDS + SPECIAL_EARNINGS + DEDUCTION_FIELDS:
 			self.set(f, 0)
 		for f in (
-			"normal_ot_hours", "holiday_ot_hours", "travel_ot_hours",
-			"normal_ot_amount", "holiday_ot_amount", "travel_ot_amount",
-			"total_ot_amount", "gosi",
+			"normal_ot_hours",
+			"holiday_ot_hours",
+			"travel_ot_hours",
+			"normal_ot_amount",
+			"holiday_ot_amount",
+			"travel_ot_amount",
+			"total_ot_amount",
+			"gosi",
 		):
 			self.set(f, 0)
 
@@ -151,10 +190,7 @@ class PayrollSheet(Document):
 		# Travel overtime is not used (client, 2026-10-13).
 		self.travel_ot_hours = 0
 		self.travel_ot_amount = 0
-		self.total_ot_amount = self.round_amount(
-			flt(self.normal_ot_amount)
-			+ flt(self.holiday_ot_amount)
-		)
+		self.total_ot_amount = self.round_amount(flt(self.normal_ot_amount) + flt(self.holiday_ot_amount))
 
 	def get_ot_basic(self):
 		"""Full monthly basic from the Compensation, unaffected by unpaid days.
@@ -177,20 +213,17 @@ class PayrollSheet(Document):
 	def calculate_totals(self):
 		earnings_total = sum(flt(self.get(f)) for f in EARNING_FIELDS)
 		special_total = sum(flt(self.get(f)) for f in SPECIAL_EARNINGS)
-		self.total_earnings = self.round_amount(
-			earnings_total + flt(self.total_ot_amount) + special_total
-		)
+		self.total_earnings = self.round_amount(earnings_total + flt(self.total_ot_amount) + special_total)
 		self.total_deduction = self.round_amount(
 			flt(self.gosi) + sum(flt(self.get(f)) for f in DEDUCTION_FIELDS)
 		)
-		self.net_payable = self.round_amount(
-			flt(self.total_earnings) - flt(self.total_deduction)
-		)
+		self.net_payable = self.round_amount(flt(self.total_earnings) - flt(self.total_deduction))
 
 
 # ---------------------------------------------------------------------------
 # Whitelisted helpers used by the bulk import page and the JS form
 # ---------------------------------------------------------------------------
+
 
 @frappe.whitelist()
 def get_employee_compensation(employee, posting_date=None):
@@ -251,10 +284,12 @@ def create_salary_slip(payroll_sheet):
 	settings = frappe.get_cached_doc("Pay Sheet Settings")
 	mapping = _mapping_from_settings(settings)
 	if not mapping:
-		frappe.throw(_(
-			"No Salary Component mapping configured. Open Pay Sheet Settings and "
-			"click 'Actions → Setup Defaults' first."
-		))
+		frappe.throw(
+			_(
+				"No Salary Component mapping configured. Open Pay Sheet Settings and "
+				"click 'Actions → Setup Defaults' first."
+			)
+		)
 
 	ssa_name = _ensure_salary_structure_assignment(
 		employee=doc.employee,
@@ -287,10 +322,13 @@ def create_salary_slip(payroll_sheet):
 			continue
 		_ensure_salary_component(component, ctype)
 		table = "earnings" if ctype == "Earning" else "deductions"
-		slip.append(table, {
-			"salary_component": component,
-			"amount": amount,
-		})
+		slip.append(
+			table,
+			{
+				"salary_component": component,
+				"amount": amount,
+			},
+		)
 
 	# HRMS builds self.series in __init__ using self.employee (None at that
 	# point since we just called new_doc). Refresh it before insert so the
@@ -308,7 +346,7 @@ def create_salary_slip(payroll_sheet):
 def _mapping_from_settings(settings):
 	"""Return {payroll_field: (salary_component, component_type)} from settings."""
 	result = {}
-	for row in (settings.component_mapping or []):
+	for row in settings.component_mapping or []:
 		if row.payroll_field and row.salary_component and row.component_type:
 			result[row.payroll_field] = (row.salary_component, row.component_type)
 	return result
@@ -347,19 +385,31 @@ def _ensure_salary_structure_assignment(employee, company, start_date, settings)
 
 	structure = settings.default_salary_structure
 	if not structure:
-		frappe.throw(_(
-			"No Default Salary Structure set in Pay Sheet Settings. "
-			"Open Pay Sheet Settings and click 'Actions → Setup Defaults'."
-		))
+		frappe.throw(
+			_(
+				"No Default Salary Structure set in Pay Sheet Settings. "
+				"Open Pay Sheet Settings and click 'Actions → Setup Defaults'."
+			)
+		)
 
 	ssa = frappe.new_doc("Salary Structure Assignment")
 	ssa.employee = employee
 	ssa.salary_structure = structure
 	ssa.company = company
 	ssa.from_date = start_date
-	ssa.base = flt(frappe.db.get_value("Payroll Sheet", {
-		"employee": employee, "docstatus": 1,
-	}, "basic")) or 0
+	ssa.base = (
+		flt(
+			frappe.db.get_value(
+				"Payroll Sheet",
+				{
+					"employee": employee,
+					"docstatus": 1,
+				},
+				"basic",
+			)
+		)
+		or 0
+	)
 	ssa.flags.ignore_permissions = True
 	ssa.insert()
 	ssa.submit()

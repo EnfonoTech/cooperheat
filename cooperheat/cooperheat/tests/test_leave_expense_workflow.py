@@ -1,6 +1,6 @@
 """Leave and expense: reporting person approves, then the Payroll Approver.
 
-    bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_leave_expense_workflow
+bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_leave_expense_workflow
 """
 
 import unittest
@@ -47,7 +47,12 @@ def act(name, action, user):
 
 
 def row(name):
-	return frappe.db.get_value("Leave Application", name, ["workflow_state", "status", "docstatus", "leave_approver", aw.FINAL_APPROVER_FIELD], as_dict=True)
+	return frappe.db.get_value(
+		"Leave Application",
+		name,
+		["workflow_state", "status", "docstatus", "leave_approver", aw.FINAL_APPROVER_FIELD],
+		as_dict=True,
+	)
 
 
 class TestLeaveWorkflow(HRTestCase):
@@ -60,7 +65,9 @@ class TestLeaveWorkflow(HRTestCase):
 
 	@classmethod
 	def tearDownClass(cls):
-		for name in frappe.get_all("Leave Application", filters={"description": "workflow test"}, pluck="name"):
+		for name in frappe.get_all(
+			"Leave Application", filters={"description": "workflow test"}, pluck="name"
+		):
 			frappe.db.delete("Leave Application", {"name": name})
 		cleanup_debris()
 		super().tearDownClass()
@@ -129,7 +136,11 @@ class TestLeaveWorkflow(HRTestCase):
 	def test_existing_open_requests_are_picked_up(self):
 		emp = make_employee("LvOld", reports_to=self.anil)
 		name = new_leave(emp.name)
-		frappe.db.set_value("Leave Application", name, {"workflow_state": None, "leave_approver": None, aw.FINAL_APPROVER_FIELD: None})
+		frappe.db.set_value(
+			"Leave Application",
+			name,
+			{"workflow_state": None, "leave_approver": None, aw.FINAL_APPROVER_FIELD: None},
+		)
 		aw._backfill_open_requests("Leave Application")
 		leave = row(name)
 		self.assertEqual(leave.workflow_state, aw.PENDING_1)
@@ -142,10 +153,15 @@ class TestExpenseWorkflow(HRTestCase):
 		wf = frappe.get_doc("Workflow", "Expense Approval")
 		self.assertEqual((wf.document_type, wf.is_active), ("Expense Claim", 1))
 		approve = [t for t in wf.transitions if t.action == "Approve" and t.allowed == "All"]
-		self.assertEqual([(t.state, t.next_state) for t in approve], [(aw.PENDING_1, aw.PENDING_2), (aw.PENDING_2, aw.APPROVED)])
+		self.assertEqual(
+			[(t.state, t.next_state) for t in approve],
+			[(aw.PENDING_1, aw.PENDING_2), (aw.PENDING_2, aw.APPROVED)],
+		)
 		self.assertIn("expense_approver", approve[0].condition)
 		self.assertIn(aw.FINAL_APPROVER_FIELD, approve[1].condition)
-		self.assertEqual({s.state: s.update_value for s in wf.states if s.update_field}[aw.APPROVED], "Approved")
+		self.assertEqual(
+			{s.state: s.update_value for s in wf.states if s.update_field}[aw.APPROVED], "Approved"
+		)
 
 	def test_approver_and_final_approver_are_filled(self):
 		doc = frappe.new_doc("Expense Claim")

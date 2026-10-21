@@ -2,9 +2,18 @@
 // For license information, please see license.txt
 
 const EARNING_FIELDS = [
-	"basic", "housing_allowance", "transport_allowance", "living_allowance",
-	"service_allowance", "driving_allowance", "merit_award", "aramco_certification",
-	"supervisor_allowance", "education_allowance", "rso_allowance", "rpp_allowance",
+	"basic",
+	"housing_allowance",
+	"transport_allowance",
+	"living_allowance",
+	"service_allowance",
+	"driving_allowance",
+	"merit_award",
+	"aramco_certification",
+	"supervisor_allowance",
+	"education_allowance",
+	"rso_allowance",
+	"rpp_allowance",
 	"other_allowance",
 ];
 
@@ -12,18 +21,38 @@ const EARNING_FIELDS = [
 const PRORATED_EARNING_FIELDS = [...EARNING_FIELDS];
 
 const SPECIAL_EARNINGS = [
-	"others", "bonus", "expenses", "air_fare", "vacation_pay", "gratuity", "retention",
+	"others",
+	"bonus",
+	"expenses",
+	"air_fare",
+	"vacation_pay",
+	"gratuity",
+	"retention",
 ];
 
 const DEDUCTION_FIELDS = [
-	"general_advance", "housing_advance",
-	"transport_deduction", "education_deduction", "retention_deduction",
-	"housing_deduction", "other_deduction",
+	"general_advance",
+	"housing_advance",
+	"transport_deduction",
+	"education_deduction",
+	"retention_deduction",
+	"housing_deduction",
+	"other_deduction",
 ];
 
 const MONTHS = [
-	"January", "February", "March", "April", "May", "June",
-	"July", "August", "September", "October", "November", "December",
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
 ];
 
 function days_in_month(year, month_name) {
@@ -48,11 +77,22 @@ function recalc(frm, settings) {
 
 	// worked_days = 0 → wipe everything; nothing to compute.
 	if (worked <= 0) {
-		[...EARNING_FIELDS, ...SPECIAL_EARNINGS, ...DEDUCTION_FIELDS,
-			"normal_ot_hours", "holiday_ot_hours", "travel_ot_hours",
-			"normal_ot_amount", "holiday_ot_amount", "travel_ot_amount",
-			"total_ot_amount", "gosi", "total_earnings", "total_deduction", "net_payable",
-		].forEach(f => frm.set_value(f, 0));
+		[
+			...EARNING_FIELDS,
+			...SPECIAL_EARNINGS,
+			...DEDUCTION_FIELDS,
+			"normal_ot_hours",
+			"holiday_ot_hours",
+			"travel_ot_hours",
+			"normal_ot_amount",
+			"holiday_ot_amount",
+			"travel_ot_amount",
+			"total_ot_amount",
+			"gosi",
+			"total_earnings",
+			"total_deduction",
+			"net_payable",
+		].forEach((f) => frm.set_value(f, 0));
 		return;
 	}
 
@@ -72,20 +112,21 @@ function recalc(frm, settings) {
 
 	// GOSI
 	const applicable = (settings.gosi_applicable_category || "Saudi").trim();
-	const gosi = (frm.doc.employee_category || "").trim() === applicable
-		? (basic + flt(frm.doc.housing_allowance)) * (settings.gosi_rate_percent || 0) / 100
-		: 0;
+	const gosi =
+		(frm.doc.employee_category || "").trim() === applicable
+			? ((basic + flt(frm.doc.housing_allowance)) * (settings.gosi_rate_percent || 0)) / 100
+			: 0;
 	frm.set_value("gosi", gosi);
 
 	// Totals
 	let earnings = 0;
-	EARNING_FIELDS.forEach(f => earnings += flt(frm.doc[f]));
-	SPECIAL_EARNINGS.forEach(f => earnings += flt(frm.doc[f]));
+	EARNING_FIELDS.forEach((f) => (earnings += flt(frm.doc[f])));
+	SPECIAL_EARNINGS.forEach((f) => (earnings += flt(frm.doc[f])));
 	earnings += total_ot;
 	frm.set_value("total_earnings", earnings);
 
 	let deductions = gosi;
-	DEDUCTION_FIELDS.forEach(f => deductions += flt(frm.doc[f]));
+	DEDUCTION_FIELDS.forEach((f) => (deductions += flt(frm.doc[f])));
 	frm.set_value("total_deduction", deductions);
 
 	frm.set_value("net_payable", earnings - deductions);
@@ -122,8 +163,8 @@ async function apply_proration(frm) {
 	const comp = frm.__comp;
 	const dim = frm.doc.days_in_month || days_in_month(frm.doc.year, frm.doc.month);
 	const worked = flt(frm.doc.worked_days);
-	const factor = (worked > 0 && dim > 0) ? Math.min(worked, dim) / dim : 0;
-	PRORATED_EARNING_FIELDS.forEach(f => {
+	const factor = worked > 0 && dim > 0 ? Math.min(worked, dim) / dim : 0;
+	PRORATED_EARNING_FIELDS.forEach((f) => {
 		frm.doc[f] = flt(comp[f]) * factor;
 		frm.refresh_field(f);
 	});
@@ -133,29 +174,40 @@ async function apply_proration(frm) {
 const REPRORATE_ON_CHANGE = ["worked_days", "month", "year", "compensation"];
 
 const RECALC_FIELDS = [
-	"worked_days", "month", "year", "employee_category",
-	"normal_ot_hours", "holiday_ot_hours", "travel_ot_hours",
-	...EARNING_FIELDS, ...SPECIAL_EARNINGS, ...DEDUCTION_FIELDS,
+	"worked_days",
+	"month",
+	"year",
+	"employee_category",
+	"normal_ot_hours",
+	"holiday_ot_hours",
+	"travel_ot_hours",
+	...EARNING_FIELDS,
+	...SPECIAL_EARNINGS,
+	...DEDUCTION_FIELDS,
 ];
 
 const handlers = {
 	refresh(frm) {
 		if (frm.doc.docstatus === 1) {
 			frm.add_custom_button(__("Create Salary Slip"), () => {
-				frappe.call({
-					method: "cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip",
-					args: { payroll_sheet: frm.doc.name },
-					freeze: true,
-					freeze_message: __("Creating Salary Slip..."),
-				}).then(r => {
-					if (r.message) {
-						frappe.set_route("Form", "Salary Slip", r.message);
-					}
-				});
+				frappe
+					.call({
+						method: "cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.create_salary_slip",
+						args: { payroll_sheet: frm.doc.name },
+						freeze: true,
+						freeze_message: __("Creating Salary Slip..."),
+					})
+					.then((r) => {
+						if (r.message) {
+							frappe.set_route("Form", "Salary Slip", r.message);
+						}
+					});
 			});
 		}
 		if (!frm.is_new() && frm.doc.docstatus === 0) {
-			frm.add_custom_button(__("Pull from Compensation"), () => pull_compensation(frm, true));
+			frm.add_custom_button(__("Pull from Compensation"), () =>
+				pull_compensation(frm, true)
+			);
 		}
 	},
 	employee(frm) {
@@ -170,31 +222,35 @@ function pull_compensation(frm, explicit) {
 		if (explicit) frappe.msgprint(__("Select Employee first."));
 		return;
 	}
-	frappe.call({
-		method: "cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.get_employee_compensation",
-		args: {
-			employee: frm.doc.employee,
-			posting_date: frm.doc.posting_date,
-		},
-	}).then(r => {
-		const data = r.message || {};
-		if (!data.compensation) {
-			if (explicit) {
-				frappe.msgprint({
-					title: __("No compensation record"),
-					message: __("No active Employee Compensation found for {0}.", [frm.doc.employee]),
-					indicator: "orange",
-				});
+	frappe
+		.call({
+			method: "cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet.get_employee_compensation",
+			args: {
+				employee: frm.doc.employee,
+				posting_date: frm.doc.posting_date,
+			},
+		})
+		.then((r) => {
+			const data = r.message || {};
+			if (!data.compensation) {
+				if (explicit) {
+					frappe.msgprint({
+						title: __("No compensation record"),
+						message: __("No active Employee Compensation found for {0}.", [
+							frm.doc.employee,
+						]),
+						indicator: "orange",
+					});
+				}
+				return;
 			}
-			return;
-		}
-		frm.set_value("compensation", data.compensation);
-		Object.entries(data.values || {}).forEach(([k, v]) => frm.set_value(k, v));
-		trigger_recalc(frm);
-	});
+			frm.set_value("compensation", data.compensation);
+			Object.entries(data.values || {}).forEach(([k, v]) => frm.set_value(k, v));
+			trigger_recalc(frm);
+		});
 }
 
-RECALC_FIELDS.forEach(f => {
+RECALC_FIELDS.forEach((f) => {
 	handlers[f] = (frm) => trigger_recalc(frm, f);
 });
 

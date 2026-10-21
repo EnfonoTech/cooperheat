@@ -35,7 +35,8 @@
 	ADD_BUTTONS.forEach(([label, unit_type, parents]) => {
 		toolbar.push({
 			label: label,
-			condition: (node) => !node.is_root && parents.includes(node.data && node.data.unit_type),
+			condition: (node) =>
+				!node.is_root && parents.includes(node.data && node.data.unit_type),
 			click: (node) => add_under(node, unit_type),
 		});
 	});
@@ -64,7 +65,9 @@
 			if (node.is_root || !node.data) return;
 			const $link = node.$tree_link;
 			if (!$link || $link.find(".ch-unit").length) return;
-			const type = node.data.unit_type ? frappe.utils.escape_html(__(node.data.unit_type)) : "";
+			const type = node.data.unit_type
+				? frappe.utils.escape_html(__(node.data.unit_type))
+				: "";
 			const count = node.data.employees ? ` · ${cint(node.data.employees)}` : "";
 			if (type || count) {
 				$link.append(

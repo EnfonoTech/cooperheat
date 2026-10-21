@@ -40,7 +40,10 @@ def _require_supervisor_or_hr():
 	user = frappe.session.user
 	roles = set(frappe.get_roles(user))
 	if user != "Administrator" and not (roles & (SCOPED_ROLES | unrestricted_roles())):
-		frappe.throw(frappe._("The Supervisor Workspace is only available to supervisors, managers and HR."), frappe.PermissionError)
+		frappe.throw(
+			frappe._("The Supervisor Workspace is only available to supervisors, managers and HR."),
+			frappe.PermissionError,
+		)
 
 
 def _team_employees() -> list[str]:
@@ -103,7 +106,11 @@ def get_team(date=None) -> list[dict]:
 		logs_by_emp.setdefault(log.employee, []).append(log)
 
 	me = _my_employee()
-	pending_filters = {"employee": ["in", team], "workflow_state": ["in", list(PENDING_STATES)], "docstatus": 1}
+	pending_filters = {
+		"employee": ["in", team],
+		"workflow_state": ["in", list(PENDING_STATES)],
+		"docstatus": 1,
+	}
 	if not _sees_everyone() and me:
 		pending_filters["current_approver"] = me
 	pending: dict[str, int] = {}
@@ -160,7 +167,10 @@ def get_employee_days(employee: str, from_date=None, to_date=None) -> list[dict]
 		"Employee Checkin",
 		filters={
 			"employee": employee,
-			"time": ["between", [str(add_days(from_d, -1)) + " 00:00:00", str(add_days(to_d, 1)) + " 23:59:59"]],
+			"time": [
+				"between",
+				[str(add_days(from_d, -1)) + " 00:00:00", str(add_days(to_d, 1)) + " 23:59:59"],
+			],
 		},
 		fields=["name", "log_type", "time", "custom_project", "attendance"],
 		order_by="time asc",
@@ -174,10 +184,21 @@ def get_employee_days(employee: str, from_date=None, to_date=None) -> list[dict]
 		str(a.attendance_date): a
 		for a in frappe.get_all(
 			"Attendance",
-			filters={"employee": employee, "attendance_date": ["between", [from_d, to_d]], "docstatus": ["!=", 2]},
+			filters={
+				"employee": employee,
+				"attendance_date": ["between", [from_d, to_d]],
+				"docstatus": ["!=", 2],
+			},
 			fields=[
-				"name", "attendance_date", "status", "workflow_state", "in_time", "out_time",
-				"working_hours", "current_approver", "current_approver_name",
+				"name",
+				"attendance_date",
+				"status",
+				"workflow_state",
+				"in_time",
+				"out_time",
+				"working_hours",
+				"current_approver",
+				"current_approver_name",
 			],
 		)
 	}
@@ -208,7 +229,9 @@ def get_employee_days(employee: str, from_date=None, to_date=None) -> list[dict]
 				"date": day,
 				"attendance": att,
 				"can_approve": bool(
-					att and att.workflow_state in PENDING_STATES and (hr or (me and att.current_approver == me))
+					att
+					and att.workflow_state in PENDING_STATES
+					and (hr or (me and att.current_approver == me))
 				),
 				"first_in": str(first_in) if first_in else None,
 				"last_out": str(last_out) if last_out else None,
@@ -266,12 +289,22 @@ def get_pending_grouped(date=None, all_dates: int = 0, scope: str | None = None)
 		"Attendance",
 		filters=filters,
 		fields=[
-			"name", "employee", "employee_name", "attendance_date", "working_hours",
-			"workflow_state", "status", "window_expires_at", "in_time", "out_time",
+			"name",
+			"employee",
+			"employee_name",
+			"attendance_date",
+			"working_hours",
+			"workflow_state",
+			"status",
+			"window_expires_at",
+			"in_time",
+			"out_time",
 		],
 		order_by="attendance_date desc",
 	):
-		g = groups.setdefault(a.employee, {"employee": a.employee, "employee_name": a.employee_name, "items": []})
+		g = groups.setdefault(
+			a.employee, {"employee": a.employee, "employee_name": a.employee_name, "items": []}
+		)
 		g["items"].append(
 			{
 				"attendance": a.name,
@@ -303,9 +336,16 @@ def _approve_one(attendance: str) -> str:
 
 	wx = doc.get("window_expires_at")
 	if wx and get_datetime(wx) < now_datetime() and _is_scoped_user():
-		frappe.throw(frappe._("The approval window for {0} has expired; it is handled automatically.").format(attendance))
+		frappe.throw(
+			frappe._("The approval window for {0} has expired; it is handled automatically.").format(
+				attendance
+			)
+		)
 
-	action = next((t["action"] for t in (get_transitions(doc) or []) if "approve" in (t.get("action") or "").lower()), None)
+	action = next(
+		(t["action"] for t in (get_transitions(doc) or []) if "approve" in (t.get("action") or "").lower()),
+		None,
+	)
 	if not action:
 		frappe.throw(frappe._("No approve action is available for {0}.").format(attendance))
 	if not _is_scoped_user() and doc.current_approver != me:

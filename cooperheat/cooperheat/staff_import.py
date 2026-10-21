@@ -15,7 +15,12 @@ import csv
 import frappe
 from frappe.utils import cint
 
-ALIASES = {"office": "Office Staff", "office staff": "Office Staff", "field": "Field Staff", "field staff": "Field Staff"}
+ALIASES = {
+	"office": "Office Staff",
+	"office staff": "Office Staff",
+	"field": "Field Staff",
+	"field staff": "Field Staff",
+}
 
 
 def _find(key):
@@ -62,7 +67,9 @@ def load(path, dry_run=1):
 		report["updated"].append((name, current, category))
 	if not dry_run:
 		frappe.db.commit()
-	print(f"dry_run={dry_run} updated={len(report['updated'])} unchanged={len(report['unchanged'])} problems={len(report['problems'])}")
+	print(
+		f"dry_run={dry_run} updated={len(report['updated'])} unchanged={len(report['unchanged'])} problems={len(report['problems'])}"
+	)
 	for p in report["problems"]:
 		print("PROBLEM", p)
 	return report

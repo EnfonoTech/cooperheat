@@ -100,19 +100,19 @@ def _validate_approver_authorization(doc):
 
 	if not row:
 		frappe.throw(
-			_("No Level {0} approver is configured for Department {1}. "
-			  "Please set up the Approval Matrix on the Department record.").format(
-				required_level, department
-			)
+			_(
+				"No Level {0} approver is configured for Department {1}. "
+				"Please set up the Approval Matrix on the Department record."
+			).format(required_level, department)
 		)
 
 	approver_user = _approver_user(row.approver)
 	if not approver_user:
 		frappe.throw(
-			_("Employee {0} (Level {1} approver) has no linked User account. "
-			  "Please link a User to that Employee before proceeding.").format(
-				row.approver, required_level
-			)
+			_(
+				"Employee {0} (Level {1} approver) has no linked User account. "
+				"Please link a User to that Employee before proceeding."
+			).format(row.approver, required_level)
 		)
 
 	# HR Manager can always override — useful for admin corrections.
@@ -122,8 +122,7 @@ def _validate_approver_authorization(doc):
 	if frappe.session.user != approver_user:
 		emp_name = frappe.db.get_value("Employee", row.approver, "employee_name") or row.approver
 		frappe.throw(
-			_("Level {0} approval must be performed by {1} ({2}). "
-			  "Current user is not authorised.").format(
+			_("Level {0} approval must be performed by {1} ({2}). " "Current user is not authorised.").format(
 				required_level, emp_name, row.approver
 			)
 		)
@@ -165,7 +164,7 @@ def _send_approval_notification(doc):
 
 	frappe.sendmail(
 		recipients=[recipient],
-		subject=_("Action Required – Shift Assignment Level {0} Approval: {1}").format(
+		subject=_("Action Required – Shift Assignment Level {0} Approval: {1}").format(  # noqa: RUF001
 			notify_level, doc.name
 		),
 		message=_(

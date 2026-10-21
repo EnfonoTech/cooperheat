@@ -80,12 +80,19 @@ def create_structure(company):
 	for name, parent, is_group in LOCATIONS:
 		if not frappe.db.exists("Location", name):
 			frappe.get_doc(
-				{"doctype": "Location", "location_name": name, "parent_location": parent, "is_group": is_group}
+				{
+					"doctype": "Location",
+					"location_name": name,
+					"parent_location": parent,
+					"is_group": is_group,
+				}
 			).insert()
 			created.append(name)
 
 	for old, new in RENAMES.items():
-		if frappe.db.exists("Department", dept(company, old)) and not frappe.db.exists("Department", dept(company, new)):
+		if frappe.db.exists("Department", dept(company, old)) and not frappe.db.exists(
+			"Department", dept(company, new)
+		):
 			frappe.rename_doc("Department", dept(company, old), dept(company, new), force=True)
 			frappe.db.set_value("Department", dept(company, new), "department_name", new)
 			created.append(dept(company, new))
@@ -134,12 +141,22 @@ def remove_unlisted(company, keep=None, dry_run=1):
 	wanted = {dept(company, name) for name, *_ in STRUCTURE} | {dept(company, k) for k in keep}
 	report = {"delete": [], "disable": [], "kept": sorted(wanted)}
 	candidates = frappe.get_all(
-		"Department", filters={"company": company, "name": ["not in", list(wanted)]}, fields=["name", "disabled"], order_by="rgt desc"
+		"Department",
+		filters={"company": company, "name": ["not in", list(wanted)]},
+		fields=["name", "disabled"],
+		order_by="rgt desc",
 	)
 	for row in candidates:
 		in_use = any(
 			frappe.db.exists(doctype, {"department": row.name})
-			for doctype in ("Employee", "Attendance", "Leave Application", "Salary Slip", "Expense Claim", "Shift Assignment")
+			for doctype in (
+				"Employee",
+				"Attendance",
+				"Leave Application",
+				"Salary Slip",
+				"Expense Claim",
+				"Shift Assignment",
+			)
 		) or frappe.db.exists("Department", {"parent_department": row.name})
 		if in_use:
 			if not row.disabled:
@@ -219,7 +236,13 @@ def uat_demo():
 		email = dev_seed.email(user_key)
 		if not frappe.db.exists("User", email):
 			user = frappe.get_doc(
-				{"doctype": "User", "email": email, "first_name": first, "send_welcome_email": 0, "user_type": "System User"}
+				{
+					"doctype": "User",
+					"email": email,
+					"first_name": first,
+					"send_welcome_email": 0,
+					"user_type": "System User",
+				}
 			)
 			user.flags.no_welcome_mail = True
 			user.insert(ignore_permissions=True)
@@ -247,9 +270,21 @@ def uat_demo():
 		)
 
 	# Dedicated approvers, so the seeded supervisors' teams stay exactly as tested.
-	insp_mgr = demo_person("Inspection Manager", "inspection.manager", custom_business_line=d("Inspection Business Line"))
-	sup_jub = demo_person("NDT Supervisor Jubail", "ndt.jubail", custom_product_line=d("NDT Team"), custom_assigned_location="Jubail")
-	sup_yan = demo_person("NDT Supervisor Yanbu", "ndt.yanbu", custom_product_line=d("NDT Team"), custom_assigned_location="Yanbu")
+	insp_mgr = demo_person(
+		"Inspection Manager", "inspection.manager", custom_business_line=d("Inspection Business Line")
+	)
+	sup_jub = demo_person(
+		"NDT Supervisor Jubail",
+		"ndt.jubail",
+		custom_product_line=d("NDT Team"),
+		custom_assigned_location="Jubail",
+	)
+	sup_yan = demo_person(
+		"NDT Supervisor Yanbu",
+		"ndt.yanbu",
+		custom_product_line=d("NDT Team"),
+		custom_assigned_location="Yanbu",
+	)
 
 	# Approvals follow the reporting line: NDT supervisors report to the Inspection Manager,
 	# crews to their location's supervisor; Irtaza is the Payroll Approver.
@@ -265,7 +300,11 @@ def uat_demo():
 		doc.update(values)
 		doc.save()
 
-	place(khalid, custom_business_line=d("Specialized Mechanical Services Business Line"), custom_product_line=None)
+	place(
+		khalid,
+		custom_business_line=d("Specialized Mechanical Services Business Line"),
+		custom_product_line=None,
+	)
 	place(mustafa, department=d("ICT"))
 	place(irtaza, department=d("HR"))
 
@@ -288,14 +327,22 @@ def uat_demo():
 		).insert()
 	# Crews report to the supervisor of their location; leave / shift / expense approvers follow.
 	for name, location in frappe.get_all(
-		"Employee", filters={"department": d("NDT Team")}, fields=["name", "custom_assigned_location"], as_list=True
+		"Employee",
+		filters={"department": d("NDT Team")},
+		fields=["name", "custom_assigned_location"],
+		as_list=True,
 	):
 		boss = {"Jubail": sup_jub, "Yanbu": sup_yan}.get(location)
 		if boss and name not in (sup_jub, sup_yan):
 			frappe.db.set_value(
 				"Employee",
 				name,
-				{"reports_to": boss, "leave_approver": None, "shift_request_approver": None, "expense_approver": None},
+				{
+					"reports_to": boss,
+					"leave_approver": None,
+					"shift_request_approver": None,
+					"expense_approver": None,
+				},
 				update_modified=False,
 			)
 		frappe.get_doc("Employee", name).save()

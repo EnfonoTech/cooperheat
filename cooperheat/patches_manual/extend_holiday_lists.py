@@ -43,7 +43,10 @@ def _extend(name, from_date, to_date, dry_run):
 	for row in _generated(start, to_date):
 		day = getdate(row.holiday_date)
 		if day >= start and day not in known:
-			doc.append("holidays", {"holiday_date": day, "description": row.description, "weekly_off": row.weekly_off})
+			doc.append(
+				"holidays",
+				{"holiday_date": day, "description": row.description, "weekly_off": row.weekly_off},
+			)
 			known.add(day)
 			added += 1
 	print(f"{verb} {name}: {from_date}..{to_date} +{added} rows")

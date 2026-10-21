@@ -4,7 +4,6 @@
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
-
 # Field names owned by this app on the Employee doctype.
 # (Previously we also owned pay_batch and employee_category; these now live on
 # Employee Compensation, so we clean them up on migrate.)
@@ -195,13 +194,13 @@ frappe.ui.form.on("Attendance", {
 def setup_client_scripts():
 	scripts = [
 		{
-			"name": "Employee Checkin – Assigned Sites Filter",
+			"name": "Employee Checkin – Assigned Sites Filter",  # noqa: RUF001
 			"dt": "Employee Checkin",
 			"view": "Form",
 			"script": _CHECKIN_PROJECT_FILTER_SCRIPT,
 		},
 		{
-			"name": "Attendance – Recalculate Site Hours Button",
+			"name": "Attendance – Recalculate Site Hours Button",  # noqa: RUF001
 			"dt": "Attendance",
 			"view": "Form",
 			"script": _ATTENDANCE_RECALC_SCRIPT,
@@ -251,7 +250,9 @@ _SCOPED_ROLE_PERMS = [
 def ensure_roles():
 	for role in SCOPED_ROLE_NAMES:
 		if not frappe.db.exists("Role", role):
-			frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert(ignore_permissions=True)
+			frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert(
+				ignore_permissions=True
+			)
 
 
 def _grant(doctype, role, permlevel, ptypes):
@@ -269,7 +270,7 @@ def _grant(doctype, role, permlevel, ptypes):
 			update_permission_property(doctype, role, permlevel, ptype, 1)
 	except Exception:
 		frappe.log_error(
-			title="cooperheat: could not grant %s on %s (permlevel %s)" % (role, doctype, permlevel),
+			title=f"cooperheat: could not grant {role} on {doctype} (permlevel {permlevel})",
 			message=frappe.get_traceback(),
 		)
 
@@ -293,7 +294,12 @@ def ensure_project_display():
 	make_property_setter("Project", None, "title_field", "project_name", "Data", for_doctype=True)
 	make_property_setter("Project", None, "show_title_field_in_link", "1", "Check", for_doctype=True)
 	make_property_setter(
-		"Project", None, "search_fields", "project_name,custom_project_code,custom_crm_no", "Data", for_doctype=True
+		"Project",
+		None,
+		"search_fields",
+		"project_name,custom_project_code,custom_crm_no",
+		"Data",
+		for_doctype=True,
 	)
 
 
@@ -306,10 +312,17 @@ _PENDING_STATES = ["Pending Level 1 Approval", "Pending Level 2 Approval", "Pend
 _NUMBER_CARDS = {
 	"Team Pending Approvals": (
 		"Attendance",
-		[["Attendance", "workflow_state", "in", _PENDING_STATES, False], ["Attendance", "docstatus", "=", 1, False]],
+		[
+			["Attendance", "workflow_state", "in", _PENDING_STATES, False],
+			["Attendance", "docstatus", "=", 1, False],
+		],
 		"#E67E22",
 	),
-	"Team Check-ins Today": ("Employee Checkin", [["Employee Checkin", "time", "Timespan", "today", False]], "#2D9CDB"),
+	"Team Check-ins Today": (
+		"Employee Checkin",
+		[["Employee Checkin", "time", "Timespan", "today", False]],
+		"#2D9CDB",
+	),
 	"Team Members": ("Employee", [["Employee", "status", "=", "Active", False]], "#27AE60"),
 }
 
@@ -383,17 +396,21 @@ def ensure_supervisor_workspace():
 	]
 
 	def header(i, text):
-		return {"id": "h%d" % i, "type": "header", "data": {"text": "<span class=\"h4\">%s</span>" % text, "col": 12}}
+		return {
+			"id": f"h{i}",
+			"type": "header",
+			"data": {"text": f'<span class="h4">{text}</span>', "col": 12},
+		}
 
 	content = [header(0, "Today at a glance")]
 	for i, label in enumerate(_NUMBER_CARDS):
-		content.append({"id": "nc%d" % i, "type": "number_card", "data": {"number_card_name": label, "col": 4}})
+		content.append({"id": f"nc{i}", "type": "number_card", "data": {"number_card_name": label, "col": 4}})
 	content.append(header(1, "Shortcuts"))
 	for i, (label, *_rest) in enumerate(shortcuts):
-		content.append({"id": "sc%d" % i, "type": "shortcut", "data": {"shortcut_name": label, "col": 3}})
+		content.append({"id": f"sc{i}", "type": "shortcut", "data": {"shortcut_name": label, "col": 3}})
 	content.append(header(2, "Everything in one place"))
 	for i, title in enumerate(_LINK_CARDS):
-		content.append({"id": "cd%d" % i, "type": "card", "data": {"card_name": title, "col": 4}})
+		content.append({"id": f"cd{i}", "type": "card", "data": {"card_name": title, "col": 4}})
 
 	if frappe.db.exists("Workspace", SUPERVISOR_WORKSPACE):
 		ws = frappe.get_doc("Workspace", SUPERVISOR_WORKSPACE)
@@ -435,7 +452,7 @@ def ensure_supervisor_workspace():
 
 	for label in _NUMBER_CARDS:
 		ws.append("number_cards", {"label": label, "number_card_name": label})
-	for role in SCOPED_ROLE_NAMES + ("HR Manager", "HR User"):
+	for role in (*SCOPED_ROLE_NAMES, "HR Manager", "HR User"):
 		ws.append("roles", {"role": role})
 	ws.flags.ignore_permissions = True
 	ws.save()
@@ -460,9 +477,13 @@ def ensure_slip_print_format():
 	name = "Salary Slip"
 	if not frappe.db.exists("Print Format", {"name": name, "doc_type": "Salary Slip", "disabled": 0}):
 		return
-	if not frappe.db.get_value("Property Setter", {"doc_type": "Salary Slip", "property": "default_print_format"}, "value"):
+	if not frappe.db.get_value(
+		"Property Setter", {"doc_type": "Salary Slip", "property": "default_print_format"}, "value"
+	):
 		make_property_setter("Salary Slip", None, "default_print_format", name, "Data", for_doctype=True)
-	if frappe.db.exists("DocType", "Pay Sheet Settings") and not frappe.db.get_single_value("Pay Sheet Settings", "slip_print_format"):
+	if frappe.db.exists("DocType", "Pay Sheet Settings") and not frappe.db.get_single_value(
+		"Pay Sheet Settings", "slip_print_format"
+	):
 		frappe.db.set_single_value("Pay Sheet Settings", "slip_print_format", name)
 
 

@@ -2,7 +2,6 @@ import frappe
 from frappe import _
 from frappe.utils import cint, cstr, now
 
-
 _LAYOUT_FIELDTYPES = {"Section Break", "Column Break", "Tab Break", "HTML", "Button", "Heading"}
 
 
@@ -47,9 +46,9 @@ def validate(doc, method=None):
 			continue
 		if cstr(doc.get(df.fieldname)) != cstr(before.get(df.fieldname)):
 			frappe.throw(
-				_("You can only change the Approval Matrix of a department. {0} is read-only for you.").format(
-					_(df.label or df.fieldname)
-				)
+				_(
+					"You can only change the Approval Matrix of a department. {0} is read-only for you."
+				).format(_(df.label or df.fieldname))
 			)
 
 	def rows(d):
@@ -69,7 +68,7 @@ def validate(doc, method=None):
 		frappe.throw(_("Only an approver of this department can change its Approval Matrix."))
 	if max(changed_levels) > max(my_levels):
 		frappe.throw(
-			_("You can change approvers up to your own level ({0}). Ask HR to change more senior levels.").format(
-				max(my_levels)
-			)
+			_(
+				"You can change approvers up to your own level ({0}). Ask HR to change more senior levels."
+			).format(max(my_levels))
 		)

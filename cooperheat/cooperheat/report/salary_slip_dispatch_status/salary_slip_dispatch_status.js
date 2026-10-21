@@ -2,16 +2,36 @@
 // For license information, please see license.txt
 
 const DISPATCH_MONTHS = [
-	"", "January", "February", "March", "April", "May", "June",
-	"July", "August", "September", "October", "November", "December",
+	"",
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
 ];
 
 const DISPATCH_COLORS = {
 	// slip status
-	"Submitted": "green", "Draft": "orange", "Not Created": "gray", "Sheet Draft": "gray",
-	"Cancelled": "red", "Sheet Cancelled": "red", "Not Imported": "red",
+	Submitted: "green",
+	Draft: "orange",
+	"Not Created": "gray",
+	"Sheet Draft": "gray",
+	Cancelled: "red",
+	"Sheet Cancelled": "red",
+	"Not Imported": "red",
 	// email status
-	"Sent": "green", "Queued": "blue", "Failed": "red", "Skipped": "orange", "Not Sent": "gray",
+	Sent: "green",
+	Queued: "blue",
+	Failed: "red",
+	Skipped: "orange",
+	"Not Sent": "gray",
 };
 
 frappe.query_reports["Salary Slip Dispatch Status"] = {
@@ -30,7 +50,15 @@ frappe.query_reports["Salary Slip Dispatch Status"] = {
 			fieldname: "slip_status",
 			label: __("Slip Status"),
 			fieldtype: "Select",
-			options: ["", "Not Imported", "Sheet Draft", "Not Created", "Draft", "Submitted", "Cancelled"],
+			options: [
+				"",
+				"Not Imported",
+				"Sheet Draft",
+				"Not Created",
+				"Draft",
+				"Submitted",
+				"Cancelled",
+			],
 		},
 		{
 			fieldname: "email_status",
@@ -43,16 +71,18 @@ frappe.query_reports["Salary Slip Dispatch Status"] = {
 
 	onload(report) {
 		// open on the latest completed import
-		frappe.db.get_list("Payroll Import", {
-			filters: { status: "Completed" },
-			fields: ["name"],
-			order_by: "creation desc",
-			limit: 1,
-		}).then((rows) => {
-			if (rows.length && !report.get_filter_value("payroll_import")) {
-				report.set_filter_value("payroll_import", rows[0].name);
-			}
-		});
+		frappe.db
+			.get_list("Payroll Import", {
+				filters: { status: "Completed" },
+				fields: ["name"],
+				order_by: "creation desc",
+				limit: 1,
+			})
+			.then((rows) => {
+				if (rows.length && !report.get_filter_value("payroll_import")) {
+					report.set_filter_value("payroll_import", rows[0].name);
+				}
+			});
 	},
 
 	formatter(value, row, column, data, default_formatter) {

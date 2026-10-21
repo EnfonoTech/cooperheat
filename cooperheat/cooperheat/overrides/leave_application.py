@@ -19,7 +19,9 @@ def validate_client_approval(doc):
 
 	if doc.get("custom_client_approval_received") != "Yes":
 		frappe.throw(
-			_("Client approval is required for this leave. Set Client Approval Received to Yes before approving."),
+			_(
+				"Client approval is required for this leave. Set Client Approval Received to Yes before approving."
+			),
 			title=_("Client Approval Missing"),
 		)
 	if not doc.get("custom_client_approval_attachment"):

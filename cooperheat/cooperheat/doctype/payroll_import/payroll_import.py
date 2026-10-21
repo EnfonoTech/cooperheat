@@ -17,7 +17,6 @@ from cooperheat.cooperheat.doctype.payroll_sheet.payroll_sheet import (
 	month_index,
 )
 
-
 COLUMN_MAP = {
 	"DocNo": "doc_no",
 	"Code": "code",
@@ -62,7 +61,8 @@ def run_import(doc_name, user=None):
 		frappe.set_user(user)
 
 	frappe.db.set_value(
-		"Payroll Import", doc_name,
+		"Payroll Import",
+		doc_name,
 		{"status": "Running", "error_message": ""},
 		update_modified=False,
 	)
@@ -77,6 +77,7 @@ def run_import(doc_name, user=None):
 	except Exception as e:
 		frappe.db.rollback()
 		import traceback
+
 		frappe.log_error(
 			title=f"Payroll Import {doc_name} failed",
 			message=traceback.format_exc(),
@@ -127,10 +128,13 @@ def _process(doc):
 		frappe.db.commit()
 
 	frappe.db.set_value(
-		"Payroll Import", doc.name,
+		"Payroll Import",
+		doc.name,
 		{
-			"total_rows": total, "created_count": created,
-			"skipped_count": skipped, "error_count": errors,
+			"total_rows": total,
+			"created_count": created,
+			"skipped_count": skipped,
+			"error_count": errors,
 		},
 		update_modified=False,
 	)
@@ -165,41 +169,71 @@ def _process_row(doc, r):
 
 		batch = effective_pay_batch(employee)
 		if batch != doc.pay_batch:
-			return "Skipped", None, employee, _("Employee is in pay batch {0}, not {1}.").format(
-				batch or _("(none)"), doc.pay_batch
+			return (
+				"Skipped",
+				None,
+				employee,
+				_("Employee is in pay batch {0}, not {1}.").format(batch or _("(none)"), doc.pay_batch),
 			)
 
 	# Submitted sheets are protected — cannot overwrite
-	submitted = frappe.db.get_value("Payroll Sheet", {
-		"employee": employee, "month": doc.month, "year": doc.year,
-		"docstatus": 1,
-	}, "name")
+	submitted = frappe.db.get_value(
+		"Payroll Sheet",
+		{
+			"employee": employee,
+			"month": doc.month,
+			"year": doc.year,
+			"docstatus": 1,
+		},
+		"name",
+	)
 	if submitted:
-		return "Skipped", submitted, employee, _(
-			"Payroll Sheet already submitted for this period; cancel it first to re-import."
+		return (
+			"Skipped",
+			submitted,
+			employee,
+			_("Payroll Sheet already submitted for this period; cancel it first to re-import."),
 		)
 
 	# Existing drafts get replaced with fresh data from this import
-	draft = frappe.db.get_value("Payroll Sheet", {
-		"employee": employee, "month": doc.month, "year": doc.year,
-		"docstatus": 0,
-	}, "name")
+	draft = frappe.db.get_value(
+		"Payroll Sheet",
+		{
+			"employee": employee,
+			"month": doc.month,
+			"year": doc.year,
+			"docstatus": 0,
+		},
+		"name",
+	)
 	if draft:
 		frappe.delete_doc(
-			"Payroll Sheet", draft,
-			force=True, ignore_permissions=True, delete_permanently=True,
+			"Payroll Sheet",
+			draft,
+			force=True,
+			ignore_permissions=True,
+			delete_permanently=True,
 		)
 
 	comp_data = get_employee_compensation(employee, doc.posting_date)
 	if not comp_data:
-		return "Error", None, employee, _(
-			"No active Employee Compensation with Effective From on or before {0}"
-		).format(doc.posting_date or "today")
+		return (
+			"Error",
+			None,
+			employee,
+			_("No active Employee Compensation with Effective From on or before {0}").format(
+				doc.posting_date or "today"
+			),
+		)
 
 	ps = _make_payroll_sheet(
-		company=doc.company, employee=employee,
-		month=doc.month, year=int(doc.year),
-		posting_date=doc.posting_date, row=r, comp_data=comp_data,
+		company=doc.company,
+		employee=employee,
+		month=doc.month,
+		year=int(doc.year),
+		posting_date=doc.posting_date,
+		row=r,
+		comp_data=comp_data,
 	)
 	if doc.submit_after_create:
 		ps.submit()
@@ -207,20 +241,22 @@ def _process_row(doc, r):
 
 
 def _append_row(parent, r, status, payroll_sheet, employee, message, idx=None):
-	frappe.get_doc({
-		"doctype": "Payroll Import Row",
-		"parenttype": "Payroll Import",
-		"parentfield": "rows",
-		"parent": parent,
-		"idx": idx,
-		"doc_no": r.get("doc_no"),
-		"code": r.get("code"),
-		"employee": employee or "",
-		"employee_name": frappe.db.get_value("Employee", employee, "employee_name") if employee else "",
-		"payroll_sheet": payroll_sheet or "",
-		"row_status": status,
-		"message": message or "",
-	}).insert(ignore_permissions=True)
+	frappe.get_doc(
+		{
+			"doctype": "Payroll Import Row",
+			"parenttype": "Payroll Import",
+			"parentfield": "rows",
+			"parent": parent,
+			"idx": idx,
+			"doc_no": r.get("doc_no"),
+			"code": r.get("code"),
+			"employee": employee or "",
+			"employee_name": frappe.db.get_value("Employee", employee, "employee_name") if employee else "",
+			"payroll_sheet": payroll_sheet or "",
+			"row_status": status,
+			"message": message or "",
+		}
+	).insert(ignore_permissions=True)
 
 
 def _resolve_employee(code):
@@ -288,11 +324,15 @@ def _generate_rows_from_attendance(doc):
 	from_date = date(int(doc.year), month_num, 1)
 	to_date = date(int(doc.year), month_num, dim)
 
-	rows = get_report_rows(frappe._dict({
-		"from_date": from_date,
-		"to_date": to_date,
-		"company": doc.company,
-	}))
+	rows = get_report_rows(
+		frappe._dict(
+			{
+				"from_date": from_date,
+				"to_date": to_date,
+				"company": doc.company,
+			}
+		)
+	)
 	if doc.get("pay_batch"):
 		from cooperheat.cooperheat.overrides.employee import effective_pay_batch
 
@@ -318,15 +358,17 @@ def _attach_generated_excel(doc, rows):
 		data.append([r.get(COLUMN_MAP[h]) or None for h in header])
 	xlsx = make_xlsx(data, "Payroll Import")
 
-	file_doc = frappe.get_doc({
-		"doctype": "File",
-		"file_name": f"{doc.name}-{doc.month}-{doc.year}.xlsx",
-		"attached_to_doctype": "Payroll Import",
-		"attached_to_name": doc.name,
-		"attached_to_field": "file",
-		"is_private": 1,
-		"content": xlsx.getvalue(),
-	}).insert(ignore_permissions=True)
+	file_doc = frappe.get_doc(
+		{
+			"doctype": "File",
+			"file_name": f"{doc.name}-{doc.month}-{doc.year}.xlsx",
+			"attached_to_doctype": "Payroll Import",
+			"attached_to_name": doc.name,
+			"attached_to_field": "file",
+			"is_private": 1,
+			"content": xlsx.getvalue(),
+		}
+	).insert(ignore_permissions=True)
 
 	frappe.db.set_value("Payroll Import", doc.name, "file", file_doc.file_url, update_modified=False)
 	frappe.db.commit()
