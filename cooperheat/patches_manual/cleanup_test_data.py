@@ -21,7 +21,9 @@ def run(cutoff="2026-10-01", attendance_from="2026-04-01", dry_run=1):
 	frappe.only_for("System Manager")
 	dry_run = cint(dry_run)
 
-	checkins = frappe.get_all("Employee Checkin", filters={"time": ["<", cutoff + " 00:00:00"]}, pluck="name", limit=0)
+	checkins = frappe.get_all(
+		"Employee Checkin", filters={"time": ["<", cutoff + " 00:00:00"]}, pluck="name", limit=0
+	)
 	attendance = frappe.get_all(
 		"Attendance",
 		filters={"attendance_date": ["between", [attendance_from, _day_before(cutoff)]]},
@@ -45,7 +47,9 @@ def run(cutoff="2026-10-01", attendance_from="2026-04-01", dry_run=1):
 	# Check-ins first: they point at Attendance.
 	for name in checkins:
 		frappe.db.set_value("Employee Checkin", name, "attendance", None, update_modified=False)
-		frappe.delete_doc("Employee Checkin", name, force=True, ignore_permissions=True, delete_permanently=False)
+		frappe.delete_doc(
+			"Employee Checkin", name, force=True, ignore_permissions=True, delete_permanently=False
+		)
 	for row in attendance:
 		_delete(row, "Attendance")
 	for row in requests:

@@ -106,7 +106,9 @@ def employee_location(employee: str | None) -> str | None:
 	return frappe.db.get_value("Employee", employee, "custom_assigned_location")
 
 
-def effective_matrix(department: str | None, employee: str | None = None, location: str | None = None) -> list:
+def effective_matrix(
+	department: str | None, employee: str | None = None, location: str | None = None
+) -> list:
 	"""Approval rows that apply, one per level, inherited up the tree.
 
 	Each row: approval_level, approver, approval_window_hours, location, source
@@ -166,7 +168,9 @@ def _pick(chain, by_node, level, location):
 	return None
 
 
-def l1_approver(department: str | None, employee: str | None = None, location: str | None = None) -> str | None:
+def l1_approver(
+	department: str | None, employee: str | None = None, location: str | None = None
+) -> str | None:
 	"""Legacy: first approver from the Department Approval Matrix. Routing no longer reads it
 	(see approval_chain); kept so old data can still be inspected."""
 	row = next((r for r in effective_matrix(department, employee, location) if r.approval_level == 1), None)
@@ -229,7 +233,10 @@ def approval_chain(employee: str | None) -> list:
 	if not employee:
 		return []
 	emp = frappe.db.get_value(
-		"Employee", employee, ["reports_to", "custom_secondary_reporting", "custom_staff_category"], as_dict=True
+		"Employee",
+		employee,
+		["reports_to", "custom_secondary_reporting", "custom_staff_category"],
+		as_dict=True,
 	)
 	if not emp:
 		return []
@@ -295,7 +302,11 @@ def restamp_payroll_step():
 		return
 	for rec in frappe.get_all(
 		"Attendance",
-		filters={"workflow_state": "Pending Level 3 Approval", "docstatus": 1, "current_approver": ["!=", approver]},
+		filters={
+			"workflow_state": "Pending Level 3 Approval",
+			"docstatus": 1,
+			"current_approver": ["!=", approver],
+		},
 		fields=["name"],
 	):
 		_stamp_approver(rec.name, approver)
@@ -323,7 +334,9 @@ def sync_employee_org(doc):
 			bl = doc.custom_business_line = parent_bl
 		elif parent_bl != bl:
 			frappe.throw(
-				_("Product Line {0} does not belong to Business Line {1}.").format(frappe.bold(pl), frappe.bold(bl))
+				_("Product Line {0} does not belong to Business Line {1}.").format(
+					frappe.bold(pl), frappe.bold(bl)
+				)
 			)
 
 	if bl:
@@ -439,12 +452,16 @@ def department_children(doctype, parent=None, company=None, is_root=False):
 
 	rows = get_children(doctype, parent, company, is_root)
 	names = [r["value"] for r in rows]
-	meta = {
-		d.name: d
-		for d in frappe.get_all(
-			"Department", filters={"name": ["in", names]}, fields=["name", "custom_unit_type", "company"]
-		)
-	} if names else {}
+	meta = (
+		{
+			d.name: d
+			for d in frappe.get_all(
+				"Department", filters={"name": ["in", names]}, fields=["name", "custom_unit_type", "company"]
+			)
+		}
+		if names
+		else {}
+	)
 	counts = _employee_counts(names)
 	for row in rows:
 		info = meta.get(row["value"])
@@ -592,7 +609,9 @@ def division_view(node=None, kind="Division", company=None):
 	bosses = {
 		e.name: e.employee_name
 		for e in frappe.get_all(
-			"Employee", filters={"name": ["in", [e.reports_to for e in employees if e.reports_to] or [""]]}, fields=["name", "employee_name"]
+			"Employee",
+			filters={"name": ["in", [e.reports_to for e in employees if e.reports_to] or [""]]},
+			fields=["name", "employee_name"],
 		)
 	}
 	for e in employees:

@@ -87,7 +87,15 @@ def reset_activity(commit: bool = False):
 		frappe.throw("dev_seed only runs on a site with developer_mode enabled.")
 	emps = frappe.get_all("Employee", filters={"user_id": ["like", "%" + DOMAIN]}, pluck="name")
 	if emps:
-		frappe.db.delete("Attendance Site Hours", {"parent": ["in", frappe.get_all("Attendance", filters={"employee": ["in", emps]}, pluck="name")]})
+		frappe.db.delete(
+			"Attendance Site Hours",
+			{
+				"parent": [
+					"in",
+					frappe.get_all("Attendance", filters={"employee": ["in", emps]}, pluck="name"),
+				]
+			},
+		)
 		frappe.db.delete("Attendance", {"employee": ["in", emps]})
 		frappe.db.delete("Employee Checkin", {"employee": ["in", emps]})
 	return run(commit=commit)
@@ -141,12 +149,14 @@ def _make_user(key: str, first: str, last: str, roles: list[str]) -> str:
 def _users() -> dict:
 	out = {}
 	for key, (first, last, roles) in STAFF.items():
-		out[key] = _make_user(key, first, last, roles + ["Employee"])
+		out[key] = _make_user(key, first, last, [*roles, "Employee"])
 	return out
 
 
 def _make_employee(first, last, user, dept, number):
-	existing = frappe.db.get_value("Employee", {"user_id": user} if user else {"employee_number": number}, "name")
+	existing = frappe.db.get_value(
+		"Employee", {"user_id": user} if user else {"employee_number": number}, "name"
+	)
 	if existing:
 		return existing
 	doc = frappe.get_doc(
@@ -174,24 +184,26 @@ def _employees(users: dict) -> dict:
 	emps = {}
 	for i, (key, (first, last, _roles)) in enumerate(STAFF.items(), start=1):
 		dept = {"anil": "Leak Sealing", "saleh": "Contracting"}.get(key)
-		emps[key] = _make_employee(first, last, users[key], dept_name(dept) if dept else None, "S%03d" % i)
+		emps[key] = _make_employee(first, last, users[key], dept_name(dept) if dept else None, f"S{i:03d}")
 
 	n = 100
 	for dept, count in TECHS.items():
-		for i in range(1, count + 1):
+		for _ in range(1, count + 1):
 			n += 1
-			key = "tech%d" % n
-			mail = _make_user(key, "Tech%d" % n, dept.replace(" ", ""), ["Employee"])
-			emps[key] = _make_employee("Tech%d" % n, dept.replace(" ", ""), mail, dept_name(dept), "T%d" % n)
+			key = f"tech{n}"
+			mail = _make_user(key, f"Tech{n}", dept.replace(" ", ""), ["Employee"])
+			emps[key] = _make_employee(f"Tech{n}", dept.replace(" ", ""), mail, dept_name(dept), f"T{n}")
 
 	for dept, num in SANDBOX:
-		key = "sandbox%d" % num
-		mail = _make_user(key, "Sandbox%d" % num, dept.replace(" ", ""), ["Employee"])
-		emps[key] = _make_employee("Sandbox%d" % num, dept.replace(" ", ""), mail, dept_name(dept), "T%d" % num)
+		key = f"sandbox{num}"
+		mail = _make_user(key, f"Sandbox{num}", dept.replace(" ", ""), ["Employee"])
+		emps[key] = _make_employee(f"Sandbox{num}", dept.replace(" ", ""), mail, dept_name(dept), f"T{num}")
 
 	# HR users are not limited to themselves (HRMS adds "Employee = self" unless told not to)
 	for key in ("mustafa", "irtaza"):
-		for up in frappe.get_all("User Permission", filters={"user": email(key), "allow": "Employee"}, pluck="name"):
+		for up in frappe.get_all(
+			"User Permission", filters={"user": email(key), "allow": "Employee"}, pluck="name"
+		):
 			frappe.delete_doc("User Permission", up, ignore_permissions=True, force=True)
 
 	# reporting lines: Leak Sealing -> Anil, Contracting -> Saleh, supervisors -> Khalid; NDT left unlinked
@@ -267,7 +279,10 @@ def _checkins(emps: dict):
 	for name in techs:
 		for back in (1, 2):
 			day = add_days(today(), -back)
-			if frappe.db.exists("Employee Checkin", {"employee": name, "time": ["between", [day + " 00:00:00", day + " 23:59:59"]]}):
+			if frappe.db.exists(
+				"Employee Checkin",
+				{"employee": name, "time": ["between", [day + " 00:00:00", day + " 23:59:59"]]},
+			):
 				continue
 			for log_type, hh in (("IN", "07:15:00"), ("OUT", "16:40:00")):
 				frappe.get_doc(

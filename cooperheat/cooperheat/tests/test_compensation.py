@@ -1,6 +1,6 @@
 """Salary Compensation tab of the Employee form (data layer).
 
-    bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_compensation
+bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_compensation
 """
 
 import frappe
@@ -22,7 +22,13 @@ class TestCompensationTab(FrappeTestCase):
 	@classmethod
 	def tearDownClass(cls):
 		frappe.set_user("Administrator")
-		for name in frappe.get_all("Employee Compensation", filters={"employee": ["in", frappe.get_all("Employee", filters={"last_name": "OrgTest"}, pluck="name")]}, pluck="name"):
+		for name in frappe.get_all(
+			"Employee Compensation",
+			filters={
+				"employee": ["in", frappe.get_all("Employee", filters={"last_name": "OrgTest"}, pluck="name")]
+			},
+			pluck="name",
+		):
 			frappe.delete_doc("Employee Compensation", name, force=True, ignore_permissions=True)
 		cleanup_debris()
 		super().tearDownClass()
@@ -43,10 +49,15 @@ class TestCompensationTab(FrappeTestCase):
 
 	def test_first_package_is_created_from_the_form(self):
 		emp = self.employee("CpFirst")
-		comp.save(emp.name, amounts(basic=3000, housing_allowance=750, general_advance=100), add_days(today(), -10))
+		comp.save(
+			emp.name, amounts(basic=3000, housing_allowance=750, general_advance=100), add_days(today(), -10)
+		)
 		data = comp.get_for_employee(emp.name)
 		cur = data["current"]
-		self.assertEqual((cur["values"]["basic"], cur["total_earnings"], cur["total_deductions"], cur["net_fixed"]), (3000, 3750, 100, 3650))
+		self.assertEqual(
+			(cur["values"]["basic"], cur["total_earnings"], cur["total_deductions"], cur["net_fixed"]),
+			(3000, 3750, 100, 3650),
+		)
 		self.assertEqual(cur["employee_category"], "Saudi")  # derived from the nationality, as before
 
 	def test_a_raise_is_a_new_record_and_payroll_picks_by_date(self):

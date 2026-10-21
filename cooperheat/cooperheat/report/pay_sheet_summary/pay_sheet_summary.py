@@ -5,7 +5,6 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
-
 # Variable additions sourced from the Excel import (not from compensation master).
 EXCEL_ADDITION_FIELDS = ["expenses", "others", "vacation_pay", "bonus", "air_fare"]
 
@@ -23,29 +22,77 @@ def execute(filters=None):
 def get_columns():
 	return [
 		{"label": _("Pay Batch"), "fieldname": "pay_batch", "fieldtype": "Data", "width": 150},
-		{"label": _("Code"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 120},
+		{
+			"label": _("Code"),
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"options": "Employee",
+			"width": 120,
+		},
 		{"label": _("Name"), "fieldname": "employee_name", "fieldtype": "Data", "width": 180},
-		{"label": _("Designation"), "fieldname": "designation", "fieldtype": "Link", "options": "Designation", "width": 150},
+		{
+			"label": _("Designation"),
+			"fieldname": "designation",
+			"fieldtype": "Link",
+			"options": "Designation",
+			"width": 150,
+		},
 		{"label": _("Division"), "fieldname": "division", "fieldtype": "Data", "width": 120},
 		{"label": _("Department"), "fieldname": "department", "fieldtype": "Data", "width": 120},
-		{"label": _("Worked Days"), "fieldname": "worked_days", "fieldtype": "Float", "precision": "2", "width": 90},
+		{
+			"label": _("Worked Days"),
+			"fieldname": "worked_days",
+			"fieldtype": "Float",
+			"precision": "2",
+			"width": 90,
+		},
 		{"label": _("Basic"), "fieldname": "basic", "fieldtype": "Currency", "width": 110},
 		{"label": _("Housing A"), "fieldname": "housing_allowance", "fieldtype": "Currency", "width": 110},
-		{"label": _("Transport A"), "fieldname": "transport_allowance", "fieldtype": "Currency", "width": 110},
+		{
+			"label": _("Transport A"),
+			"fieldname": "transport_allowance",
+			"fieldtype": "Currency",
+			"width": 110,
+		},
 		{"label": _("Living A"), "fieldname": "living_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Service A"), "fieldname": "service_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Driving A"), "fieldname": "driving_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Merit Award"), "fieldname": "merit_award", "fieldtype": "Currency", "width": 110},
-		{"label": _("Aramco Cert"), "fieldname": "aramco_certification", "fieldtype": "Currency", "width": 110},
-		{"label": _("Supervisor A"), "fieldname": "supervisor_allowance", "fieldtype": "Currency", "width": 110},
-		{"label": _("Education A"), "fieldname": "education_allowance", "fieldtype": "Currency", "width": 110},
+		{
+			"label": _("Aramco Cert"),
+			"fieldname": "aramco_certification",
+			"fieldtype": "Currency",
+			"width": 110,
+		},
+		{
+			"label": _("Supervisor A"),
+			"fieldname": "supervisor_allowance",
+			"fieldtype": "Currency",
+			"width": 110,
+		},
+		{
+			"label": _("Education A"),
+			"fieldname": "education_allowance",
+			"fieldtype": "Currency",
+			"width": 110,
+		},
 		{"label": _("RSO A"), "fieldname": "rso_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("RPP A"), "fieldname": "rpp_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Other A"), "fieldname": "other_allowance", "fieldtype": "Currency", "width": 110},
 		{"label": _("Normal OT"), "fieldname": "normal_ot_amount", "fieldtype": "Currency", "width": 110},
 		{"label": _("Holiday OT"), "fieldname": "holiday_ot_amount", "fieldtype": "Currency", "width": 110},
-		{"label": _("Monthly Additions"), "fieldname": "monthly_additions", "fieldtype": "Currency", "width": 130},
-		{"label": _("Monthly Deductions"), "fieldname": "monthly_deductions", "fieldtype": "Currency", "width": 130},
+		{
+			"label": _("Monthly Additions"),
+			"fieldname": "monthly_additions",
+			"fieldtype": "Currency",
+			"width": 130,
+		},
+		{
+			"label": _("Monthly Deductions"),
+			"fieldname": "monthly_deductions",
+			"fieldtype": "Currency",
+			"width": 130,
+		},
 		{"label": _("Net"), "fieldname": "net_payable", "fieldtype": "Currency", "width": 130},
 	]
 

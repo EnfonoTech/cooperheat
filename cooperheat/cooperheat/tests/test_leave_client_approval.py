@@ -22,13 +22,21 @@ class TestLeaveClientApproval(FrappeTestCase):
 	def test_approving_without_client_approval_is_blocked(self):
 		with self.assertRaises(frappe.ValidationError):
 			validate_client_approval(
-				leave(status="Approved", custom_client_approval_required="Yes", custom_client_approval_received="No")
+				leave(
+					status="Approved",
+					custom_client_approval_required="Yes",
+					custom_client_approval_received="No",
+				)
 			)
 
 	def test_approving_without_attachment_is_blocked(self):
 		with self.assertRaises(frappe.ValidationError):
 			validate_client_approval(
-				leave(status="Approved", custom_client_approval_required="Yes", custom_client_approval_received="Yes")
+				leave(
+					status="Approved",
+					custom_client_approval_required="Yes",
+					custom_client_approval_received="Yes",
+				)
 			)
 
 	def test_approving_with_evidence_passes(self):

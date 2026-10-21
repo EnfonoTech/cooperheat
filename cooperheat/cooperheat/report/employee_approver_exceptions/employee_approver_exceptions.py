@@ -18,18 +18,44 @@ def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	message = None
 	if not org.payroll_approver():
-		message = _("No Payroll Approver is set in Pay Sheet Settings: the final approval step passes by itself.")
+		message = _(
+			"No Payroll Approver is set in Pay Sheet Settings: the final approval step passes by itself."
+		)
 	return get_columns(), get_data(filters), message
 
 
 def get_columns():
 	return [
-		{"label": _("Employee"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 140},
+		{
+			"label": _("Employee"),
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"options": "Employee",
+			"width": 140,
+		},
 		{"label": _("Name"), "fieldname": "employee_name", "fieldtype": "Data", "width": 190},
-		{"label": _("Department"), "fieldname": "department", "fieldtype": "Link", "options": "Department", "width": 190},
+		{
+			"label": _("Department"),
+			"fieldname": "department",
+			"fieldtype": "Link",
+			"options": "Department",
+			"width": 190,
+		},
 		{"label": _("Staff Category"), "fieldname": "staff_category", "fieldtype": "Data", "width": 120},
-		{"label": _("Direct / Immediate Reporting"), "fieldname": "reports_to", "fieldtype": "Link", "options": "Employee", "width": 170},
-		{"label": _("Secondary Reporting"), "fieldname": "secondary", "fieldtype": "Link", "options": "Employee", "width": 150},
+		{
+			"label": _("Direct / Immediate Reporting"),
+			"fieldname": "reports_to",
+			"fieldtype": "Link",
+			"options": "Employee",
+			"width": 170,
+		},
+		{
+			"label": _("Secondary Reporting"),
+			"fieldname": "secondary",
+			"fieldtype": "Link",
+			"options": "Employee",
+			"width": 150,
+		},
 		{"label": _("Issue"), "fieldname": "issue", "fieldtype": "Data", "width": 280},
 	]
 
@@ -57,7 +83,9 @@ def get_data(filters):
 	}
 	approver_users = {
 		e.name: e.user_id
-		for e in frappe.get_all("Employee", filters={"name": ["in", list(reporting) or [""]]}, fields=["name", "user_id"])
+		for e in frappe.get_all(
+			"Employee", filters={"name": ["in", list(reporting) or [""]]}, fields=["name", "user_id"]
+		)
 	}
 
 	out = []

@@ -40,21 +40,23 @@ def execute(filters=None):
 		if not email_status and slip_status == "Submitted":
 			email_status = "Not Sent"
 
-		data.append({
-			"payroll_import": name,
-			"employee": r.employee or (sheet.employee if sheet else r.code),
-			"employee_name": r.employee_name or emp.get("employee_name"),
-			"department": emp.get("department"),
-			"payroll_sheet": r.payroll_sheet,
-			"net_payable": sheet.net_payable if sheet else None,
-			"salary_slip": st["salary_slip"],
-			"net_pay": slip.net_pay if slip else None,
-			"slip_status": slip_status,
-			"email_to": st["email_to"],
-			"email_status": email_status,
-			"email_sent_on": st["email_sent_on"],
-			"reason": st["email_error"] or st["slip_error"] or (r.message if not r.payroll_sheet else ""),
-		})
+		data.append(
+			{
+				"payroll_import": name,
+				"employee": r.employee or (sheet.employee if sheet else r.code),
+				"employee_name": r.employee_name or emp.get("employee_name"),
+				"department": emp.get("department"),
+				"payroll_sheet": r.payroll_sheet,
+				"net_payable": sheet.net_payable if sheet else None,
+				"salary_slip": st["salary_slip"],
+				"net_pay": slip.net_pay if slip else None,
+				"slip_status": slip_status,
+				"email_to": st["email_to"],
+				"email_status": email_status,
+				"email_sent_on": st["email_sent_on"],
+				"reason": st["email_error"] or st["slip_error"] or (r.message if not r.payroll_sheet else ""),
+			}
+		)
 
 	data = _apply_filters(data, filters)
 	return get_columns(), data, None, None, _summary(data)
@@ -77,7 +79,8 @@ def _apply_filters(data, filters):
 		data = [d for d in data if d["email_status"] == filters.email_status]
 	if cint(filters.needs_attention):
 		data = [
-			d for d in data
+			d
+			for d in data
 			if d["email_status"] in ("Failed", "Skipped") or d["slip_status"] in NEEDS_ATTENTION_SLIP
 		]
 	return data
@@ -89,28 +92,93 @@ def _summary(data):
 
 	return [
 		{"value": len(data), "label": _("Employees"), "datatype": "Int"},
-		{"value": count("slip_status", "Submitted"), "label": _("Slips Submitted"), "datatype": "Int", "indicator": "Green"},
-		{"value": count("slip_status", "Draft"), "label": _("Slips in Draft"), "datatype": "Int", "indicator": "Orange"},
-		{"value": count("email_status", "Sent"), "label": _("Emails Sent"), "datatype": "Int", "indicator": "Green"},
-		{"value": count("email_status", "Queued"), "label": _("Queued"), "datatype": "Int", "indicator": "Blue"},
-		{"value": count("email_status", "Failed"), "label": _("Failed"), "datatype": "Int", "indicator": "Red"},
-		{"value": count("email_status", "Skipped"), "label": _("No Email Address"), "datatype": "Int", "indicator": "Orange"},
-		{"value": count("email_status", "Not Sent"), "label": _("Not Sent Yet"), "datatype": "Int", "indicator": "Gray"},
+		{
+			"value": count("slip_status", "Submitted"),
+			"label": _("Slips Submitted"),
+			"datatype": "Int",
+			"indicator": "Green",
+		},
+		{
+			"value": count("slip_status", "Draft"),
+			"label": _("Slips in Draft"),
+			"datatype": "Int",
+			"indicator": "Orange",
+		},
+		{
+			"value": count("email_status", "Sent"),
+			"label": _("Emails Sent"),
+			"datatype": "Int",
+			"indicator": "Green",
+		},
+		{
+			"value": count("email_status", "Queued"),
+			"label": _("Queued"),
+			"datatype": "Int",
+			"indicator": "Blue",
+		},
+		{
+			"value": count("email_status", "Failed"),
+			"label": _("Failed"),
+			"datatype": "Int",
+			"indicator": "Red",
+		},
+		{
+			"value": count("email_status", "Skipped"),
+			"label": _("No Email Address"),
+			"datatype": "Int",
+			"indicator": "Orange",
+		},
+		{
+			"value": count("email_status", "Not Sent"),
+			"label": _("Not Sent Yet"),
+			"datatype": "Int",
+			"indicator": "Gray",
+		},
 	]
 
 
 def get_columns():
 	return [
-		{"label": _("Employee"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 110},
+		{
+			"label": _("Employee"),
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"options": "Employee",
+			"width": 110,
+		},
 		{"label": _("Employee Name"), "fieldname": "employee_name", "fieldtype": "Data", "width": 190},
-		{"label": _("Department"), "fieldname": "department", "fieldtype": "Link", "options": "Department", "width": 150},
-		{"label": _("Payroll Sheet"), "fieldname": "payroll_sheet", "fieldtype": "Link", "options": "Payroll Sheet", "width": 120},
+		{
+			"label": _("Department"),
+			"fieldname": "department",
+			"fieldtype": "Link",
+			"options": "Department",
+			"width": 150,
+		},
+		{
+			"label": _("Payroll Sheet"),
+			"fieldname": "payroll_sheet",
+			"fieldtype": "Link",
+			"options": "Payroll Sheet",
+			"width": 120,
+		},
 		{"label": _("Net Payable"), "fieldname": "net_payable", "fieldtype": "Currency", "width": 110},
-		{"label": _("Salary Slip"), "fieldname": "salary_slip", "fieldtype": "Link", "options": "Salary Slip", "width": 170},
+		{
+			"label": _("Salary Slip"),
+			"fieldname": "salary_slip",
+			"fieldtype": "Link",
+			"options": "Salary Slip",
+			"width": 170,
+		},
 		{"label": _("Slip Status"), "fieldname": "slip_status", "fieldtype": "Data", "width": 105},
 		{"label": _("Email To"), "fieldname": "email_to", "fieldtype": "Data", "width": 230},
 		{"label": _("Email Status"), "fieldname": "email_status", "fieldtype": "Data", "width": 100},
 		{"label": _("Sent On"), "fieldname": "email_sent_on", "fieldtype": "Datetime", "width": 150},
 		{"label": _("Reason / Error"), "fieldname": "reason", "fieldtype": "Data", "width": 320},
-		{"label": _("Payroll Import"), "fieldname": "payroll_import", "fieldtype": "Link", "options": "Payroll Import", "width": 140},
+		{
+			"label": _("Payroll Import"),
+			"fieldname": "payroll_import",
+			"fieldtype": "Link",
+			"options": "Payroll Import",
+			"width": 140,
+		},
 	]

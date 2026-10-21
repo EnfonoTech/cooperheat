@@ -54,8 +54,10 @@ def _enforce_edit_window(doc):
 				frappe.throw(_("A check-in time cannot be set in the future."))
 			if not can_edit_checkin_time(new_time, user):
 				frappe.throw(
-					_("Supervisors can only record or change check-ins from the last {0} hours. "
-					  "Please ask HR.").format(EDIT_WINDOW_HOURS),
+					_(
+						"Supervisors can only record or change check-ins from the last {0} hours. "
+						"Please ask HR."
+					).format(EDIT_WINDOW_HOURS),
 					title=_("Edit window closed"),
 				)
 		if before:
@@ -63,8 +65,10 @@ def _enforce_edit_window(doc):
 				time_changed or doc.employee != before.employee or doc.log_type != before.log_type
 			):
 				frappe.throw(
-					_("This check-in is more than {0} hours old and can no longer be changed by a supervisor. "
-					  "Please ask HR to correct it.").format(EDIT_WINDOW_HOURS),
+					_(
+						"This check-in is more than {0} hours old and can no longer be changed by a supervisor. "
+						"Please ask HR to correct it."
+					).format(EDIT_WINDOW_HOURS),
 					title=_("Edit window closed"),
 				)
 			if time_changed:
@@ -75,7 +79,9 @@ def _enforce_edit_window(doc):
 				)
 				if state in _FINAL_STATES:
 					frappe.throw(
-						_("The attendance for this day is already {0}. Please ask HR to correct it.").format(state)
+						_("The attendance for this day is already {0}. Please ask HR to correct it.").format(
+							state
+						)
 					)
 
 	if time_changed:
@@ -168,7 +174,7 @@ def _validate_no_overlap(doc):
 		for pair_in, pair_out in pairs:
 			if pair_in <= t < pair_out:
 				frappe.throw(
-					_("Check-in at {0} overlaps an existing attendance period {1}–{2}.").format(
+					_("Check-in at {0} overlaps an existing attendance period {1}–{2}.").format(  # noqa: RUF001
 						fmt(t), fmt(pair_in), fmt(pair_out)
 					)
 				)
@@ -183,9 +189,9 @@ def _validate_no_overlap(doc):
 		for pair_in, pair_out in pairs:
 			if t_in < pair_out and t_out > pair_in:
 				frappe.throw(
-					_("Check-out at {0} creates a period {1}–{2} that overlaps an existing attendance {3}–{4}.").format(
-						fmt(t_out), fmt(t_in), fmt(t_out), fmt(pair_in), fmt(pair_out)
-					)
+					_(
+						"Check-out at {0} creates a period {1}–{2} that overlaps an existing attendance {3}–{4}."  # noqa: RUF001
+					).format(fmt(t_out), fmt(t_in), fmt(t_out), fmt(pair_in), fmt(pair_out))
 				)
 
 
@@ -214,6 +220,7 @@ def _sync_attendance_site_hours(doc):
 		return
 
 	att_doc = frappe.get_doc("Attendance", attendance_name)
-	from cooperheat.cooperheat.overrides.attendance import _populate_site_hours, _correct_status_on_submitted
+	from cooperheat.cooperheat.overrides.attendance import _correct_status_on_submitted, _populate_site_hours
+
 	_populate_site_hours(att_doc)
 	_correct_status_on_submitted(att_doc)

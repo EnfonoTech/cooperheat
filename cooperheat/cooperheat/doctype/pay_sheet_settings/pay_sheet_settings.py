@@ -18,9 +18,7 @@ class PaySheetSettings(Document):
 			if not row.payroll_field or not row.salary_component:
 				continue
 			if row.payroll_field in seen:
-				frappe.throw(
-					_("Payroll field {0} is mapped more than once.").format(row.payroll_field)
-				)
+				frappe.throw(_("Payroll field {0} is mapped more than once.").format(row.payroll_field))
 			seen.add(row.payroll_field)
 
 	def on_update(self):
@@ -88,11 +86,14 @@ def setup_defaults():
 	mapping_added = 0
 	if not settings.component_mapping:
 		for field, comp, ctype in DEFAULT_MAPPING:
-			settings.append("component_mapping", {
-				"payroll_field": field,
-				"salary_component": comp,
-				"component_type": ctype,
-			})
+			settings.append(
+				"component_mapping",
+				{
+					"payroll_field": field,
+					"salary_component": comp,
+					"component_type": ctype,
+				},
+			)
 			mapping_added += 1
 
 	structure_created = False
@@ -102,7 +103,9 @@ def setup_defaults():
 			ss = frappe.new_doc("Salary Structure")
 			ss.name = name
 			ss.is_active = "Yes"
-			ss.company = frappe.defaults.get_global_default("company") or frappe.db.get_value("Company", {}, "name")
+			ss.company = frappe.defaults.get_global_default("company") or frappe.db.get_value(
+				"Company", {}, "name"
+			)
 			ss.payroll_frequency = "Monthly"
 			ss.currency = frappe.defaults.get_global_default("currency") or "SAR"
 			ss.flags.ignore_permissions = True

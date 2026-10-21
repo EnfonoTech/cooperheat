@@ -1,6 +1,6 @@
 """Assign Shift from the Employee form and the staff-category importer.
 
-    bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_shift_tools
+bench --site <dev-site> run-tests --module cooperheat.cooperheat.tests.test_shift_tools
 """
 
 import csv
@@ -26,7 +26,9 @@ class TestShiftTools(FrappeTestCase):
 	def test_assign_shift_creates_submitted_assignment(self):
 		e = make_employee("Assign")
 		name = shift_tools.assign_shift(e.name, "Office Shift 2", today(), add_days(today(), 6))
-		row = frappe.db.get_value("Shift Assignment", name, ["docstatus", "status", "shift_type"], as_dict=True)
+		row = frappe.db.get_value(
+			"Shift Assignment", name, ["docstatus", "status", "shift_type"], as_dict=True
+		)
 		self.assertEqual((row.docstatus, row.status, row.shift_type), (1, "Active", "Office Shift 2"))
 		self.assertEqual(shift_tools.get_employee_shifts(e.name)[0].name, name)
 

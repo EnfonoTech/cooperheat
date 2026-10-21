@@ -69,10 +69,10 @@ class Level3ApprovalPage {
 
 	_get_filters() {
 		return {
-			employee:    this.f_employee.get_value()    || null,
-			department:  this.f_department.get_value()  || null,
-			from_date:   this.f_from_date.get_value()   || null,
-			to_date:     this.f_to_date.get_value()     || null,
+			employee: this.f_employee.get_value() || null,
+			department: this.f_department.get_value() || null,
+			from_date: this.f_from_date.get_value() || null,
+			to_date: this.f_to_date.get_value() || null,
 		};
 	}
 
@@ -109,7 +109,9 @@ class Level3ApprovalPage {
 					<input type="checkbox" class="l3-chk" value="${frappe.utils.escape_html(r.name)}">
 				</td>
 				<td>
-					<a href="/app/attendance/${frappe.utils.escape_html(r.name)}" target="_blank" style="font-size:12px;">
+					<a href="/app/attendance/${frappe.utils.escape_html(
+						r.name
+					)}" target="_blank" style="font-size:12px;">
 						${frappe.utils.escape_html(r.name)}
 					</a>
 				</td>
@@ -130,9 +132,14 @@ class Level3ApprovalPage {
 				</td>
 				<td>
 					<select class="form-control form-control-sm l3-status" style="min-width:110px;">
-						${["Present","Absent","Half Day","Work From Home"].map(s =>
-							`<option value="${s}" ${s === (r.status || "") ? "selected" : ""}>${s}</option>`
-						).join("")}
+						${["Present", "Absent", "Half Day", "Work From Home"]
+							.map(
+								(s) =>
+									`<option value="${s}" ${
+										s === (r.status || "") ? "selected" : ""
+									}>${s}</option>`
+							)
+							.join("")}
 					</select>
 				</td>
 				<td>
@@ -206,7 +213,10 @@ class Level3ApprovalPage {
 				if (r && !r.exc) {
 					$row.css("background", "#d4edda");
 					$btn.removeClass("btn-success").addClass("btn-secondary").text(__("Approved"));
-					$row.find(".l3-chk, .l3-in-time, .l3-out-time, .l3-hours, .l3-status").prop("disabled", true);
+					$row.find(".l3-chk, .l3-in-time, .l3-out-time, .l3-hours, .l3-status").prop(
+						"disabled",
+						true
+					);
 					on_done && on_done(true);
 				} else {
 					$btn.prop("disabled", false).text(__("Approve"));
@@ -228,7 +238,10 @@ class Level3ApprovalPage {
 				})
 				.get();
 			if (!selected.length) {
-				frappe.show_alert({ message: __("Please select at least one record."), indicator: "orange" });
+				frappe.show_alert({
+					message: __("Please select at least one record."),
+					indicator: "orange",
+				});
 				return;
 			}
 			$rows = this.$table_wrap.find("tbody tr").filter(function () {
@@ -241,14 +254,20 @@ class Level3ApprovalPage {
 		});
 
 		if (!$rows.length) {
-			frappe.show_alert({ message: __("No pending records to approve."), indicator: "blue" });
+			frappe.show_alert({
+				message: __("No pending records to approve."),
+				indicator: "blue",
+			});
 			return;
 		}
 
 		frappe.confirm(
-			__("Approve {0} record(s) with the current in/out times and hours shown?", [$rows.length]),
+			__("Approve {0} record(s) with the current in/out times and hours shown?", [
+				$rows.length,
+			]),
 			() => {
-				let done = 0, failed = 0;
+				let done = 0,
+					failed = 0;
 				const total = $rows.length;
 
 				const next = (idx) => {

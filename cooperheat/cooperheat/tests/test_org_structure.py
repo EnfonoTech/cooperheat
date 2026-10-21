@@ -64,10 +64,14 @@ class TestOrgStructure(FrappeTestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 		frappe.set_user("Administrator")
-		cls.anil, cls.saleh, cls.khalid, cls.irtaza = (emp_of(k) for k in ("anil", "saleh", "khalid", "irtaza"))
+		cls.anil, cls.saleh, cls.khalid, cls.irtaza = (
+			emp_of(k) for k in ("anil", "saleh", "khalid", "irtaza")
+		)
 		cls.jubail, cls.yanbu = make_location("OT-Jubail"), make_location("OT-Yanbu")
 		# Inspection (L2 Khalid, L3 Irtaza) > CNDT (no approvers) > NDT Team (L1 per location)
-		cls.bl = make_unit("OT Inspection", org.BUSINESS_LINE, matrix=[(2, cls.khalid, None), (3, cls.irtaza, None)])
+		cls.bl = make_unit(
+			"OT Inspection", org.BUSINESS_LINE, matrix=[(2, cls.khalid, None), (3, cls.irtaza, None)]
+		)
 		cls.cndt = make_unit("OT CNDT", org.PRODUCT_LINE, parent=cls.bl)
 		cls.ndt = make_unit(
 			"OT NDT Team",
@@ -109,7 +113,9 @@ class TestOrgStructure(FrappeTestCase):
 		own = {
 			r.approval_level: r.approver
 			for r in frappe.get_all(
-				"Department Approval Matrix", filters={"parent": ls, "parentfield": "approval_matrix"}, fields=["approval_level", "approver"]
+				"Department Approval Matrix",
+				filters={"parent": ls, "parentfield": "approval_matrix"},
+				fields=["approval_level", "approver"],
 			)
 		}
 		self.assertEqual({r.approval_level: r.approver for r in org.effective_matrix(ls)}, own)
@@ -141,7 +147,9 @@ class TestOrgStructure(FrappeTestCase):
 		self.assertEqual(e.custom_business_line, self.bl)
 
 	def test_leave_approver_follows_the_reporting_person(self):
-		e = make_employee("Leave", custom_product_line=self.ndt, custom_assigned_location=self.yanbu, reports_to=self.saleh)
+		e = make_employee(
+			"Leave", custom_product_line=self.ndt, custom_assigned_location=self.yanbu, reports_to=self.saleh
+		)
 		saleh_user = frappe.db.get_value("Employee", self.saleh, "user_id")
 		self.assertEqual(e.leave_approver, saleh_user)
 		self.assertEqual(e.shift_request_approver, saleh_user)
@@ -155,7 +163,9 @@ class TestOrgStructure(FrappeTestCase):
 	# --- scope ---------------------------------------------------------------
 
 	def test_manager_sees_the_product_line_people_who_report_up_to_him(self):
-		e = make_employee("Seen", custom_product_line=self.ndt, custom_assigned_location=self.jubail, reports_to=self.khalid)
+		e = make_employee(
+			"Seen", custom_product_line=self.ndt, custom_assigned_location=self.jubail, reports_to=self.khalid
+		)
 		khalid_user = frappe.db.get_value("Employee", self.khalid, "user_id")
 		visible = scope.get_scope(khalid_user)
 		self.assertIn(self.ndt, visible.departments)
@@ -167,7 +177,9 @@ class TestOrgStructure(FrappeTestCase):
 		self.assertEqual(names, {self.cndt, self.ndt})
 
 	def test_moving_location_keeps_the_reporting_line(self):
-		e = make_employee("Mover", custom_product_line=self.ndt, custom_assigned_location=self.jubail, reports_to=self.anil)
+		e = make_employee(
+			"Mover", custom_product_line=self.ndt, custom_assigned_location=self.jubail, reports_to=self.anil
+		)
 		e.custom_assigned_location = self.yanbu
 		e.save(ignore_permissions=True)
 		self.assertEqual(e.reports_to, self.anil)
