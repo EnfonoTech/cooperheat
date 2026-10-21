@@ -486,7 +486,7 @@ def get_summary(name: str):
 	return _summary(name)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def refresh_status(name: str):
 	"""Re-read slips and mail status from the source documents and store them on the rows."""
 	_check_access(name)
@@ -495,7 +495,7 @@ def refresh_status(name: str):
 	return {"changed": changed, "summary": _summary(name)}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def start_bulk(name: str, action: str, options=None):
 	"""Queue one pipeline step for the whole import. Returns at once; poll get_summary for progress."""
 	_check_access(name)

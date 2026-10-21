@@ -570,11 +570,14 @@ def division_view(node=None, kind="Division", company=None):
 			"sub_units": len(below) - 1,
 		}
 
+	can_create = False
+	if frappe.has_permission("Department", "create"):
+		can_create = True
 	out = {
 		"company": company,
 		"companies": companies if len(companies) > 1 else [],
 		"kind": kind,
-		"can_create": bool(frappe.has_permission("Department", "create")),
+		"can_create": can_create,
 		"root": root,
 	}
 	if not node:

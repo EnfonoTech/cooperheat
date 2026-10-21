@@ -66,7 +66,7 @@ def get_assigned_projects(employee, date):
 	)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def recalculate_site_hours(attendance_name):
 	"""Recalculate and refresh the site hours table on a submitted Attendance record.
 
@@ -188,7 +188,7 @@ def get_pending_level3_records(employee=None, department=None, from_date=None, t
 	return records
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def level3_approve_attendance(name, in_time=None, out_time=None, working_hours=None, status=None):
 	"""Update editable fields (if changed) and apply Level 3 Approve workflow action.
 
@@ -235,7 +235,7 @@ def level3_approve_attendance(name, in_time=None, out_time=None, working_hours=N
 	return {"status": "approved"}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def bulk_level3_approve():
 	"""Approve every Attendance record in 'Pending Level 3 Approval'. Payroll Approver / HR Manager only."""
 	from frappe.model.workflow import apply_workflow
