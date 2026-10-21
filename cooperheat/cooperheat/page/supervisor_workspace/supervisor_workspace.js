@@ -53,7 +53,14 @@ class SupervisorWorkspace {
 
 	add_menu() {
 		const page = this.page;
+		if (frappe.user.has_role("HR Manager") || frappe.user.has_role("System Manager") || frappe.user.has_role("HR User")) {
+			page.add_menu_item(__("All check-ins (plain list)"), () => {
+				frappe.cooperheat_checkin_list = true;
+				frappe.set_route("List", "Employee Checkin");
+			});
+		}
 		if (frappe.user.has_role("HR Manager") || frappe.user.has_role("System Manager")) {
+			page.add_menu_item(__("Recalculate overtime"), () => this.recalculate_overtime());
 			page.add_menu_item(__("Generate attendance from check-ins"), () => {
 				frappe.xcall("cooperheat.cooperheat.api.attendance_gen.run_now").then((r) => {
 					frappe.msgprint(
@@ -75,6 +82,40 @@ class SupervisorWorkspace {
 				});
 			});
 		}
+	}
+
+	recalculate_overtime() {
+		const call = (values, dry_run) =>
+			frappe.xcall("cooperheat.cooperheat.overtime.recalculate_overtime", {
+				from_date: values.from_date,
+				to_date: values.to_date,
+				employee: values.employee || null,
+				dry_run: dry_run,
+			});
+		const dialog = new frappe.ui.Dialog({
+			title: __("Recalculate overtime"),
+			fields: [
+				{ fieldtype: "Date", fieldname: "from_date", label: __("From"), reqd: 1, default: frappe.datetime.add_days(frappe.datetime.get_today(), -30) },
+				{ fieldtype: "Date", fieldname: "to_date", label: __("To"), reqd: 1, default: frappe.datetime.get_today() },
+				{ fieldtype: "Link", fieldname: "employee", label: __("Employee (optional)"), options: "Employee" },
+				{ fieldtype: "HTML", fieldname: "note", options: `<p class="text-muted">${__("Re-derives regular and overtime hours from each day's working hours and the employee's Staff Category (Field: over 8 h is overtime; Office: none). First shows how many records would change.")}</p>` },
+			],
+			primary_action_label: __("Check"),
+			primary_action: (values) => {
+				call(values, 1).then((r) => {
+					dialog.hide();
+					if (!r.changed) {
+						frappe.msgprint(__("{0} records checked: nothing to change.", [r.checked]));
+						return;
+					}
+					frappe.confirm(
+						__("{0} of {1} records would change. Apply now?", [r.changed, r.checked]),
+						() => call(values, 0).then((done) => frappe.show_alert({ message: __("{0} records updated", [done.changed]), indicator: "green" }))
+					);
+				});
+			},
+		});
+		dialog.show();
 	}
 
 	inject_style() {

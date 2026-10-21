@@ -17,7 +17,13 @@
   "default_salary_structure",
   "component_mapping",
   "salary_slip_email_section",
-  "slip_print_format"
+  "slip_print_format",
+  "attendance_approval_section",
+  "payroll_approver",
+  "column_break_windows",
+  "immediate_approval_window_hours",
+  "secondary_approval_window_hours",
+  "payroll_approval_window_hours"
  ],
  "fields": [
   {
@@ -111,12 +117,47 @@
    "fieldtype": "Link",
    "label": "Salary Slip Print Format",
    "options": "Print Format"
+  },
+  {
+   "fieldname": "attendance_approval_section",
+   "fieldtype": "Section Break",
+   "label": "Attendance Approval"
+  },
+  {
+   "fieldname": "payroll_approver",
+   "fieldtype": "Link",
+   "label": "Payroll Approver",
+   "options": "Employee",
+   "description": "Final step after the reporting line has approved. Leave empty and the final step passes automatically."
+  },
+  {
+   "fieldname": "column_break_windows",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "immediate_approval_window_hours",
+   "fieldtype": "Int",
+   "label": "Immediate / Direct Reporting Window (hours)",
+   "default": "48",
+   "description": "A missed window passes the record to the next step. A Project's own window, when set, takes priority."
+  },
+  {
+   "fieldname": "secondary_approval_window_hours",
+   "fieldtype": "Int",
+   "label": "Secondary Reporting Window (hours)",
+   "default": "72"
+  },
+  {
+   "fieldname": "payroll_approval_window_hours",
+   "fieldtype": "Int",
+   "label": "Payroll Window (hours)",
+   "default": "48"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-29 19:30:00.000000",
+ "modified": "2026-10-21 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Pay Sheet Settings",

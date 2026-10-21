@@ -30,7 +30,8 @@ Rules
   last OUT is at least ``cooperheat_attendance_same_day_idle_hours`` old (default 3),
   so a lunch-break OUT does not start an approval for a half day. A later IN/OUT on
   a day that already has an Attendance re-derives its hours (employee_checkin.on_update).
-* Departments with no Level 1 approver are skipped and counted in ``no_approver``.
+* Employees without a Direct / Immediate Reporting person (who has a User) are skipped and
+  counted in ``no_approver`` (day count) and ``no_approver_employees`` (people).
 * A day that was deliberately cancelled by HR (a cancelled Attendance exists) is not
   re-created.
 * Days that cannot be paired (IN without OUT on a past day, or an OUT only) are
@@ -79,6 +80,7 @@ def generate(from_date, to_date, limit: int = DEFAULT_LIMIT) -> dict:
 def _generate(from_date, to_date, limit: int) -> dict:
 	from_date, to_date = getdate(from_date), getdate(to_date)
 	result = {"created": 0, "skipped": 0, "errors": 0, "no_approver": 0, "incomplete": 0}
+	missing: set[str] = set()  # employees skipped because nobody can approve their day
 	idle = timedelta(
 		hours=cint(frappe.conf.get("cooperheat_attendance_same_day_idle_hours")) or DEFAULT_SAME_DAY_IDLE_HOURS
 	)
@@ -134,15 +136,17 @@ def _generate(from_date, to_date, limit: int) -> dict:
 		if not emp or emp.status != "Active":
 			result["skipped"] += 1
 			continue
-		# An approval nobody can action is worse than none: wait until the
-		# department has a Level 1 approver (see the Employee Approver Exceptions
-		# report) and back-fill with run_now().
+		# An approval nobody can action is worse than none: wait until the employee has
+		# a Direct / Immediate Reporting person with a User account (see the Employee
+		# Approver Exceptions report) and back-fill with run_now().
 		if employee not in has_l1:
-			from cooperheat.cooperheat.org import l1_approver
+			from cooperheat.cooperheat.org import first_approver
 
-			has_l1[employee] = bool(emp.department and l1_approver(emp.department, employee))
+			approver = first_approver(employee)
+			has_l1[employee] = bool(approver and frappe.db.get_value("Employee", approver, "user_id"))
 		if not has_l1[employee]:
 			result["no_approver"] += 1
+			missing.add(employee)
 			continue
 
 		frappe.db.savepoint("att_gen")
@@ -160,6 +164,11 @@ def _generate(from_date, to_date, limit: int) -> dict:
 			frappe.db.commit()
 			frappe.logger("cooperheat").info(f"attendance generated {name} for {employee} {day}")
 
+	result["no_approver_employees"] = len(missing)
+	if missing:
+		frappe.logger("cooperheat").warning(
+			f"attendance not generated, no approver: {len(missing)} employees, e.g. {sorted(missing)[:10]}"
+		)
 	return result
 
 

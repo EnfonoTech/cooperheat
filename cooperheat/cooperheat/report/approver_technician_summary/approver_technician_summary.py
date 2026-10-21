@@ -37,46 +37,60 @@ def get_columns():
 
 
 def get_data(filters):
-	approvers = _get_approvers(filters)
-	if not approvers:
+	"""One block per approver and level: Level 1 = people who report to them
+	(Direct / Immediate Reporting), Level 2 = people naming them as Secondary Reporting."""
+	people = frappe.get_all(
+		"Employee",
+		filters={"status": "Active"},
+		fields=[
+			"name", "employee_name", "department", "employee_number", "designation", "cell_number",
+			"reports_to", "custom_secondary_reporting",
+		],
+		order_by="employee_name asc",
+	)
+	if filters.get("department"):
+		people = [p for p in people if p.department == filters.department]
+
+	level_field = {1: "reports_to", 2: "custom_secondary_reporting"}
+	wanted_level = cint(filters.get("approval_level"))
+	blocks: dict[tuple[str, int], list] = {}
+	for person in people:
+		for level, field in level_field.items():
+			approver = person.get(field)
+			if approver and approver != person.name and (not wanted_level or wanted_level == level):
+				blocks.setdefault((approver, level), []).append(person)
+
+	if filters.get("approver"):
+		blocks = {k: v for k, v in blocks.items() if k[0] == filters.approver}
+	if not FULL_ACCESS_ROLES.intersection(frappe.get_roles()):
+		own_employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+		blocks = {k: v for k, v in blocks.items() if own_employee and k[0] == own_employee}
+	if not blocks:
 		return []
 
-	departments = list({a.department for a in approvers})
-	# Anyone who is an approver in a department is not counted as a technician there.
-	approvers_by_dept = {}
-	for row in frappe.get_all(
-		"Department Approval Matrix",
-		filters={"parent": ["in", departments], "parentfield": "approval_matrix"},
-		fields=["parent", "approver"],
-	):
-		approvers_by_dept.setdefault(row.parent, set()).add(row.approver)
-
-	technicians_by_dept = {}
-	for emp in frappe.get_all(
-		"Employee",
-		filters={"department": ["in", departments], "status": "Active"},
-		fields=["name", "employee_name", "department", "employee_number", "designation", "cell_number"],
-		order_by="employee_name asc",
-	):
-		if emp.name in approvers_by_dept.get(emp.department, set()):
-			continue
-		technicians_by_dept.setdefault(emp.department, []).append(emp)
-
-	all_techs = [e.name for techs in technicians_by_dept.values() for e in techs]
+	approver_info = {
+		e.name: e
+		for e in frappe.get_all(
+			"Employee",
+			filters={"name": ["in", sorted({k[0] for k in blocks})]},
+			fields=["name", "employee_name", "department"],
+		)
+	}
+	all_techs = sorted({t.name for techs in blocks.values() for t in techs})
 	sites = _get_sites_today(all_techs)
-	pending = _get_pending_counts([a.approver for a in approvers])
+	pending = _get_pending_counts(sorted({k[0] for k in blocks}))
 
 	data = []
-	for a in approvers:
-		techs = technicians_by_dept.get(a.department, [])
+	for (approver, level), techs in sorted(blocks.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+		info = approver_info.get(approver)
 		data.append({
-			"employee": a.approver,
-			"employee_name": a.approver_name,
-			"row_type": _("Level {0} Approver").format(a.approval_level),
-			"department": a.department,
+			"employee": approver,
+			"employee_name": info.employee_name if info else approver,
+			"row_type": _("Level {0} Approver").format(level),
+			"department": info.department if info else None,
 			"technician_count": len(techs),
 			"technician_names": ", ".join(t.employee_name or t.name for t in techs),
-			"pending_approvals": sum(pending.get((a.approver, t.name), 0) for t in techs),
+			"pending_approvals": sum(pending.get((approver, t.name), 0) for t in techs),
 			"indent": 0,
 		})
 		for t in techs:
@@ -88,38 +102,11 @@ def get_data(filters):
 				"employee_number": t.employee_number,
 				"designation": t.designation,
 				"sites": sites.get(t.name, ""),
-				"pending_approvals": pending.get((a.approver, t.name), 0),
+				"pending_approvals": pending.get((approver, t.name), 0),
 				"cell_number": t.cell_number,
 				"indent": 1,
 			})
 	return data
-
-
-def _get_approvers(filters):
-	conditions = {"parentfield": "approval_matrix"}
-	if filters.get("department"):
-		conditions["parent"] = filters.department
-	if filters.get("approval_level"):
-		conditions["approval_level"] = cint(filters.approval_level)
-	if filters.get("approver"):
-		conditions["approver"] = filters.approver
-
-	if not FULL_ACCESS_ROLES.intersection(frappe.get_roles()):
-		own_employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
-		if not own_employee:
-			return []
-		conditions["approver"] = own_employee
-
-	rows = frappe.get_all(
-		"Department Approval Matrix",
-		filters=conditions,
-		fields=["parent as department", "approval_level", "approver", "approver_name"],
-		order_by="parent asc, approval_level asc",
-	)
-	for r in rows:
-		if not r.approver_name:
-			r.approver_name = frappe.db.get_value("Employee", r.approver, "employee_name")
-	return rows
 
 
 def _get_sites_today(employees):

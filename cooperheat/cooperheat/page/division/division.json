@@ -1,0 +1,13 @@
+{
+ "doctype": "Page",
+ "module": "cooperheat",
+ "name": "division",
+ "page_name": "division",
+ "roles": [
+  {"role": "HR Manager"},
+  {"role": "HR User"},
+  {"role": "System Manager"}
+ ],
+ "standard": "Yes",
+ "title": "Division"
+}

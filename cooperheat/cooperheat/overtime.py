@@ -72,3 +72,49 @@ def persist(doc) -> None:
 	if not doc.meta.has_field("custom_ot_hours"):
 		return
 	frappe.db.set_value("Attendance", doc.name, overtime_values(doc), update_modified=False)
+
+
+_OT_NUMBERS = ("custom_regular_hours", "custom_ot_hours", "custom_holiday_ot_hours")
+
+
+def recompute_range(from_date, to_date, employee=None, dry_run=True) -> dict:
+	"""Re-derive regular / overtime hours of submitted Attendance in a date range.
+
+	Needed when the Staff Category of employees is set (or corrected) after their
+	attendance was generated: the hours were stored while the category was empty.
+	``dry_run`` only counts; otherwise the stored values are updated in place."""
+	filters = {"docstatus": 1, "attendance_date": ["between", [from_date, to_date]]}
+	if employee:
+		filters["employee"] = employee
+	rows = frappe.get_all("Attendance", filters=filters, fields=["name", "employee", "attendance_date", "working_hours"], limit=0)
+	changed, sample = 0, []
+	for row in rows:
+		new = overtime_values(row)
+		old = frappe.db.get_value("Attendance", row.name, list(new), as_dict=True) or {}
+		if all(flt(old.get(k)) == flt(new[k]) for k in _OT_NUMBERS) and old.get("custom_ot_basis") == new["custom_ot_basis"]:
+			continue
+		changed += 1
+		if len(sample) < 10:
+			sample.append(
+				{
+					"attendance": row.name,
+					"employee": row.employee,
+					"date": str(row.attendance_date),
+					"hours": flt(row.working_hours, 2),
+					"ot_before": flt(old.get("custom_ot_hours"), 2),
+					"ot_after": new["custom_ot_hours"],
+					"basis": new["custom_ot_basis"],
+				}
+			)
+		if not dry_run:
+			frappe.db.set_value("Attendance", row.name, new, update_modified=False)
+	return {"checked": len(rows), "changed": changed, "dry_run": bool(dry_run), "sample": sample}
+
+
+@frappe.whitelist()
+def recompute_overtime(from_date, to_date, employee=None, dry_run=1):
+	"""HR button: recalculate overtime hours on stored attendance (dry run by default)."""
+	from frappe.utils import cint
+
+	frappe.only_for(("System Manager", "HR Manager"))
+	return recompute_range(from_date, to_date, employee or None, dry_run=bool(cint(dry_run)))

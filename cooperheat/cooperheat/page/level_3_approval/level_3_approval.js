@@ -94,7 +94,7 @@ class Level3ApprovalPage {
 		if (!this.records.length) {
 			this.$summary.text("");
 			this.$table_wrap.html(
-				'<div style="padding:40px;text-align:center;color:#6c757d;">No attendance records are pending Level 3 approval for your department(s).</div>'
+				'<div style="padding:40px;text-align:center;color:#6c757d;">No attendance records are waiting for the Payroll approval.</div>'
 			);
 			return;
 		}

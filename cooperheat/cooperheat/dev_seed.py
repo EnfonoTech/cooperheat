@@ -60,7 +60,7 @@ def run(commit: bool = True):
 	_departments()
 	users = _users()
 	employees = _employees(users)
-	_matrix(employees)
+	_reporting(employees)
 	_projects()
 	_shift_type()
 	_checkins(employees)
@@ -207,19 +207,20 @@ def _employees(users: dict) -> dict:
 	return emps
 
 
-def _matrix(emps: dict):
-	levels = {
-		dept_name("Leak Sealing"): [("anil", 24), ("khalid", 72), ("irtaza", 72)],
-		dept_name("Contracting"): [("saleh", 24), ("khalid", 48), ("irtaza", 72)],
-	}
-	for dept, rows in levels.items():
-		doc = frappe.get_doc("Department", dept)
-		if doc.get("approval_matrix"):
+def _reporting(emps: dict):
+	"""Field staff: Immediate Reporting = Reports To (set in _employees), Secondary Reporting =
+	Khalid (for technicians), Payroll Approver = Irtaza. HR and Khalid are office / unlisted."""
+	for key, name in emps.items():
+		if key in ("mustafa", "irtaza", "khalid"):
 			continue
-		for level, (key, hours) in enumerate(rows, start=1):
-			doc.append("approval_matrix", {"approval_level": level, "approver": emps[key], "approval_window_hours": hours})
-		doc.flags.ignore_permissions = True
-		doc.save()
+		values = {"custom_staff_category": "Field Staff"}
+		if key.startswith(("tech", "sandbox")) and frappe.db.get_value("Employee", name, "reports_to"):
+			values["custom_secondary_reporting"] = emps["khalid"]
+		frappe.db.set_value("Employee", name, values, update_modified=False)
+	settings = frappe.get_single("Pay Sheet Settings")
+	settings.payroll_approver = emps["irtaza"]
+	settings.flags.ignore_permissions = True
+	settings.save()
 
 
 def _projects():

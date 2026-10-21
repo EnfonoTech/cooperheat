@@ -23,6 +23,12 @@ class PaySheetSettings(Document):
 				)
 			seen.add(row.payroll_field)
 
+	def on_update(self):
+		# Records already waiting at the Payroll step follow a change of Payroll Approver.
+		from cooperheat.cooperheat.org import restamp_payroll_step
+
+		restamp_payroll_step()
+
 
 DEFAULT_MAPPING = [
 	("basic", "Basic", "Earning"),

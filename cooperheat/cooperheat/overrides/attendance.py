@@ -102,10 +102,10 @@ def on_update_after_submit(doc, method):
 	_send_notification_for_level(doc, level)
 	_stamp_tracking_fields(doc, level)
 
-	# If the department has no Level 3 approver configured, auto-approve
-	# immediately when the record lands in "Pending Level 3 Approval".
-	if new_state == "Pending Level 3 Approval":
-		_auto_approve_if_no_level3(doc)
+	# A level nobody holds (Secondary Reporting for office staff, Payroll when no
+	# Payroll Approver is set) passes by itself.
+	if new_state in ("Pending Level 2 Approval", "Pending Level 3 Approval"):
+		_auto_advance_if_no_approver(doc)
 
 
 # ---------------------------------------------------------------------------
@@ -257,39 +257,46 @@ def fix_all_attendance_status():
 	return f"Fixed {fixed} of {len(records)} attendance records."
 
 
-def _auto_approve_if_no_level3(doc):
-	"""Auto-approve when no Level 3 approver is configured for the department.
+_ACTION_FOR_STATE = {
+	"Pending Level 2 Approval": "Level 2 Approve",
+	"Pending Level 3 Approval": "Level 3 Approve",
+}
 
-	Called after the record enters "Pending Level 3 Approval". If the department
-	approval matrix has no row for level 3, the record is approved immediately
-	without any manual action — triggering on_update_after_submit again, but that
-	second call sees "Approved" which is not in _NOTIFY_LEVEL and exits cleanly.
+
+def _auto_advance_if_no_approver(doc):
+	"""Pass the record on when nobody holds the level it just entered.
+
+	Level 2 (Secondary Reporting) is empty for office staff and Level 3 (Payroll)
+	when no Payroll Approver is set. Called after the record enters the pending
+	state; each hop re-enters on_update_after_submit, so Level 2 -> Level 3 ->
+	Approved cascades without manual action.
 	"""
-	matrix = _get_matrix(doc.get("department") or "", doc.get("employee"))
-	if _row_for_level(matrix, 3):
-		return  # Level 3 approver exists — normal flow, do nothing
+	state = doc.get("workflow_state")
+	action = _ACTION_FOR_STATE.get(state)
+	if not action:
+		return
+	matrix = _get_matrix(doc.get("department"), doc.get("employee"))
+	if _row_for_level(matrix, _NOTIFY_LEVEL[state]):
+		return  # somebody holds this level - normal flow
 
 	try:
-		current_state = frappe.db.get_value("Attendance", doc.name, "workflow_state")
-		if current_state != "Pending Level 3 Approval":
+		if frappe.db.get_value("Attendance", doc.name, "workflow_state") != state:
 			return  # already moved on, nothing to do
-		# apply_workflow internally reloads and saves — do NOT call doc2.save() after
+		# apply_workflow internally reloads and saves - do NOT call doc2.save() after
 		from frappe.model.workflow import apply_workflow
-		doc2 = frappe.get_doc("Attendance", doc.name)
-		apply_workflow(doc2, "Level 3 Approve")
+
+		apply_workflow(frappe.get_doc("Attendance", doc.name), action)
 	except Exception:
-		frappe.log_error(frappe.get_traceback(), "Auto Level 3 Approve failed: " + doc.name)
+		frappe.log_error(frappe.get_traceback(), "Auto-advance of an empty approval level failed: " + doc.name)
 
 
-def _get_matrix(department: str, employee: str | None = None) -> list:
-	"""Approval rows for *department*, inherited up the department tree.
+def _get_matrix(department: str | None, employee: str | None = None) -> list:
+	"""Approval rows for *employee* from their own reporting line (see org.approval_chain):
+	Direct / Immediate Reporting, Secondary Reporting, Payroll. *department* is kept for
+	the old call signature and no longer matters."""
+	from cooperheat.cooperheat.org import approval_chain
 
-	Pass *employee* so location-specific rows (e.g. Jubail vs Yanbu supervisor)
-	resolve for that employee.
-	"""
-	from cooperheat.cooperheat.org import effective_matrix
-
-	return effective_matrix(department, employee)
+	return approval_chain(employee)
 
 
 def _row_for_level(matrix: list, level: int):
@@ -323,9 +330,9 @@ def _state_changed(doc) -> tuple[str | None, str | None]:
 
 
 def _sync_current_approver(doc):
-	"""Keep current_approver in sync with the Department Approval Matrix.
+	"""Keep current_approver in sync with the employee's reporting line.
 
-	If the matrix is changed after an attendance record is already pending,
+	If the reporting line is changed after an attendance record is already pending,
 	this ensures the stored approver is refreshed on the next save.
 	"""
 	if doc.docstatus != 1:
@@ -336,7 +343,7 @@ def _sync_current_approver(doc):
 		"Pending Level 3 Approval": 3,
 	}
 	level = level_map.get(doc.get("workflow_state") or "")
-	if not level or not doc.department:
+	if not level:
 		return
 	matrix = _get_matrix(doc.department, doc.employee)
 	row = _row_for_level(matrix, level)
@@ -489,17 +496,11 @@ def _validate_hours_edit_authorization(doc):
 	if not level:
 		frappe.throw(_("Attendance fields can only be edited while the record is pending approval."))
 
-	department = doc.department
-	if not department:
-		frappe.throw(_("Department is required to validate approver."))
-
-	matrix = _get_matrix(department, doc.employee)
+	matrix = _get_matrix(doc.department, doc.employee)
 	row = _row_for_level(matrix, level)
 
 	if not row:
-		frappe.throw(
-			_("No Level {0} approver configured for Department {1}.").format(level, department)
-		)
+		frappe.throw(_("No Level {0} approver is set for {1}.").format(level, doc.employee))
 
 	approver_user = _approver_user(row.approver)
 	if frappe.session.user != approver_user:
@@ -592,22 +593,16 @@ def _validate_approver_authorization(doc):
 	if required_level is None:
 		return
 
-	department = doc.department
-	if not department:
-		frappe.throw(_("Department is required on the Attendance record for approval routing."))
-
-	matrix = _get_matrix(department, doc.employee)
+	matrix = _get_matrix(doc.department, doc.employee)
 	row = _row_for_level(matrix, required_level)
 
 	if not row:
-		if required_level == 3:
-			# No Level 3 approver configured — auto-approval is allowed
+		if required_level in (2, 3):
+			# Nobody holds Secondary Reporting / Payroll: that step passes by itself
 			return
 		frappe.throw(
-			_("No Level {0} approver configured for Department {1}. "
-			  "Please set up the Approval Matrix on the Department record.").format(
-				required_level, department
-			)
+			_("{0} has no Direct / Immediate Reporting person. "
+			  "Set it on the Employee record before this can be approved.").format(doc.employee)
 		)
 
 	approver_user = _approver_user(row.approver)
@@ -638,10 +633,7 @@ def _validate_approver_authorization(doc):
 
 
 def _send_notification_for_level(doc, level: int):
-	department = doc.department
-	if not department:
-		return
-
+	department = doc.department or ""
 	matrix = _get_matrix(department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
@@ -838,15 +830,12 @@ def _get_project_window_hours(project: str, level: int) -> float:
 
 
 def _stamp_tracking_fields(doc, level: int):
-	department = doc.department
-	if not department:
-		return
-	matrix = _get_matrix(department, doc.employee)
+	matrix = _get_matrix(doc.department, doc.employee)
 	row = _row_for_level(matrix, level)
 	if not row:
 		return
 
-	# Project window hours take priority; fall back to Department Approval Matrix
+	# Project window hours take priority; fall back to the Pay Sheet Settings windows (48 h / 72 h)
 	project = _get_project_for_attendance(doc)
 	window_hours = _get_project_window_hours(project, level) if project else 0
 	if not window_hours:
