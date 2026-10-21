@@ -16,6 +16,7 @@ frappe.pages["division"].on_page_show = function (wrapper) {
 };
 
 const DV_API = "cooperheat.cooperheat.org.";
+const dv_plural = (n, one, many) => `${cint(n)} ${cint(n) === 1 ? one : many}`;
 const DV_TABS = [
 	{ key: "Division", label: __("Division") },
 	{ key: "Business Line", label: __("Business Line") },
@@ -128,16 +129,16 @@ class DivisionScreen {
 		return $(`<div class="dv-head">
 			<div class="dv-title">${frappe.utils.escape_html(n.label)}</div>
 			<div class="dv-sub">${frappe.utils.escape_html(__(n.unit_type || ""))}
-				· ${__("{0} employees in total", [cint(n.employees)])}</div>
+				· ${dv_plural(n.employees, __("employee"), __("employees"))} ${__("in total")}</div>
 		</div>`);
 	}
 
 	card(c) {
-		const sub = c.sub_units ? ` · ${__("{0} sub-units", [c.sub_units])}` : "";
+		const sub = c.sub_units ? ` · ${dv_plural(c.sub_units, __("sub-unit"), __("sub-units"))}` : "";
 		return $(`<div class="dv-card">
 			<div class="dv-name">${frappe.utils.escape_html(c.label)}</div>
 			<div class="dv-meta">${frappe.utils.escape_html(__(c.unit_type || ""))}</div>
-			<div class="dv-meta"><b>${cint(c.employees)}</b> ${__("employees")}${sub}</div>
+			<div class="dv-meta"><b>${dv_plural(c.employees, __("employee"), __("employees"))}</b>${sub}</div>
 		</div>`).on("click", () => this.go(this.kind, c.name));
 	}
 
