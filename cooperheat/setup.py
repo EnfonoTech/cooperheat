@@ -510,6 +510,9 @@ def after_migrate():
 	ensure_reporting_labels()
 	ensure_slip_print_format()
 	ensure_no_automatic_slip_email()
+	from cooperheat.cooperheat.employee_security import ensure_employee_field_security
+
+	ensure_employee_field_security()
 	from cooperheat.cooperheat.approval_workflows import ensure_workflows
 
 	ensure_workflows()
