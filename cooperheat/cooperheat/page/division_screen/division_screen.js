@@ -1,8 +1,9 @@
 // Division: one plain drill-down for the whole organisation.
 // Top level has three tabs (support Divisions, Business Lines, old departments that still
 // have no type). Click a name to see what is under it; the last level lists its employees.
-// Route: /app/division/<tab>/<department>
-frappe.pages["division"].on_page_load = function (wrapper) {
+// Route: /app/division-screen/<tab>/<department>
+// (not "division": production has an older DocType called Division, and a DocType wins that route)
+frappe.pages["division-screen"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __("Division"),
@@ -11,7 +12,7 @@ frappe.pages["division"].on_page_load = function (wrapper) {
 	wrapper._dv = new DivisionScreen(page);
 };
 
-frappe.pages["division"].on_page_show = function (wrapper) {
+frappe.pages["division-screen"].on_page_show = function (wrapper) {
 	wrapper._dv && wrapper._dv.show();
 };
 
@@ -53,7 +54,7 @@ class DivisionScreen {
 	}
 
 	go(kind, node) {
-		frappe.set_route(...["division", kind, node].filter(Boolean));
+		frappe.set_route(...["division-screen", kind, node].filter(Boolean));
 	}
 
 	refresh() {
@@ -163,7 +164,7 @@ class DivisionScreen {
 			<thead><tr><th>${__("Employee")}</th><th>${__("Designation")}</th><th>${__("Staff Category")}</th><th>${__("Reports To")}</th></tr></thead>
 			<tbody>${rows}</tbody></table>`);
 		$table.find("tr[data-emp]").on("click", function () {
-			frappe.set_route("Form", "Employee", $(this).data("emp"));
+			frappe.set_route("Form", "Employee", $(this).attr("data-emp"));
 		});
 		$s.append($table);
 		return $s;

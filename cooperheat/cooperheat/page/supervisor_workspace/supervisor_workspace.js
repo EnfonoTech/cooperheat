@@ -306,7 +306,7 @@ class SupervisorWorkspace {
 				</div></div>`;
 		});
 		$grid.html(cards.join(""));
-		$grid.find(".sw-card").on("click", (e) => this.open_employee($(e.currentTarget).data("emp")));
+		$grid.find(".sw-card").on("click", (e) => this.open_employee($(e.currentTarget).attr("data-emp")));
 	}
 
 	// ── approvals tab ──────────────────────────────────────────────────────
@@ -355,7 +355,7 @@ class SupervisorWorkspace {
 			this.scope = "all";
 			this.refresh().then(() => { this.tab = "approvals"; this.render(); });
 		});
-		this.$body.find(".sw-open").on("click", (e) => this.open_employee($(e.currentTarget).closest(".sw-group").data("emp")));
+		this.$body.find(".sw-open").on("click", (e) => this.open_employee($(e.currentTarget).closest(".sw-group").attr("data-emp")));
 		this.$body.find(".sw-open-att").on("click", (e) => frappe.set_route("Form", "Attendance", $(e.currentTarget).closest(".sw-row").data("att")));
 		this.$body.find(".sw-approve").on("click", (e) => this.approve([$(e.currentTarget).closest(".sw-row").data("att")]));
 		this.$body.find(".sw-grp-all").on("click", (e) => {
@@ -397,7 +397,13 @@ class SupervisorWorkspace {
 		this.selected = emp;
 		const m = this.team.find((x) => x.employee === emp) || { employee_name: emp };
 		this.$root.html(`<div class="sw-empty">${__("Loading...")}</div>`);
-		frappe.xcall(SW_API + "get_employee_days", { employee: emp }).then((days) => {
+		// attr(), not data(): jQuery turns an all-digit id (production employee ids are numbers like
+		// 3044307) into a Number and the server then refuses it as a non-string.
+		frappe.xcall(SW_API + "get_employee_days", { employee: String(emp) }).catch((err) => {
+			this.selected = null;
+			this.refresh();
+			throw err;
+		}).then((days) => {
 			const worked = days.filter((d) => d.total_hours > 0);
 			const hours = worked.reduce((n, d) => n + d.total_hours, 0);
 			const pending = days.filter((d) => d.can_approve).length;

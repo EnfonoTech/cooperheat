@@ -479,12 +479,16 @@ def ensure_no_automatic_slip_email():
 def ensure_division_menu():
 	"""One menu for the whole hierarchy: the HR workspace entry that opened the Department
 	list becomes "Division" and opens the Division screen (a plain drill-down, see
-	page/division). The DocType stays Department. Supervisors keep no Department entry."""
+	page/division_screen). The DocType stays Department. Supervisors keep no Department entry."""
 	frappe.db.sql(
-		"UPDATE `tabWorkspace Link` SET label = %s, link_type = 'Page', link_to = 'division' "
-		"WHERE parent = %s AND link_to IN ('Department', 'division') AND type = 'Link'",
+		"UPDATE `tabWorkspace Link` SET label = %s, link_type = 'Page', link_to = 'division-screen' "
+		"WHERE parent = %s AND link_to IN ('Department', 'division', 'division-screen') AND type = 'Link'",
 		("Division", "HR"),
 	)
+	# The screen was first published as page "division", which a DocType of the same name
+	# (production has one) hides; the old page record goes away, the new one is "division-screen".
+	if frappe.db.exists("Page", "division"):
+		frappe.delete_doc("Page", "division", force=True, ignore_permissions=True)
 
 
 def sync_scoped_user_permissions():

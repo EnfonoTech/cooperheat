@@ -76,7 +76,7 @@
 			{
 				label: __("Division screen"),
 				action: function () {
-					frappe.set_route("division");
+					frappe.set_route("division-screen");
 				},
 			},
 		]),
