@@ -94,7 +94,8 @@ function cooperheat_assign_shift(frm) {
 // HR Manager see the tab; the server refuses everybody else (cooperheat.cooperheat.compensation).
 function cooperheat_compensation_tab(frm) {
 	const allowed = frappe.user.has_role("HR Manager") || frappe.user.has_role("System Manager");
-	frm.set_df_property("custom_compensation_tab", "hidden", allowed ? 0 : 1);
+	// For anybody else the server does not even send the tab (field level 2: HR Manager / System Manager).
+	if (frm.fields_dict.custom_compensation_tab) frm.set_df_property("custom_compensation_tab", "hidden", allowed ? 0 : 1);
 	if (!allowed) return;
 	const $box = frm.fields_dict.custom_compensation_html && frm.fields_dict.custom_compensation_html.$wrapper;
 	if (!$box) return;
