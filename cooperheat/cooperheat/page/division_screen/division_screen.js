@@ -164,7 +164,7 @@ class DivisionScreen {
 			<thead><tr><th>${__("Employee")}</th><th>${__("Designation")}</th><th>${__("Staff Category")}</th><th>${__("Reports To")}</th></tr></thead>
 			<tbody>${rows}</tbody></table>`);
 		$table.find("tr[data-emp]").on("click", function () {
-			frappe.set_route("Form", "Employee", $(this).data("emp"));
+			frappe.set_route("Form", "Employee", $(this).attr("data-emp"));
 		});
 		$s.append($table);
 		return $s;
