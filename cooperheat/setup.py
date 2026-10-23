@@ -517,6 +517,10 @@ def after_migrate():
 	from cooperheat.cooperheat.employee_security import ensure_employee_field_security
 
 	ensure_employee_field_security()
+	from cooperheat.cooperheat import branding
+
+	if branding.is_applied():
+		branding.brand_ai_workspace()
 	from cooperheat.cooperheat.approval_workflows import ensure_workflows
 
 	ensure_workflows()
