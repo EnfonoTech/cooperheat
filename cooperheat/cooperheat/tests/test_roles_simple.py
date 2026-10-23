@@ -109,7 +109,10 @@ class TestRolesSimple(FrappeTestCase):
 		self.assertTrue(self.can(STORE_USER, "read", "Stock Entry"))
 		self.assertTrue(self.can(STORE_USER, "read", "Employee"))
 		self.assertFalse(self.can(STORE_USER, "write", "Employee"))
-		self.assertFalse(self.can(STORE_USER, "read", "Salary Slip"))
+		# every employee may open the Salary Slip list (the rows are limited to their own); store staff
+		# must not change or create payroll documents
+		self.assertFalse(self.can(STORE_USER, "write", "Salary Slip"))
+		self.assertFalse(self.can(STORE_USER, "create", "Payroll Entry"))
 
 	def test_unused_roles_are_gone_from_the_picker_and_from_users(self):
 		picker = set(get_all_roles())
