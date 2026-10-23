@@ -29,6 +29,19 @@ def make_user(email, roles):
 	user.flags.ignore_permissions = True
 	user.insert()
 	user.add_roles(*roles)
+	# User.save drops roles a bare test user has no business with (Employee, Employee Self Service);
+	# real staff have them through their Employee record, so put them back for the exact-match test
+	for role in roles:
+		if not frappe.db.exists("Has Role", {"parent": email, "parenttype": "User", "role": role}):
+			frappe.get_doc(
+				{
+					"doctype": "Has Role",
+					"parent": email,
+					"parenttype": "User",
+					"parentfield": "roles",
+					"role": role,
+				}
+			).db_insert()
 	return user
 
 
