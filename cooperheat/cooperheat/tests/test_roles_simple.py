@@ -79,6 +79,11 @@ class TestRolesSimple(FrappeTestCase):
 			"Employee", "Supervisor", "Manager", "HR Staff", "HR Manager", "Payroll", "Store", "IT",
 		})  # fmt: skip
 
+	def test_it_profile_carries_what_an_administrator_needs(self):
+		it = {r.role for r in frappe.get_doc("Role Profile", "IT").roles}
+		self.assertTrue({"System Manager", "HR Manager", "Payroll", "Store", "Accounts Manager"} <= it)
+		self.assertFalse({"Supervisor", "Manager"} & it)  # those two limit a person to a team
+
 	def test_the_stock_hr_profile_and_its_user_are_left_alone(self):
 		self.assertEqual(
 			{r.role for r in frappe.get_doc("Role Profile", "HR").roles},

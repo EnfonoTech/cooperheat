@@ -71,7 +71,28 @@ PROFILES = {
 	"HR Manager": [*_EMPLOYEE, "HR User", "HR Manager", *_APPROVER],
 	"Payroll": [*_EMPLOYEE, "Payroll"],
 	"Store": [*_EMPLOYEE, "Store", "Stock User", "Stock Manager", "Item Manager"],
-	"IT": [*_EMPLOYEE, "System Manager"],
+	# the administrators: System Manager does not open Assets, Stock or Accounts by itself, so the
+	# profile carries every role the site keeps (not Supervisor / Manager: those limit a person to a team)
+	"IT": [
+		*_EMPLOYEE,
+		"System Manager",
+		"HR Manager",
+		"HR User",
+		"Payroll",
+		"Store",
+		"Stock User",
+		"Stock Manager",
+		"Item Manager",
+		"Accounts User",
+		"Accounts Manager",
+		"Projects User",
+		"Projects Manager",
+		"Report Manager",
+		"Dashboard Manager",
+		"Workspace Manager",
+		"Prepared Report User",
+		*_APPROVER,
+	],
 }
 
 # The stock ERPNext profiles for the modules this site does not use: dropped (when nobody is on
