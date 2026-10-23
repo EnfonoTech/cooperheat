@@ -73,8 +73,16 @@ class TestRolesSimple(FrappeTestCase):
 			doc = frappe.get_doc("Role Profile", name)
 			self.assertEqual({r.role for r in doc.roles}, set(roles), name)
 		self.assertEqual(set(roles_simple.PROFILES), {
-			"Employee", "Supervisor", "Manager", "HR", "HR Manager", "Payroll", "Store", "IT",
+			"Employee", "Supervisor", "Manager", "HR Staff", "HR Manager", "Payroll", "Store", "IT",
 		})  # fmt: skip
+
+	def test_the_stock_hr_profile_and_its_user_are_left_alone(self):
+		self.assertEqual(
+			{r.role for r in frappe.get_doc("Role Profile", "HR").roles},
+			{"HR Manager", "HR User", "Leave Approver", "Expense Approver"},
+		)
+		for name in roles_simple.UNUSED_PROFILES:
+			self.assertFalse(frappe.db.exists("Role Profile", name), name)
 
 	def test_payroll_works_on_payroll_not_on_stock(self):
 		self.assertTrue(self.can(PAYROLL_USER, "read", "Salary Slip"))
@@ -118,7 +126,7 @@ class TestRolesSimple(FrappeTestCase):
 	def test_the_second_run_changes_nothing(self):
 		again = roles_simple.apply(dry_run=0, snapshot_path=self.snapshot)
 		self.assertEqual(again["perms"], {"Payroll": 0, "Store": 0})
-		self.assertEqual(again["profiles"], {"created": [], "updated": []})
+		self.assertEqual(again["profiles"], {"created": [], "updated": [], "kept": [], "dropped": []})
 		self.assertEqual(again["disable"], [])
 		self.assertEqual(again["removed_assignments"], 0)
 

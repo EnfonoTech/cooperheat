@@ -4,7 +4,7 @@ The client's HR Manager found the roles list of a user ("too many roles", most o
 the site does not use: Agriculture, Manufacturing, Sales, Blogger ...) impossible to reason about.
 This sets up eight Role Profiles, each one a single choice on the User form:
 
-    Employee, Supervisor, Manager, HR, HR Manager, Payroll, Store, IT
+    Employee, Supervisor, Manager, HR Staff, HR Manager, Payroll, Store, IT
 
 ``apply`` (run by hand, never from migrate - it removes roles from users):
 
@@ -67,12 +67,16 @@ PROFILES = {
 	"Employee": _EMPLOYEE,
 	"Supervisor": [*_EMPLOYEE, "Supervisor", *_APPROVER],
 	"Manager": [*_EMPLOYEE, "Manager", *_APPROVER],
-	"HR": [*_EMPLOYEE, "HR User", *_APPROVER],
+	"HR Staff": [*_EMPLOYEE, "HR User", *_APPROVER],
 	"HR Manager": [*_EMPLOYEE, "HR User", "HR Manager", *_APPROVER],
 	"Payroll": [*_EMPLOYEE, "Payroll"],
 	"Store": [*_EMPLOYEE, "Store", "Stock User", "Stock Manager", "Item Manager"],
 	"IT": [*_EMPLOYEE, "System Manager"],
 }
+
+# The stock ERPNext profiles for the modules this site does not use: dropped (when nobody is on
+# them) before their roles are switched off. "HR" and "Accounts" stay as they are.
+UNUSED_PROFILES = ("Inventory", "Manufacturing", "Sales", "Purchase")
 
 PAYROLL_DOCTYPES = (
 	"Salary Slip",
@@ -123,6 +127,7 @@ def apply(dry_run=1, snapshot_path=None) -> dict:
 
 	ensure_employee_field_security()  # adds Payroll at the pay level
 	out["profiles"] = ensure_profiles()
+	out["profiles"]["dropped"] = drop_unused_profiles()
 	out["removed_assignments"] = disable_roles(out["disable"], snapshot_path)
 	out["users_with_profile"] = mark_users()
 	frappe.clear_cache()
@@ -195,11 +200,26 @@ def disable_roles(roles: list[str], snapshot_path=None) -> int:
 	return len(assignments)
 
 
+def drop_unused_profiles() -> list[str]:
+	dropped = []
+	for name in UNUSED_PROFILES:
+		if frappe.db.exists("Role Profile", name) and not frappe.db.exists(
+			"User", {"role_profile_name": name}
+		):
+			frappe.delete_doc("Role Profile", name, ignore_permissions=True, force=True)
+			dropped.append(name)
+	return dropped
+
+
 def ensure_profiles() -> dict:
-	made = {"created": [], "updated": []}
+	"""Never edits a profile somebody is on: Frappe would reset those users to the profile's roles."""
+	made = {"created": [], "updated": [], "kept": []}
 	for name, roles in PROFILES.items():
 		roles = [r for r in roles if frappe.db.exists("Role", r)]
 		if frappe.db.exists("Role Profile", name):
+			if frappe.db.exists("User", {"role_profile_name": name}) and not mark_is_ours(name):
+				made["kept"].append(name)
+				continue
 			doc = frappe.get_doc("Role Profile", name)
 			if {r.role for r in doc.roles} == set(roles):
 				continue
@@ -214,6 +234,14 @@ def ensure_profiles() -> dict:
 		doc.flags.ignore_permissions = True
 		doc.save()
 	return made
+
+
+def mark_is_ours(name: str) -> bool:
+	"""True when the profile already has exactly the roles this module defines for it."""
+	roles = set(
+		frappe.get_all("Has Role", filters={"parent": name, "parenttype": "Role Profile"}, pluck="role")
+	)
+	return roles == set(PROFILES[name])
 
 
 def mark_users() -> int:
