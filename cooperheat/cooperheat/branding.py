@@ -18,13 +18,18 @@ LOGO = "/assets/cooperheat/images/cooperheat-logo.png"
 FAVICON = "/assets/cooperheat/images/cooperheat-favicon.png"
 THEME = "Cooperheat"
 
+# The in-built AI assistant of the Grey Theme app is called "Fateh AI" there; on this site it carries
+# the client's name instead (workspace + page title; the page text is renamed by public/js/branding.js).
+AI_WORKSPACE = "FATEH AI"
+AI_NAME = "Cooperheat AI"
+
 # The login page (grey_theme) shows an ERPNext product picture and "Powered By ..." next to the logo.
 LOGIN_CSS = """
 .login-content-bg .app-login-bg,
 .login-content-bg .login-copyrights { display: none !important; }
 .login-content-bg { display: flex !important; align-items: center; justify-content: center; }
 .login-content-bg .app-logo {
-	position: static !important; width: 230px !important; height: auto !important; max-width: 70% !important;
+	position: static !important; width: 150px !important; height: auto !important; max-width: 70% !important;
 	max-height: none !important; object-fit: contain !important; margin: 0 auto !important; display: block;
 }
 """
@@ -50,18 +55,61 @@ def apply_branding() -> dict:
 	navbar.save()
 
 	frappe.db.set_single_value("System Settings", "app_name", NAME)
+	brand_ai_workspace()
 	frappe.clear_cache()
 	return current()
+
+
+def is_applied() -> bool:
+	return frappe.db.get_single_value("Website Settings", "app_name") == NAME
+
+
+def brand_ai_workspace(reverse: bool = False) -> bool:
+	"""Idempotent. Shows the AI assistant of the Grey Theme app under the client's name on this site.
+
+	The workspace record is re-imported from the app's JSON on every migrate, so ``after_migrate``
+	calls this again while the branding is applied. ``reverse`` puts the original name back.
+	"""
+	if not frappe.db.exists("Workspace", AI_WORKSPACE):
+		return False
+	old, new = ("Fateh AI", AI_NAME) if not reverse else (AI_NAME, "Fateh AI")
+
+	def swap(text: str) -> str:
+		return text.replace(old.upper(), new.upper()).replace(old, new)
+
+	ws = frappe.get_doc("Workspace", AI_WORKSPACE)
+	changed = False
+	for field in ("title", "content"):
+		value = ws.get(field)
+		if value and swap(value) != value:
+			ws.set(field, swap(value))
+			changed = True
+	for link in ws.get("shortcuts") or []:
+		if link.label and swap(link.label) != link.label:
+			link.label = swap(link.label)
+			changed = True
+	if changed:
+		ws.flags.ignore_permissions = True
+		ws.flags.ignore_version = True
+		ws.save()
+	return changed
 
 
 def revert_branding() -> dict:
 	"""Back to the stock look (Frappe name, no logo, no favicon, no theme)."""
 	frappe.db.set_single_value(
 		"Website Settings",
-		{"app_name": "Frappe", "app_logo": None, "favicon": None, "splash_image": None, "website_theme": None},
+		{
+			"app_name": "Frappe",
+			"app_logo": None,
+			"favicon": None,
+			"splash_image": None,
+			"website_theme": None,
+		},
 	)
 	frappe.db.set_single_value("Navbar Settings", "app_logo", None)
 	frappe.db.set_single_value("System Settings", "app_name", "Frappe")
+	brand_ai_workspace(reverse=True)
 	frappe.clear_cache()
 	return current()
 
