@@ -13,7 +13,7 @@ Now (three levels, set once by ``ensure_employee_field_security`` from after_mig
   employment type, grade, identity documents (Iqama, passport), family and health data,
   date of birth: HR User, HR Manager, System Manager. Invisible to everybody else.
 * level 2 - pay: CTC, salary currency and mode, bank details, payroll cost centre, Pay Batch,
-  the Salary Compensation tab: HR Manager and System Manager only (like Employee
+  the Salary Compensation tab: HR Manager, System Manager and Payroll only (like Employee
   Compensation itself). Invisible to everybody else, HR User included.
 
 Fields at level 1 and 2 are not rendered and are stripped from API reads for users without
@@ -42,7 +42,7 @@ LEVEL_2 = [
 # role -> (read, write) at each level (rows are added only when that role has no row at the level yet)
 LEVEL_ROLES = {
 	1: {"HR User": (1, 1), "HR Manager": (1, 1), "System Manager": (1, 1)},
-	2: {"HR Manager": (1, 1), "System Manager": (1, 1)},
+	2: {"HR Manager": (1, 1), "System Manager": (1, 1), "Payroll": (1, 1)},
 }
 
 # level-0 roles that must not write (their read right stays)
