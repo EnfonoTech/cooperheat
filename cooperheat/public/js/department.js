@@ -4,7 +4,7 @@ frappe.ui.form.on("Department", {
 		if (frm.is_new() || !frm.doc.parent_department) return;
 		frm.add_custom_button(__("Open in Division"), () => {
 			const kind = cooperheat_kind_of(frm.doc.custom_unit_type);
-			frappe.set_route(...["division", kind, kind === "Other" ? null : frm.doc.name].filter(Boolean));
+			frappe.set_route(...["division-screen", kind, kind === "Other" ? null : frm.doc.name].filter(Boolean));
 		});
 		cooperheat_department_overview(frm);
 	},
@@ -13,7 +13,7 @@ frappe.ui.form.on("Department", {
 		const back = frappe.cooperheat_return_to_division;
 		if (back) {
 			frappe.cooperheat_return_to_division = null;
-			frappe.set_route(...["division", back.kind, back.node].filter(Boolean));
+			frappe.set_route(...["division-screen", back.kind, back.node].filter(Boolean));
 			return;
 		}
 		// Created from the tree: go back to it.

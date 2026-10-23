@@ -1,8 +1,8 @@
 {
  "doctype": "Page",
  "module": "cooperheat",
- "name": "division",
- "page_name": "division",
+ "name": "division-screen",
+ "page_name": "division-screen",
  "roles": [
   {"role": "HR Manager"},
   {"role": "HR User"},
