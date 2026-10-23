@@ -17,7 +17,10 @@ from cooperheat.cooperheat.employee_security import ensure_employee_field_securi
 PAYROLL_USER = "payroll.test@cooperheat-dev.test"
 STORE_USER = "store.test@cooperheat-dev.test"
 SUPERVISOR_USER = "supervisor.exact@cooperheat-dev.test"
-UNUSED = ("Agriculture User", "Blogger", "Manufacturing Manager", "Sales User")
+UNUSED = (
+	"Zz Unused Role A",
+	"Zz Unused Role B",
+)  # fresh roles: the real clean-up may already have run on the site
 
 
 def make_user(email, roles):
@@ -133,13 +136,13 @@ class TestRolesSimple(FrappeTestCase):
 	def test_revert_brings_the_roles_back(self):
 		with open(self.snapshot) as handle:
 			snap = json.load(handle)
-		self.assertIn("Agriculture User", snap["roles"])
+		self.assertIn(UNUSED[0], snap["roles"])
 		roles_simple.revert(snapshot_path=self.snapshot)
-		self.assertIn("Agriculture User", get_all_roles())
-		self.assertEqual(frappe.db.get_value("Role", "Agriculture User", "disabled"), 0)
+		self.assertIn(UNUSED[0], get_all_roles())
+		self.assertEqual(frappe.db.get_value("Role", UNUSED[0], "disabled"), 0)
 		# and a second apply puts the clean-up back
 		roles_simple.apply(dry_run=0, snapshot_path=self.snapshot)
-		self.assertNotIn("Agriculture User", get_all_roles())
+		self.assertNotIn(UNUSED[0], get_all_roles())
 
 	def test_pay_level_keeps_hr_manager(self):
 		ensure_employee_field_security()
