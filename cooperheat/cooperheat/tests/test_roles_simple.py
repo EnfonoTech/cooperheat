@@ -40,11 +40,11 @@ class TestRolesSimple(FrappeTestCase):
 		for role in UNUSED:
 			if not frappe.db.exists("Role", role):
 				frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert()
-		make_user(PAYROLL_USER, ["Employee", "Employee Self Service", "Payroll"])
-		make_user(STORE_USER, roles_simple.PROFILES["Store"])
 		make_user(SUPERVISOR_USER, roles_simple.PROFILES["Supervisor"])
 		cls.snapshot = os.path.join(tempfile.mkdtemp(), "snapshot.json")
 		cls.result = roles_simple.apply(dry_run=0, snapshot_path=cls.snapshot)
+		make_user(PAYROLL_USER, ["Employee", "Employee Self Service", "Payroll"])
+		make_user(STORE_USER, roles_simple.PROFILES["Store"])
 
 	def can(self, user, ptype, doctype):
 		return frappe.has_permission(doctype, ptype, user=user)
