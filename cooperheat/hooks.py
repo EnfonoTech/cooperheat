@@ -348,6 +348,8 @@ scheduler_events = {
 # 	"Task": "cooperheat.task.get_dashboard_data"
 # }
 
+override_doctype_dashboards = {"Employee": "cooperheat.cooperheat.dashboards.employee_dashboard"}
+
 # exempt linked doctypes from being automatically cancelled
 #
 # auto_cancel_exempted_doctypes = ["Auto Repeat"]
