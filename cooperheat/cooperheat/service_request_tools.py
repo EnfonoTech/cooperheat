@@ -97,9 +97,12 @@ def notify(doc, employee: str | None, subject: str):
 
 # --- actions -----------------------------------------------------------------------------------
 def _load(name: str):
+	"""The request, for somebody who may act on it (the holder, HR Manager, System Manager)."""
 	doc = frappe.get_doc(DT, name)
 	if not (_sees_all(frappe.session.user) or involved(doc, my_employee())):
 		frappe.throw(_("You are not part of this request."), frappe.PermissionError)
+	if not can_act(doc):
+		frappe.throw(_("Only the person who holds this request can act on it."), frappe.PermissionError)
 	return doc
 
 

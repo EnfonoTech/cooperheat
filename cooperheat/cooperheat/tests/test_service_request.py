@@ -91,7 +91,8 @@ class TestServiceRequest(FrappeTestCase):
 		frappe.set_user(self.boss_user)
 		edit = frappe.get_doc("Service Request", doc.name)
 		edit.current_holder = emp_of("khalid")
-		with self.assertRaises(frappe.ValidationError):
+		# refused either by the field rule (holder with the Employee role) or by the permission check
+		with self.assertRaises((frappe.ValidationError, frappe.PermissionError)):
 			edit.save()
 
 	def test_mine_lists_raised_and_waiting(self):
