@@ -45,7 +45,11 @@ app_include_js = ["/assets/cooperheat/js/branding.js"]
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
-doctype_js = {"Employee": "public/js/employee.js", "Department": "public/js/department.js"}
+doctype_js = {
+	"Employee": "public/js/employee.js",
+	"Department": "public/js/department.js",
+	"Service Request": "public/js/service_request.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 doctype_list_js = {
 	"Employee Checkin": "public/js/employee_checkin_list.js",
@@ -420,6 +424,7 @@ permission_query_conditions = {
 	"Attendance": "cooperheat.cooperheat.permissions.scope.attendance_query",
 	"Shift Assignment": "cooperheat.cooperheat.permissions.scope.shift_assignment_query",
 	"Department": "cooperheat.cooperheat.permissions.scope.department_query",
+	"Service Request": "cooperheat.cooperheat.service_request_tools.query_conditions",
 }
 
 has_permission = {
@@ -428,4 +433,5 @@ has_permission = {
 	"Attendance": "cooperheat.cooperheat.permissions.scope.employee_doc_has_permission",
 	"Shift Assignment": "cooperheat.cooperheat.permissions.scope.employee_doc_has_permission",
 	"Department": "cooperheat.cooperheat.permissions.scope.department_has_permission",
+	"Service Request": "cooperheat.cooperheat.service_request_tools.has_permission",
 }
