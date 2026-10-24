@@ -2,6 +2,12 @@
 // from these (cooperheat.cooperheat.org.sync_employee_org).
 frappe.ui.form.on("Employee", {
 	setup(frm) {
+		// Legacy "Division" field (production): pick Finance and the Department list shows only the
+		// departments under the Finance division. Divisions without a matching department show all.
+		frm.set_query("department", () => ({
+			query: "cooperheat.cooperheat.org.departments_in_division",
+			filters: { division: frm.doc.custom_division || "", company: frm.doc.company || "" },
+		}));
 		frm.set_query("custom_business_line", () => ({ filters: { custom_unit_type: "Business Line", disabled: 0 } }));
 		frm.set_query("custom_product_line", () => ({
 			query: "cooperheat.cooperheat.org.product_line_query",
@@ -12,6 +18,18 @@ frappe.ui.form.on("Employee", {
 		frm.toggle_enable("department", !frm.doc.custom_business_line);
 		cooperheat_shift_section(frm);
 		cooperheat_compensation_tab(frm);
+		cooperheat_salary_view(frm);
+	},
+	custom_division(frm) {
+		// the Department list follows the Division (see setup); a department that does not belong is cleared
+		if (frm.doc.department && frm.doc.custom_division) {
+			frappe
+				.xcall("cooperheat.cooperheat.org.department_in_division", {
+					division: frm.doc.custom_division,
+					department: frm.doc.department,
+				})
+				.then((ok) => ok === false && frm.set_value("department", ""));
+		}
 	},
 	custom_business_line(frm) {
 		frm.toggle_enable("department", !frm.doc.custom_business_line);
@@ -93,8 +111,8 @@ function cooperheat_assign_shift(frm) {
 // creating an Employee Compensation record in the Payroll section. Only System Manager and
 // HR Manager see the tab; the server refuses everybody else (cooperheat.cooperheat.compensation).
 function cooperheat_compensation_tab(frm) {
-	const allowed = frappe.user.has_role("HR Manager") || frappe.user.has_role("System Manager");
-	// For anybody else the server does not even send the tab (field level 2: HR Manager / System Manager).
+	const allowed = ["HR Manager", "System Manager", "Payroll"].some((r) => frappe.user.has_role(r));
+	// For anybody else the server does not even send the tab (field level 2: HR Manager / Payroll / System Manager).
 	if (frm.fields_dict.custom_compensation_tab) frm.set_df_property("custom_compensation_tab", "hidden", allowed ? 0 : 1);
 	if (!allowed) return;
 	const $box = frm.fields_dict.custom_compensation_html && frm.fields_dict.custom_compensation_html.$wrapper;
@@ -217,4 +235,67 @@ function cooperheat_compensation_dialog(frm, data, record) {
 		},
 	});
 	dialog.show();
+}
+
+// Read-only "Salary" tab: an employee sees his own package, a Manager his team's (no bank details).
+// HR Manager / Payroll / System Manager use the editable Salary Compensation tab; the server decides.
+function cooperheat_salary_view(frm) {
+	const tab = "custom_salary_view_tab";
+	if (!frm.fields_dict[tab]) return;
+	const hide = () => frm.set_df_property(tab, "hidden", 1);
+	if (frm.is_new()) return hide();
+	if (["HR Manager", "System Manager", "Payroll"].some((r) => frappe.user.has_role(r)))
+		return hide();
+	hide();
+	frappe
+		.xcall("cooperheat.cooperheat.compensation.get_salary_view", { employee: frm.doc.name })
+		.then((data) => {
+			if (!data || !data.allowed) return;
+			frm.set_df_property(tab, "hidden", 0);
+			frm.set_df_property(
+				tab,
+				"label",
+				data.scope === "own" ? __("My Salary") : __("Salary")
+			);
+			const $box = frm.fields_dict.custom_salary_view_html.$wrapper;
+			const esc = frappe.utils.escape_html;
+			const cur = data.current;
+			const money = (v) => format_currency(v || 0, cur ? cur.currency : "SAR");
+			const rows = (list) =>
+				list.length
+					? list
+							.map(
+								(r) =>
+									`<tr><td>${esc(r.label)}</td><td class="text-right">${money(
+										r.value
+									)}</td></tr>`
+							)
+							.join("")
+					: `<tr><td class="text-muted" colspan="2">${__("none")}</td></tr>`;
+			let html = `<p class="text-muted">${__(
+				"Read only. Only HR Manager and Payroll can change salaries."
+			)}</p>`;
+			if (data.ctc) html += `<p><b>${__("CTC")}</b>: ${money(data.ctc)}</p>`;
+			if (!cur) {
+				html += `<p class="text-muted">${__("No salary package is recorded yet.")}</p>`;
+			} else {
+				html += `<p><b>${__("Current package")}</b> · ${__(
+					"effective from"
+				)} ${frappe.datetime.str_to_user(cur.from_date)}</p>
+				<table class="table table-sm" style="max-width:520px"><thead><tr><th>${__(
+					"Earnings"
+				)}</th><th></th></tr></thead><tbody>${rows(cur.earnings)}
+				<tr><th>${__("Total earnings")}</th><th class="text-right">${money(
+					cur.total_earnings
+				)}</th></tr></tbody>
+				<thead><tr><th>${__("Deductions")}</th><th></th></tr></thead><tbody>${rows(cur.deductions)}
+				<tr><th>${__("Total deductions")}</th><th class="text-right">${money(
+					cur.total_deductions
+				)}</th></tr>
+				<tr><th>${__("Net fixed")}</th><th class="text-right">${money(
+					cur.net_fixed
+				)}</th></tr></tbody></table>`;
+			}
+			$box.html(html);
+		});
 }

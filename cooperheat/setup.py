@@ -34,6 +34,20 @@ def setup_custom_fields():
 				"insert_after": "nationality",
 				"description": "Payroll runs can be limited to one batch (main, sponsor batches, visa batches...).",
 			},
+			# read-only salary view for employees (own) and managers (team); filled by
+			# compensation.get_salary_view, shown by public/js/employee.js
+			{
+				"fieldname": "custom_salary_view_tab",
+				"label": "Salary",
+				"fieldtype": "Tab Break",
+				"insert_after": "custom_compensation_html",
+			},
+			{
+				"fieldname": "custom_salary_view_html",
+				"label": "Salary",
+				"fieldtype": "HTML",
+				"insert_after": "custom_salary_view_tab",
+			},
 		],
 	}
 	from cooperheat.cooperheat.approval_workflows import final_approver_field
@@ -476,6 +490,22 @@ def ensure_no_automatic_slip_email():
 		frappe.db.set_single_value("Payroll Settings", "email_salary_slip_to_employee", 0)
 
 
+def ensure_ai_restricted():
+	"""Idempotent. The Grey Theme assistant (Page ai-chat, Workspace FATEH AI) is for System Manager only.
+	Both records are re-imported from the Grey Theme app on migrate, so this runs again each time."""
+	for doctype, name in (("Page", "ai-chat"), ("Workspace", "FATEH AI")):
+		if not frappe.db.exists(doctype, name):
+			continue
+		doc = frappe.get_doc(doctype, name)
+		if [r.role for r in doc.roles] == ["System Manager"]:
+			continue
+		doc.roles = []
+		doc.append("roles", {"role": "System Manager"})
+		doc.flags.ignore_permissions = True
+		doc.flags.ignore_version = True
+		doc.save()
+
+
 def ensure_division_menu():
 	"""One menu for the whole hierarchy: the HR workspace entry that opened the Department
 	list becomes "Division" and opens the Division screen (a plain drill-down, see
@@ -514,6 +544,7 @@ def after_migrate():
 	ensure_reporting_labels()
 	ensure_slip_print_format()
 	ensure_no_automatic_slip_email()
+	ensure_ai_restricted()
 	from cooperheat.cooperheat.employee_security import ensure_employee_field_security
 
 	ensure_employee_field_security()

@@ -645,3 +645,54 @@ def division_view(node=None, kind="Division", company=None):
 		kind=kind_of(current.custom_unit_type) if current.custom_unit_type else kind,
 	)
 	return out
+
+
+def _division_node(division: str | None) -> str | None:
+	"""The Department tree node of unit type Division that carries the legacy Division's name
+	("Finance" -> "Finance Division - C", "Management" -> "Management - C"); None when there is none
+	(Admin, the business lines ...)."""
+	if not division:
+		return None
+	rows = frappe.get_all(
+		"Department",
+		filters={"custom_unit_type": "Division", "disabled": 0},
+		or_filters=[["name", "like", f"{division} Division - %"], ["name", "like", f"{division} - %"]],
+		pluck="name",
+		order_by="name asc",
+	)
+	return rows[0] if rows else None
+
+
+@frappe.whitelist()
+def departments_in_division(doctype, txt, searchfield, start, page_len, filters):
+	"""Link query for Employee.department: only the departments below the chosen legacy Division;
+	every department of the company when the Division has no matching node (or is empty)."""
+	filters = frappe._dict(filters or {})
+	node = _division_node(filters.get("division"))
+	conditions = {"disabled": 0}
+	if filters.get("company"):
+		conditions["company"] = filters.company
+	if node:
+		below = descendants([node]) - {node}
+		if not below:
+			return []
+		conditions["name"] = ["in", list(below)]
+	return frappe.get_all(
+		"Department",
+		filters=conditions,
+		or_filters=[["name", "like", f"%{txt}%"], ["department_name", "like", f"%{txt}%"]],
+		fields=["name", "custom_unit_type"],
+		order_by="name asc",
+		limit_start=cint(start),
+		limit_page_length=cint(page_len),
+		as_list=True,
+	)
+
+
+@frappe.whitelist()
+def department_in_division(division: str, department: str) -> bool | None:
+	"""Does ``department`` belong to the Division? None when the Division has no department node."""
+	node = _division_node(division)
+	if not node:
+		return None
+	return department in (descendants([node]) - {node})
