@@ -83,30 +83,26 @@ class TestEmployeeSecurity(FrappeTestCase):
 		self.assertTrue(rows)
 		self.assertTrue(all(r.read == 1 and r.write == 0 for r in rows))
 
-	def test_supervisor_sees_neither_pay_nor_hr_sensitive_fields(self):
+	def test_supervisor_sees_the_teams_hr_details_but_no_pay(self):
+		# client 2026-10-23: supervisors and managers see all details of their people except salary
 		keys = visible_keys(dev_seed.email("anil"), self.tech)
 		self.assertIn("employee_name", keys)
 		self.assertIn("department", keys)
 		self.assertIn("reports_to", keys)
-		for field in (
-			"ctc",
-			"bank_ac_no",
-			"iban",
-			"salary_mode",
-			"date_of_joining",
-			"passport_number",
-			"date_of_birth",
-		):
+		for field in ("date_of_joining", "passport_number", "date_of_birth"):
+			self.assertIn(field, keys)
+		for field in ("ctc", "bank_ac_no", "iban", "salary_mode"):
 			self.assertNotIn(field, keys)
 
-	def test_supervisor_gets_no_pay_columns_from_the_list_api(self):
+	def test_supervisor_gets_hr_columns_but_no_pay_columns_from_the_list_api(self):
 		frappe.set_user(dev_seed.email("anil"))
 		rows = frappe.get_list(
 			"Employee", fields=["name", "ctc", "bank_ac_no", "date_of_joining"], limit_page_length=5
 		)
 		self.assertTrue(rows)
 		for row in rows:
-			for field in ("ctc", "bank_ac_no", "date_of_joining"):
+			self.assertIn("date_of_joining", row)
+			for field in ("ctc", "bank_ac_no"):
 				self.assertNotIn(field, row)
 
 	def test_hr_user_sees_hr_fields_but_not_pay(self):

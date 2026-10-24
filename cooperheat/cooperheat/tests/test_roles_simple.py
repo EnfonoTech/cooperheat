@@ -76,7 +76,8 @@ class TestRolesSimple(FrappeTestCase):
 			doc = frappe.get_doc("Role Profile", name)
 			self.assertEqual({r.role for r in doc.roles}, set(roles), name)
 		self.assertEqual(set(roles_simple.PROFILES), {
-			"Employee", "Supervisor", "Manager", "HR Staff", "HR Manager", "Payroll", "Store", "IT",
+			"Employee", "Supervisor", "Manager", "HR Staff", "HR Manager", "Payroll", "Payroll and HR Manager",
+			"Store", "Full Access", "IT",
 		})  # fmt: skip
 
 	def test_it_profile_carries_what_an_administrator_needs(self):

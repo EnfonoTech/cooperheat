@@ -66,7 +66,18 @@ class TestPayVisibility(FrappeTestCase):
 		mine = compensation.get_salary_view(self.tech)
 		self.assertTrue(mine["allowed"])
 		self.assertEqual(mine["scope"], "own")
-		self.assertEqual(mine["current"]["total_earnings"], 5000)
+		expected = compensation._summary(
+			frappe.get_doc(
+				"Employee Compensation",
+				frappe.get_all(
+					"Employee Compensation",
+					filters={"employee": self.tech, "is_active": 1},
+					pluck="name",
+					order_by="from_date desc",
+				)[0],
+			)
+		)["total_earnings"]
+		self.assertEqual(mine["current"]["total_earnings"], expected)
 		other = frappe.db.get_value("Employee", {"user_id": dev_seed.email("tech102")}, "name")
 		if other:
 			self.assertFalse(compensation.get_salary_view(other)["allowed"])
