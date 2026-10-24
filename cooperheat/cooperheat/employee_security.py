@@ -11,7 +11,9 @@ Now (three levels, set once by ``ensure_employee_field_security`` from after_mig
   Employee, Employee Self Service, Supervisor and Manager are read-only.
 * level 1 - HR-sensitive: joining / confirmation / contract / retirement / exit dates,
   employment type, grade, identity documents (Iqama, passport), family and health data,
-  date of birth: HR User, HR Manager, System Manager. Invisible to everybody else.
+  date of birth: HR User, HR Manager, System Manager write; Supervisor and Manager READ the
+  people in their team (the team scope limits which records they can open; client 2026-10-23).
+  Invisible to everybody else.
 * level 2 - pay: CTC, salary currency and mode, bank details, payroll cost centre, Pay Batch,
   the Salary Compensation tab: HR Manager, System Manager and Payroll only (like Employee
   Compensation itself). Invisible to everybody else, HR User included.
@@ -41,7 +43,13 @@ LEVEL_2 = [
 
 # role -> (read, write) at each level (rows are added only when that role has no row at the level yet)
 LEVEL_ROLES = {
-	1: {"HR User": (1, 1), "HR Manager": (1, 1), "System Manager": (1, 1)},
+	1: {
+		"HR User": (1, 1),
+		"HR Manager": (1, 1),
+		"System Manager": (1, 1),
+		"Supervisor": (1, 0),
+		"Manager": (1, 0),
+	},
 	2: {"HR Manager": (1, 1), "System Manager": (1, 1), "Payroll": (1, 1)},
 }
 

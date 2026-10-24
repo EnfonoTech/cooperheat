@@ -4,7 +4,7 @@ The client's HR Manager found the roles list of a user ("too many roles", most o
 the site does not use: Agriculture, Manufacturing, Sales, Blogger ...) impossible to reason about.
 This sets up eight Role Profiles, each one a single choice on the User form:
 
-    Employee, Supervisor, Manager, HR Staff, HR Manager, Payroll, Store, IT
+    Employee, Supervisor, Manager, HR Staff, HR Manager, Payroll, Payroll and HR Manager, Store, Full Access, IT
 
 ``apply`` (run by hand, never from migrate - it removes roles from users):
 
@@ -63,6 +63,25 @@ KEEP = {
 _EMPLOYEE = ["Employee", "Employee Self Service"]
 _APPROVER = ["Leave Approver", "Expense Approver"]
 
+_ADMIN = [
+	"HR Manager",
+	"HR User",
+	"Payroll",
+	"Store",
+	"Stock User",
+	"Stock Manager",
+	"Item Manager",
+	"Accounts User",
+	"Accounts Manager",
+	"Projects User",
+	"Projects Manager",
+	"Report Manager",
+	"Dashboard Manager",
+	"Workspace Manager",
+	"Prepared Report User",
+	*_APPROVER,
+]
+
 PROFILES = {
 	"Employee": _EMPLOYEE,
 	"Supervisor": [*_EMPLOYEE, "Supervisor", *_APPROVER],
@@ -70,29 +89,14 @@ PROFILES = {
 	"HR Staff": [*_EMPLOYEE, "HR User", *_APPROVER],
 	"HR Manager": [*_EMPLOYEE, "HR User", "HR Manager", *_APPROVER],
 	"Payroll": [*_EMPLOYEE, "Payroll"],
+	# one person who runs HR and payroll (a Role Profile is a single choice on the user form)
+	"Payroll and HR Manager": [*_EMPLOYEE, "HR User", "HR Manager", "Payroll", *_APPROVER],
 	"Store": [*_EMPLOYEE, "Store", "Stock User", "Stock Manager", "Item Manager"],
-	# the administrators: System Manager does not open Assets, Stock or Accounts by itself, so the
-	# profile carries every role the site keeps (not Supervisor / Manager: those limit a person to a team)
-	"IT": [
-		*_EMPLOYEE,
-		"System Manager",
-		"HR Manager",
-		"HR User",
-		"Payroll",
-		"Store",
-		"Stock User",
-		"Stock Manager",
-		"Item Manager",
-		"Accounts User",
-		"Accounts Manager",
-		"Projects User",
-		"Projects Manager",
-		"Report Manager",
-		"Dashboard Manager",
-		"Workspace Manager",
-		"Prepared Report User",
-		*_APPROVER,
-	],
+	# IT: System Manager does not open Assets, Stock or Accounts by itself, so the profile carries every
+	# role the site keeps (not Supervisor / Manager: those limit a person to a team)
+	"IT": [*_EMPLOYEE, "System Manager", *_ADMIN],
+	# the finance and operations heads: everything IT has except System Manager (client, 2026-10-23)
+	"Full Access": [*_EMPLOYEE, *_ADMIN],
 }
 
 # The stock ERPNext profiles for the modules this site does not use: dropped (when nobody is on
@@ -118,6 +122,15 @@ PAYROLL_DOCTYPES = (
 	"Pay Sheet Settings",
 	"Payroll Sheet",
 	"Payroll Import",
+	# the data payroll is calculated from: the client wants the payroll person to see and edit it
+	"Attendance",
+	"Attendance Request",
+	"Employee Checkin",
+	"Leave Application",
+	"Leave Allocation",
+	"Leave Policy Assignment",
+	"Shift Assignment",
+	"Shift Request",
 )
 
 PTYPES = (
@@ -327,3 +340,91 @@ def ensure_role_permissions() -> dict:
 			full["permlevel"] = 0
 			added["Store"] += _give(doctype, "Store", [full])
 	return added
+
+
+def assign_profiles(mapping, dry_run=1, snapshot_path=None) -> dict:
+	"""Give people a Role Profile and EXACTLY its roles: ``{"a@x.com": "IT", ...}``.
+
+	The roles they hold today are written to a snapshot first (``revert_users`` puts them back).
+	Roles go in as Has Role rows directly (User.save drops roles a user "has no business with").
+	Only the users named are touched.
+	"""
+	if isinstance(mapping, str):
+		mapping = frappe.parse_json(mapping)
+	automatic = set(frappe.permissions.AUTOMATIC_ROLES)
+	plan = {}
+	for email, profile in mapping.items():
+		if profile not in PROFILES:
+			frappe.throw(f"Unknown profile {profile}")
+		if not frappe.db.exists("User", email):
+			plan[email] = {"error": "no such user"}
+			continue
+		have = sorted(
+			set(frappe.get_all("Has Role", filters={"parent": email, "parenttype": "User"}, pluck="role"))
+			- automatic
+		)
+		want = sorted(r for r in PROFILES[profile] if frappe.db.exists("Role", r))
+		plan[email] = {
+			"profile": profile,
+			"gains": sorted(set(want) - set(have)),
+			"loses": sorted(set(have) - set(want)),
+			"before": have,
+		}
+	if int(dry_run):
+		return {
+			"dry_run": 1,
+			"plan": {e: {k: v for k, v in p.items() if k != "before"} for e, p in plan.items()},
+		}
+	path = snapshot_path or frappe.get_site_path("private", "user_roles_snapshot.json")
+	snap = {}
+	if os.path.exists(path):
+		with open(path) as handle:
+			snap = json.load(handle)
+	for email, p in plan.items():
+		if "error" in p:
+			continue
+		snap.setdefault(email, p["before"])
+		frappe.db.delete("Has Role", {"parent": email, "parenttype": "User"})
+		for role in sorted(set(PROFILES[p["profile"]])):
+			if frappe.db.exists("Role", role):
+				frappe.get_doc(
+					{
+						"doctype": "Has Role",
+						"parent": email,
+						"parenttype": "User",
+						"parentfield": "roles",
+						"role": role,
+					}
+				).db_insert()
+		frappe.db.set_value("User", email, "role_profile_name", p["profile"], update_modified=False)
+		frappe.cache.hdel("roles", email)
+	with open(path, "w") as handle:
+		json.dump(snap, handle)
+	frappe.clear_cache()
+	return {"dry_run": 0, "plan": {e: {k: v for k, v in p.items() if k != "before"} for e, p in plan.items()}}
+
+
+def revert_users(snapshot_path=None) -> dict:
+	"""Give the users in the snapshot back the roles they held before ``assign_profiles``."""
+	path = snapshot_path or frappe.get_site_path("private", "user_roles_snapshot.json")
+	if not os.path.exists(path):
+		return {"restored": 0, "error": "no snapshot"}
+	with open(path) as handle:
+		snap = json.load(handle)
+	for email, roles in snap.items():
+		frappe.db.delete("Has Role", {"parent": email, "parenttype": "User"})
+		for role in roles:
+			if frappe.db.exists("Role", role):
+				frappe.get_doc(
+					{
+						"doctype": "Has Role",
+						"parent": email,
+						"parenttype": "User",
+						"parentfield": "roles",
+						"role": role,
+					}
+				).db_insert()
+		frappe.db.set_value("User", email, "role_profile_name", None, update_modified=False)
+		frappe.cache.hdel("roles", email)
+	frappe.clear_cache()
+	return {"restored": len(snap)}

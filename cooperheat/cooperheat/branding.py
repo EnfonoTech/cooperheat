@@ -15,7 +15,8 @@ import frappe
 
 NAME = "Cooperheat"
 LOGO = "/assets/cooperheat/images/cooperheat-logo.png"
-FAVICON = "/assets/cooperheat/images/cooperheat-favicon.png"
+# the version in the URL makes browsers drop a cached favicon (bump it when the file changes)
+FAVICON = "/assets/cooperheat/images/cooperheat-favicon.png?v=20261024"
 THEME = "Cooperheat"
 
 # The in-built AI assistant of the Grey Theme app is called "Fateh AI" there; on this site it carries

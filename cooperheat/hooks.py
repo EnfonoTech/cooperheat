@@ -350,6 +350,11 @@ scheduler_events = {
 
 override_doctype_dashboards = {"Employee": "cooperheat.cooperheat.dashboards.employee_dashboard"}
 
+# the AI assistant of the Grey Theme app runs model-written SQL without permission checks: IT only
+override_whitelisted_methods = {
+	"grey_theme.chat_handler.handle_ai_query": "cooperheat.cooperheat.ai_guard.handle_ai_query"
+}
+
 # exempt linked doctypes from being automatically cancelled
 #
 # auto_cancel_exempted_doctypes = ["Auto Repeat"]
