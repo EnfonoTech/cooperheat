@@ -87,16 +87,28 @@ class TestPayVisibility(FrappeTestCase):
 		self.assertFalse(compensation.get_salary_view(self.tech)["allowed"])
 
 	def test_manager_sees_the_team_package_without_bank_data(self):
-		manager = frappe.db.get_value("Employee", self.tech, "reports_to")
-		user = frappe.db.get_value("Employee", manager, "user_id")
-		roles = set(frappe.get_roles(user)) if user else set()
-		if "Manager" not in roles:
-			self.skipTest("the direct boss of the test technician is not a Manager")
-		frappe.set_user(user)
-		view = compensation.get_salary_view(self.tech)
-		self.assertTrue(view["allowed"])
-		self.assertEqual(view["scope"], "team")
-		self.assertNotIn("bank", " ".join(view).lower())
+		from cooperheat.cooperheat.permissions import scope
+
+		manager_emp = emp_of("khalid")
+		old = frappe.db.get_value("Employee", self.tech, "reports_to")
+		frappe.db.set_value("Employee", self.tech, "reports_to", manager_emp)
+		scope.clear_cache()
+		try:
+			frappe.set_user(dev_seed.email("khalid"))
+			view = compensation.get_salary_view(self.tech)
+			self.assertTrue(view["allowed"])
+			self.assertEqual(view["scope"], "team")
+			self.assertNotIn("bank", " ".join(view).lower())
+			self.assertNotIn("iban", " ".join(view).lower())
+			# a manager does not see the pay of somebody outside his team
+			stranger = frappe.db.get_value("Employee", {"user_id": dev_seed.email("anil")}, "name")
+			frappe.db.set_value("Employee", stranger, "reports_to", None)
+			scope.clear_cache()
+			self.assertFalse(compensation.get_salary_view(stranger)["allowed"])
+		finally:
+			frappe.set_user("Administrator")
+			frappe.db.set_value("Employee", self.tech, "reports_to", old)
+			scope.clear_cache()
 
 	def test_hr_manager_uses_the_editable_tab_instead(self):
 		frappe.set_user("Administrator")
