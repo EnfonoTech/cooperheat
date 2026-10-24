@@ -251,13 +251,6 @@ function cooperheat_salary_view(frm) {
 		.xcall("cooperheat.cooperheat.compensation.get_salary_view", { employee: frm.doc.name })
 		.then((data) => {
 			if (!data || !data.allowed) return;
-			frm.set_df_property(tab, "hidden", 0);
-			frm.set_df_property(
-				tab,
-				"label",
-				data.scope === "own" ? __("My Salary") : __("Salary")
-			);
-			const $box = frm.fields_dict.custom_salary_view_html.$wrapper;
 			const esc = frappe.utils.escape_html;
 			const cur = data.current;
 			const money = (v) => format_currency(v || 0, cur ? cur.currency : "SAR");
@@ -296,6 +289,10 @@ function cooperheat_salary_view(frm) {
 					cur.net_fixed
 				)}</th></tr></tbody></table>`;
 			}
-			$box.html(html);
+			// the HTML field re-renders from its "options" whenever the tab is refreshed: the content goes there
+			frm.set_df_property("custom_salary_view_html", "options", html);
+			frm.set_df_property(tab, "label", data.scope === "own" ? __("My Salary") : __("Salary"));
+			frm.set_df_property(tab, "hidden", 0);
+			frm.refresh_field("custom_salary_view_html");
 		});
 }
