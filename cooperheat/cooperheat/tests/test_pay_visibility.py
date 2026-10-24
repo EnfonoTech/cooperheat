@@ -82,6 +82,14 @@ class TestPayVisibility(FrappeTestCase):
 		if other:
 			self.assertFalse(compensation.get_salary_view(other)["allowed"])
 
+	def test_own_salary_for_the_app_works_for_any_role(self):
+		frappe.set_user(dev_seed.email("tech101"))
+		own = compensation.get_own_salary()
+		self.assertTrue(own["allowed"])
+		self.assertEqual(own["scope"], "own")
+		frappe.set_user("Administrator")  # no employee linked to Administrator
+		self.assertFalse(compensation.get_own_salary()["allowed"])
+
 	def test_supervisor_gets_no_salary_view_of_the_team(self):
 		frappe.set_user(self.anil)
 		self.assertFalse(compensation.get_salary_view(self.tech)["allowed"])

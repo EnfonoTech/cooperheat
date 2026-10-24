@@ -133,24 +133,11 @@ def _view_scope(employee: str) -> str | None:
 	return None
 
 
-@frappe.whitelist()
-def get_salary_view(employee: str) -> dict:
-	"""The read-only Salary tab: the current package (no bank details, no history).
-
-	HR Manager, Payroll and System Manager use the editable Salary Compensation tab instead, so
-	they get ``allowed: False`` here and the tab stays hidden for them.
-	"""
-	if frappe.has_permission(DT, "read"):
-		return {"allowed": False, "reason": "editable tab"}
-	scope = _view_scope(employee)
-	if not scope:
-		return {"allowed": False, "reason": "not your salary"}
+def _package(employee: str, scope: str) -> dict:
+	"""The current package of ``employee`` for a read-only screen (no bank details, no history)."""
 	today_ = getdate(today())
 	docs = frappe.get_all(
-		DT,
-		filters={"employee": employee, "is_active": 1},
-		pluck="name",
-		order_by="from_date desc, creation desc",
+		DT, filters={"employee": employee, "is_active": 1}, pluck="name", order_by="from_date desc, creation desc"
 	)
 	current = None
 	for name in docs:
@@ -172,9 +159,7 @@ def get_salary_view(employee: str) -> dict:
 			"from_date": summary["from_date"],
 			"currency": summary["currency"],
 			"earnings": [
-				{"label": label[f], "value": v}
-				for f, v in summary["values"].items()
-				if v and f in EARNING_FIELDS
+				{"label": label[f], "value": v} for f, v in summary["values"].items() if v and f in EARNING_FIELDS
 			],
 			"deductions": [
 				{"label": label[f], "value": v}
@@ -186,3 +171,27 @@ def get_salary_view(employee: str) -> dict:
 			"net_fixed": summary["net_fixed"],
 		}
 	return out
+
+
+@frappe.whitelist()
+def get_salary_view(employee: str) -> dict:
+	"""The read-only Salary tab: the current package (no bank details, no history).
+
+	HR Manager, Payroll and System Manager use the editable Salary Compensation tab instead, so
+	they get ``allowed: False`` here and the tab stays hidden for them.
+	"""
+	if frappe.has_permission(DT, "read"):
+		return {"allowed": False, "reason": "editable tab"}
+	scope = _view_scope(employee)
+	if not scope:
+		return {"allowed": False, "reason": "not your salary"}
+	return _package(employee, scope)
+
+
+@frappe.whitelist()
+def get_own_salary() -> dict:
+	"""The session user's OWN package, whatever his role (the mobile app and My Salary)."""
+	employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+	if not employee:
+		return {"allowed": False, "reason": "no employee"}
+	return _package(employee, "own")
