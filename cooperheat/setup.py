@@ -389,6 +389,8 @@ def ensure_supervisor_workspace():
 
 	shortcuts = [
 		("Supervisor Workspace", "Page", "supervisor-workspace", None),
+		("Request", "DocType", "Service Request", "New"),
+		("Requests", "DocType", "Service Request", "List"),
 		("Employee", "DocType", "Employee", "List"),
 		("Project", "DocType", "Project", "List"),
 		("Employee Checkin", "DocType", "Employee Checkin", "List"),
