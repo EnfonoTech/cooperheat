@@ -84,6 +84,10 @@ class TestRolesSimple(FrappeTestCase):
 		it = {r.role for r in frappe.get_doc("Role Profile", "IT").roles}
 		self.assertTrue({"System Manager", "HR Manager", "Payroll", "Store", "Accounts Manager"} <= it)
 		self.assertFalse({"Supervisor", "Manager"} & it)  # those two limit a person to a team
+		self.assertIn("Script Manager", it)
+		self.assertNotIn(
+			"Script Manager", {r.role for r in frappe.get_doc("Role Profile", "Full Access").roles}
+		)
 
 	def test_the_stock_hr_profile_and_its_user_are_left_alone(self):
 		self.assertEqual(
