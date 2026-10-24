@@ -94,7 +94,7 @@ PROFILES = {
 	"Store": [*_EMPLOYEE, "Store", "Stock User", "Stock Manager", "Item Manager"],
 	# IT: System Manager does not open Assets, Stock or Accounts by itself, so the profile carries every
 	# role the site keeps (not Supervisor / Manager: those limit a person to a team)
-	"IT": [*_EMPLOYEE, "System Manager", *_ADMIN],
+	"IT": [*_EMPLOYEE, "System Manager", "Script Manager", *_ADMIN],
 	# the finance and operations heads: everything IT has except System Manager (client, 2026-10-23)
 	"Full Access": [*_EMPLOYEE, *_ADMIN],
 }
@@ -428,3 +428,22 @@ def revert_users(snapshot_path=None) -> dict:
 		frappe.cache.hdel("roles", email)
 	frappe.clear_cache()
 	return {"restored": len(snap)}
+
+
+def refresh_profile(name: str) -> dict:
+	"""Rewrite the roles of an existing Role Profile as this module defines them, WITHOUT saving it
+	(saving would reset every user on the profile through Frappe; ``assign_profiles`` does that part)."""
+	roles = [r for r in PROFILES[name] if frappe.db.exists("Role", r)]
+	frappe.db.delete("Has Role", {"parent": name, "parenttype": "Role Profile"})
+	for role in roles:
+		frappe.get_doc(
+			{
+				"doctype": "Has Role",
+				"parent": name,
+				"parenttype": "Role Profile",
+				"parentfield": "roles",
+				"role": role,
+			}
+		).db_insert()
+	frappe.clear_cache()
+	return {"profile": name, "roles": len(roles)}

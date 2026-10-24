@@ -134,6 +134,7 @@ def forward(name: str, to_employee: str, comment: str | None = None) -> dict:
 		frappe.throw(_("The request is already with {0}.").format(doc.holder_name or to_employee))
 	_act(doc, "Forwarded", to_employee, comment)
 	doc.current_holder = to_employee
+	doc.holder_name = frappe.db.get_value("Employee", to_employee, "employee_name")
 	doc.save()
 	notify(doc, to_employee, _("Request forwarded to you: {0}").format(doc.subject))
 	notify(doc, doc.requested_by, _("Your request moved on: {0}").format(doc.subject))
