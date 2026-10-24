@@ -241,8 +241,9 @@ function cooperheat_compensation_dialog(frm, data, record) {
 // HR Manager / Payroll / System Manager use the editable Salary Compensation tab; the server decides.
 function cooperheat_salary_view(frm) {
 	const tab = "custom_salary_view_tab";
-	if (!frm.fields_dict[tab]) return;
-	const hide = () => frm.set_df_property(tab, "hidden", 1);
+	// a Tab Break is not in fields_dict: look for the HTML field that sits in it
+	if (!frm.fields_dict.custom_salary_view_html) return;
+	const hide = () => frm.toggle_display(tab, false);
 	if (frm.is_new()) return hide();
 	if (["HR Manager", "System Manager", "Payroll"].some((r) => frappe.user.has_role(r)))
 		return hide();
@@ -291,8 +292,7 @@ function cooperheat_salary_view(frm) {
 			}
 			// the HTML field re-renders from its "options" whenever the tab is refreshed: the content goes there
 			frm.set_df_property("custom_salary_view_html", "options", html);
-			frm.set_df_property(tab, "label", data.scope === "own" ? __("My Salary") : __("Salary"));
-			frm.set_df_property(tab, "hidden", 0);
+			frm.toggle_display(tab, true);
 			frm.refresh_field("custom_salary_view_html");
 		});
 }
