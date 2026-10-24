@@ -147,7 +147,7 @@ class TestPayVisibility(FrappeTestCase):
 	# --- profiles for the named people ---
 	def test_profiles_full_access_is_it_minus_system_manager(self):
 		it, full = set(roles_simple.PROFILES["IT"]), set(roles_simple.PROFILES["Full Access"])
-		self.assertEqual(it - full, {"System Manager"})
+		self.assertEqual(it - full, {"System Manager", "Script Manager"})
 		both = set(roles_simple.PROFILES["Payroll and HR Manager"])
 		self.assertTrue({"HR Manager", "Payroll"} <= both)
 
