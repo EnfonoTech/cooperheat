@@ -28,6 +28,12 @@ class ServiceRequest(Document):
 			frappe.throw(_("Your user is not linked to an Employee, so you cannot raise a request."))
 		self.status = "Open"
 		self.current_holder = first_holder(self.requested_by)
+		self.employee_name = frappe.db.get_value("Employee", self.requested_by, "employee_name")
+		self.holder_name = (
+			frappe.db.get_value("Employee", self.current_holder, "employee_name")
+			if self.current_holder
+			else None
+		)
 		self.append(
 			"trail",
 			{

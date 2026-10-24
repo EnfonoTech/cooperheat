@@ -43,6 +43,8 @@ class TestServiceRequest(FrappeTestCase):
 		self.assertEqual(doc.current_holder, self.boss)
 		self.assertEqual(doc.status, "Open")
 		self.assertEqual([s.action for s in doc.trail], ["Created"])
+		self.assertEqual(doc.holder_name, frappe.db.get_value("Employee", self.boss, "employee_name"))
+		self.assertTrue(doc.employee_name)
 
 	def test_the_holder_forwards_it_on_and_the_requester_sees_the_trail(self):
 		doc = new_request(self.tech_user)
@@ -51,6 +53,7 @@ class TestServiceRequest(FrappeTestCase):
 		frappe.set_user(self.tech_user)
 		mine = frappe.get_doc("Service Request", doc.name)
 		self.assertEqual(mine.current_holder, emp_of("khalid"))
+		self.assertEqual(mine.holder_name, frappe.db.get_value("Employee", emp_of("khalid"), "employee_name"))
 		self.assertEqual([s.action for s in mine.trail], ["Created", "Forwarded"])
 		self.assertEqual(mine.trail[1].comment, "Please look at this")
 
