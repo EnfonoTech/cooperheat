@@ -34,7 +34,8 @@
    "in_list_view": 1,
    "label": "From",
    "options": "Employee",
-   "read_only": 1
+   "read_only": 1,
+   "ignore_user_permissions": 1
   },
   {
    "fieldname": "to_employee",
@@ -42,7 +43,8 @@
    "in_list_view": 1,
    "label": "To",
    "options": "Employee",
-   "read_only": 1
+   "read_only": 1,
+   "ignore_user_permissions": 1
   },
   {
    "fieldname": "comment",
