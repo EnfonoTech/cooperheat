@@ -80,3 +80,9 @@ html.ch-red .widget.shortcut-widget-box:hover,
 html.ch-red .widget.links-widget-box:hover {
 	border-color: var(--ch-red) !important;
 }
+
+/* Grey Theme paints icons teal (.es-icon) */
+html.ch-red .es-icon {
+	fill: #95223166 !important;
+	stroke: #952231cc !important;
+}
