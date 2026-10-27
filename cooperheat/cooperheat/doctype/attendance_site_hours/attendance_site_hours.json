@@ -9,8 +9,9 @@
   "project_name",
   "check_in_time",
   "check_out_time",
-  "hours",
   "payroll_hours",
+  "is_billable",
+  "hours",
   "activity_log"
  ],
  "fields": [
@@ -50,22 +51,34 @@
   {
    "allow_on_submit": 1,
    "columns": 1,
-   "fieldname": "hours",
+   "fieldname": "payroll_hours",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Billable Hours"
+   "label": "Payable Hours",
+   "description": "From the check-ins. The approver may correct it."
   },
   {
    "allow_on_submit": 1,
    "columns": 1,
-   "fieldname": "payroll_hours",
-   "fieldtype": "Float",
+   "default": "0",
+   "fieldname": "is_billable",
+   "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Payable Hours"
+   "label": "Billable"
   },
   {
    "allow_on_submit": 1,
-   "columns": 3,
+   "columns": 1,
+   "fieldname": "hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Billable Hours",
+   "description": "Same as Payable when Billable is ticked, otherwise typed by the supervisor.",
+   "read_only_depends_on": "eval:doc.is_billable"
+  },
+  {
+   "allow_on_submit": 1,
+   "columns": 2,
    "fieldname": "activity_log",
    "fieldtype": "Small Text",
    "in_list_view": 1,
@@ -75,7 +88,7 @@
  ],
  "istable": 1,
  "links": [],
- "modified": "2026-07-22 20:24:59.907871",
+ "modified": "2026-10-27 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Attendance Site Hours",

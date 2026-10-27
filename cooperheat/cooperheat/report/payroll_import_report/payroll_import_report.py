@@ -122,8 +122,8 @@ def _get_ot(from_date, to_date, company=None):
                 att.employee,
                 DATE_FORMAT(att.attendance_date, '%%Y-%%m') AS month,
                 ROUND(GREATEST(
-                    COALESCE(ash.hours, 0)
-                    - COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), COALESCE(ash.hours, 0))
+                    COALESCE(ash.payroll_hours, 0)
+                    - COALESCE(NULLIF(p.custom_regular_working_hours__day, 0), COALESCE(ash.payroll_hours, 0))
                 , 0), 2) AS ot_hours
             FROM `tabAttendance` att
             JOIN `tabAttendance Site Hours` ash
@@ -173,7 +173,7 @@ def _get_hot(from_date, to_date, company=None):
             SELECT
                 att.employee,
                 DATE_FORMAT(att.attendance_date, '%%Y-%%m') AS month,
-                COALESCE(ash.hours, 0) AS hot_hours
+                COALESCE(ash.payroll_hours, 0) AS hot_hours
             FROM `tabAttendance` att
             JOIN `tabAttendance Site Hours` ash
                 ON ash.parent = att.name AND ash.parentfield = 'custom_site_hours'

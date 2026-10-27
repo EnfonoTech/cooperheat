@@ -60,7 +60,6 @@ def validate(doc, method):
 	_validate_approver_authorization(doc)
 	_validate_hours_edit_authorization(doc)
 	_recalculate_site_hours_from_times(doc)  # recalc row hours and sync parent times from child table
-	_validate_payable_vs_billable_hours(doc)
 	_fill_checkin_times(doc)                 # fill in_time/out_time from checkins (draft only)
 	_recalculate_working_hours(doc)          # recalc parent working_hours (skipped if site hours exist)
 	from cooperheat.cooperheat.overtime import apply_to_doc
@@ -81,7 +80,6 @@ def before_update_after_submit(doc, method):
 	_validate_approver_authorization(doc)
 	_validate_hours_edit_authorization(doc)
 	_recalculate_site_hours_from_times(doc)
-	_validate_payable_vs_billable_hours(doc)
 	_sync_current_approver(doc)
 
 
@@ -385,7 +383,15 @@ def _checkin_times_changed(doc) -> bool:
 
 
 def _recalculate_site_hours_from_times(doc):
-	"""On submitted doc saves, recalculate each row's hours from check_in/out times and sync parent fields."""
+	"""On submitted doc saves, fill Payable Hours from the check-in/out times where
+	nobody has entered them yet, apply the Billable tick box, and sync the parent
+	working_hours / in_time / out_time from the rows.
+
+	Payable Hours (``payroll_hours``) are the paid hours: they start from the
+	check-ins and only the approver changes them afterwards. Billable Hours
+	(``hours``) are what the client is billed: the same as Payable when the row is
+	ticked Billable, otherwise typed by the supervisor (client decision 2026-10-25).
+	"""
 	if doc.docstatus != 1:
 		return
 	rows = doc.get("custom_site_hours") or []
@@ -397,11 +403,12 @@ def _recalculate_site_hours_from_times(doc):
 	all_out_times = []
 
 	for row in rows:
-		if row.check_in_time and row.check_out_time:
+		if not flt(row.payroll_hours) and row.check_in_time and row.check_out_time:
 			hours = flt(time_diff_in_hours(row.check_out_time, row.check_in_time), 2)
 			if hours > 0:
-				row.hours = hours
-		total_hours += flt(row.hours or 0)
+				row.payroll_hours = hours
+		_apply_billable(row)
+		total_hours += flt(row.payroll_hours)
 		if row.check_in_time:
 			all_in_times.append(get_datetime(row.check_in_time))
 		if row.check_out_time:
@@ -414,40 +421,14 @@ def _recalculate_site_hours_from_times(doc):
 		doc.out_time = max(all_out_times)
 
 
-def _validate_payable_vs_billable_hours(doc):
-	"""Enforce the Payable vs Billable Hours relationship on each Site Hours row,
-	based on whether the Project Site linked on the row has a Customer set.
-
-	No Project Site, or a Project Site with no Customer → Payable Hours must be
-	strictly greater than Billable Hours.
-	Project Site with a Customer → Billable Hours must be greater than or equal
-	to Payable Hours.
-
-	Only enforced once an approver has actually entered a Payable Hours value -
-	a freshly created row (Payable Hours still 0) is left alone.
-	"""
-	if doc.docstatus != 1:
-		return
-	for row in doc.get("custom_site_hours") or []:
-		payroll_hours = flt(row.payroll_hours)
-		if not payroll_hours:
-			continue
-		hours = flt(row.hours)
-		has_customer = bool(row.project and frappe.db.get_value("Project", row.project, "customer"))
-		if has_customer:
-			if hours < payroll_hours:
-				frappe.throw(
-					_("Row #{0}: Payable Hours ({1}) cannot exceed Billable Hours ({2}) when the Project Site.").format(
-						row.idx, payroll_hours, hours
-					)
-				)
-		else:
-			if payroll_hours <= hours:
-				frappe.throw(
-					_("Row #{0}: Payable Hours ({1}) must be greater than Billable Hours ({2}) when the Project Site").format(
-						row.idx, payroll_hours, hours
-					)
-				)
+def _apply_billable(row):
+	"""Billable ticked -> Billable Hours = Payable Hours. Never negative."""
+	if row.payroll_hours is not None and flt(row.payroll_hours) < 0:
+		frappe.throw(_("Row #{0}: Payable Hours cannot be negative.").format(row.idx))
+	if flt(row.hours) < 0:
+		frappe.throw(_("Row #{0}: Billable Hours cannot be negative.").format(row.idx))
+	if cint(row.is_billable):
+		row.hours = flt(row.payroll_hours, 2)
 
 
 def _validate_hours_edit_authorization(doc):
@@ -535,19 +516,19 @@ def _update_working_hours_from_site_hours(doc):
 	"""After save, sync working_hours, in_time, out_time from child table to the DB record.
 
 	Uses db.set_value to bypass validate_update_after_submit restrictions.
-	- working_hours = sum of all row hours
+	- working_hours = sum of all row Payable Hours
 	- in_time       = earliest check_in_time across all rows
 	- out_time      = latest check_out_time across all rows
 	"""
 	rows = frappe.get_all(
 		"Attendance Site Hours",
 		filters={"parent": doc.name, "parentfield": "custom_site_hours"},
-		fields=["hours", "check_in_time", "check_out_time"],
+		fields=["payroll_hours", "check_in_time", "check_out_time"],
 	)
 	if not rows:
 		return
 
-	total = flt(sum(flt(r.hours or 0) for r in rows), 2)
+	total = flt(sum(flt(r.payroll_hours) for r in rows), 2)
 	in_times = [r.check_in_time for r in rows if r.check_in_time]
 	out_times = [r.check_out_time for r in rows if r.check_out_time]
 
@@ -766,6 +747,17 @@ def _populate_site_hours(doc) -> None:
 	if not site_rows:
 		return
 
+	# A re-population (late check-in, Recalculate Site Hours) keeps what the
+	# supervisor decided about billing per project.
+	billing = {
+		(r.project or ""): r
+		for r in frappe.get_all(
+			"Attendance Site Hours",
+			filters={"parent": doc.name, "parentfield": "custom_site_hours"},
+			fields=["project", "is_billable", "hours"],
+		)
+	}
+
 	# Link any unlinked checkins for this employee+date to this attendance so HRMS
 	# does not try to create a duplicate attendance on the next auto-attendance run.
 	unlinked = frappe.get_all(
@@ -785,7 +777,10 @@ def _populate_site_hours(doc) -> None:
 		child.idx = idx
 		child.project = row["project"]
 		child.project_name = row["project_name"]
-		child.hours = flt(row["hours"], 2)
+		child.payroll_hours = flt(row["hours"], 2)
+		previous = billing.get(row["project"] or "")
+		child.is_billable = cint(previous.is_billable) if previous else 0
+		child.hours = child.payroll_hours if child.is_billable else flt(previous.hours if previous else 0, 2)
 		child.activity_log = row.get("activity_log") or ""
 		child.check_in_time = row.get("check_in_time")
 		child.check_out_time = row.get("check_out_time")

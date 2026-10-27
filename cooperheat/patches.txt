@@ -10,3 +10,4 @@ cooperheat.cooperheat.patches.v1.backfill_pay_batch
 cooperheat.cooperheat.patches.v1.sync_supervisor_user_permissions
 
 cooperheat.cooperheat.patches.v1.grant_attendance_submit_to_scoped_roles
+cooperheat.cooperheat.patches.v1.payable_hours_from_checkins

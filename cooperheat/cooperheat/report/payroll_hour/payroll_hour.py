@@ -177,9 +177,9 @@ def get_data(filters):
 				ash.project         AS project,
 				att.in_time,
 				att.out_time,
-				ash.hours           AS working_hours,
-				ash.hours           AS billable_hours,
-				COALESCE(ash.payroll_hours, ash.hours) AS payable_hours,
+				COALESCE(ash.payroll_hours, 0) AS working_hours,
+				COALESCE(ash.hours, 0)         AS billable_hours,
+				COALESCE(ash.payroll_hours, 0) AS payable_hours,
 				att.status,
 				att.shift
 			FROM `tabAttendance` att
