@@ -57,7 +57,7 @@ def _node(department_name: str, wanted, parent: str | None = None) -> str | None
 
 def _company_root(company: str) -> str:
 	root = frappe.db.get_value(
-		"Cost Center", {"company": company, "is_group": 1, "parent_cost_center": ["in", ["", None]]}
+		"Cost Center", {"company": company, "is_group": 1, "parent_cost_center": ["is", "not set"]}
 	)
 	if not root:
 		frappe.throw(_("Company {0} has no root Cost Center.").format(company))
@@ -134,7 +134,7 @@ def _filters_for(business_line: str | None, product_line: str | None) -> list:
 		return [["custom_product_line", "in", _lines_of(product_line)]]
 	if business_line:
 		return [["custom_business_line", "=", business_line]]
-	return [["custom_business_line", "in", ["", None]]]
+	return [["custom_business_line", "is", "not set"]]
 
 
 @frappe.whitelist()
