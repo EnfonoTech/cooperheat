@@ -116,6 +116,23 @@ class TestApprovalChain(ReportingTestCase):
 		set_payroll(boss.name)
 		self.assertEqual([r.approval_level for r in org.approval_chain(boss.name)], [1])
 
+	def test_support_reporting_approves_first_then_immediate(self):
+		# client call 2026-10-25: coordinator (support) -> operations manager (immediate) -> payroll
+		anil, khalid, irtaza = self.people()
+		saleh = emp_of("saleh")
+		emp = make_employee(
+			"SupportA", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid,
+			custom_support_reporting=saleh,
+		)
+		chain = org.approval_chain(emp.name)
+		self.assertEqual([(r.approval_level, r.approver) for r in chain], [(1, saleh), (2, anil), (3, irtaza)])
+		self.assertEqual(org.first_approver(emp.name), saleh)
+
+	def test_support_reporting_same_as_immediate_is_not_asked_twice(self):
+		anil, _, irtaza = self.people()
+		emp = make_employee("SupportB", custom_staff_category=FIELD, reports_to=anil, custom_support_reporting=anil)
+		self.assertEqual([(r.approval_level, r.approver) for r in org.approval_chain(emp.name)], [(1, anil), (3, irtaza)])
+
 	def test_no_reporting_person_means_no_first_approver(self):
 		emp = make_employee("Loose", custom_staff_category=FIELD)
 		self.assertIsNone(org.first_approver(emp.name))
@@ -288,6 +305,11 @@ class TestScopeFollowsReporting(ReportingTestCase):
 	def test_secondary_reporting_gives_sight_of_the_employee(self):
 		anil, khalid, _ = self.people()
 		emp = make_employee("ScopeSecondary", custom_staff_category=FIELD, reports_to=emp_of("saleh"), custom_secondary_reporting=anil)
+		frappe.set_user(dev_seed.email("anil"))
+		self.assertIn(emp.name, frappe.get_list("Employee", pluck="name", limit_page_length=1000))
+
+	def test_support_reporting_gives_sight_of_the_employee(self):
+		emp = make_employee("ScopeSupport", custom_staff_category=FIELD, reports_to=emp_of("saleh"), custom_support_reporting=emp_of("anil"))
 		frappe.set_user(dev_seed.email("anil"))
 		self.assertIn(emp.name, frappe.get_list("Employee", pluck="name", limit_page_length=1000))
 

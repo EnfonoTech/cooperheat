@@ -64,7 +64,11 @@ def _subtree(roots: list[str]) -> set[str]:
 			break
 		children = frappe.get_all(
 			"Employee",
-			or_filters={"reports_to": ["in", frontier], "custom_secondary_reporting": ["in", frontier]},
+			or_filters={
+				"reports_to": ["in", frontier],
+				"custom_secondary_reporting": ["in", frontier],
+				"custom_support_reporting": ["in", frontier],
+			},
 			pluck="name",
 		)
 		frontier = [c for c in children if c not in seen]

@@ -40,7 +40,11 @@ def _restamp_pending_approvals(doc):
 	"""Reporting line changed: Attendance still waiting on the old approver moves with it."""
 	if doc.flags.in_insert:
 		return
-	if doc.has_value_changed("reports_to") or doc.has_value_changed("custom_secondary_reporting"):
+	if (
+		doc.has_value_changed("reports_to")
+		or doc.has_value_changed("custom_secondary_reporting")
+		or doc.has_value_changed("custom_support_reporting")
+	):
 		from cooperheat.cooperheat.org import restamp_pending_attendance
 
 		restamp_pending_attendance(doc.name)
