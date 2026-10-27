@@ -13,6 +13,16 @@ frappe.ui.form.on("Employee", {
 			query: "cooperheat.cooperheat.org.product_line_query",
 			filters: { business_line: frm.doc.custom_business_line || "" },
 		}));
+		// Cost Center (field custom_job_code) follows Product Line, else Business Line
+		// (cooperheat.cooperheat.cost_center).
+		frm.set_query("custom_job_code", () => ({
+			query: "cooperheat.cooperheat.cost_center.cost_center_query",
+			filters: {
+				business_line: frm.doc.custom_business_line || "",
+				product_line: frm.doc.custom_product_line || "",
+				company: frm.doc.company || "",
+			},
+		}));
 	},
 	refresh(frm) {
 		frm.toggle_enable("department", !frm.doc.custom_business_line);
@@ -33,6 +43,7 @@ frappe.ui.form.on("Employee", {
 	},
 	custom_business_line(frm) {
 		frm.toggle_enable("department", !frm.doc.custom_business_line);
+		frm.set_value("custom_job_code", "");
 		if (!frm.doc.custom_business_line) {
 			frm.set_value("custom_product_line", "");
 			return;
@@ -40,6 +51,7 @@ frappe.ui.form.on("Employee", {
 		frm.set_value("department", frm.doc.custom_product_line || frm.doc.custom_business_line);
 	},
 	custom_product_line(frm) {
+		frm.set_value("custom_job_code", "");
 		if (frm.doc.custom_business_line) {
 			frm.set_value("department", frm.doc.custom_product_line || frm.doc.custom_business_line);
 		}

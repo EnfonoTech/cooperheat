@@ -1,0 +1,94 @@
+business_line,product_line,cost_center,description
+FSBL,FSE-PL,160-FSE,Fab Shop
+FSBL,FSI-PL,160-FSI,Fab Shop
+HTBL,HTE-PL,160-EAS,Equipment Sales - After Sales Service
+HTBL,HTE-PL,160-ECS,160-ECS
+HTBL,HTE-PL,160-EHU,Equipment Sales
+HTBL,HTE-PL,160-EQS,Equipment Sales - Sundry Costs
+HTBL,HTE-PL,160-ESC,Equipment Sales - Spares
+HTBL,HTE-PL,160-FAM,Fabrication and Material
+HTBL,HTE-PL,160-FCL,Furnaces Calibration
+HTBL,HTE-PL,160-FFO,Furnaces and Ovens
+HTBL,HTE-PL,160-FSP,Furnaces - Spares
+HTBL,HTS-PL,160-HDC,Dryouts & Curing
+HTBL,HTS-PL,160-HEH,Equipment Hire
+HTBL,HTS-PL,160-HEL,Electrical
+HTBL,HTS-PL,160-HGS,Gas / Oil
+HTBL,HTS-PL,160-HIF,Inhouse Furnaces
+HTBL,SD-PL,160-SDH,SD-Heat Treatment
+IBL,ANDT-PL,160-ABC,Boiler / Turbine - Creep Damage
+IBL,ANDT-PL,160-ABD,Boiler / Turbine - Turbine Disk
+IBL,ANDT-PL,160-ABG,Boiler / Turbine - Generator End Bell
+IBL,ANDT-PL,160-ABO,Boiler / Turbine - Oxide Scale
+IBL,ANDT-PL,160-ABS,Boiler / Turbine - Turbine Shaft
+IBL,ANDT-PL,160-ABT,Boiler / Turbine - Turbine Blade
+IBL,ANDT-PL,160-AED,Asset Integrity-Engineering Dept
+IBL,ANDT-PL,160-AEE,Engineering - FEA
+IBL,ANDT-PL,160-AEF,Engineering - FFS
+IBL,ANDT-PL,160-AEM,Engineering - Metallurgy
+IBL,ANDT-PL,160-AER,Engineering - RLA
+IBL,ANDT-PL,160-ATE,Tube Testing - Eddy Current
+IBL,ANDT-PL,160-ATF,Tank Inspection - AE Tank Floor
+IBL,ANDT-PL,160-ATI,Tube Testing - IRIS
+IBL,ANDT-PL,160-ATM,Tank Inspection - MFL Tank Floor
+IBL,ANDT-PL,160-ATR,Tube Testing - Remote Feld EC
+IBL,ANDT-PL,160-ATW,Tank Inspection - Remote Wall
+IBL,ANDT-PL,160-AUC,UI In Service - Corrosion Mapping
+IBL,ANDT-PL,160-AUH,UI In Service - HTHA
+IBL,ANDT-PL,160-AUL,UI In Service - LTHA
+IBL,ANDT-PL,160-AUO,UI In Service - Others
+IBL,ANDT-PL,160-AUP,UI New Manufacture - Pipelines
+IBL,ANDT-PL,160-AUT,UI In Service - TOFD
+IBL,ANDT-PL,160-AUV,UI New Manufacture - Vessels
+IBL,ANDT-PL,160-CES,Consultancy
+IBL,NDT-PL,160-NFT,Ferrite Testing
+IBL,NDT-PL,160-NHC,Holiday & Coating Testing
+IBL,NDT-PL,160-NHT,Hardness Testing
+IBL,NDT-PL,160-NMT,Magnetic Particle Testing
+IBL,NDT-PL,160-NPT,Penetrant Testing
+IBL,NDT-PL,160-NRS,160-NRS
+IBL,NDT-PL,160-NRT,Radiographic Testing
+IBL,NDT-PL,160-NSR,SafeRad Services
+IBL,NDT-PL,160-NUT,Ultrasonic Testing
+IBL,NDT-PL,160-NVT,Vacuum Testing
+IBL,SD-PL,160-ATA,API Turn Arounds
+IBL,SD-PL,160-SDI,SD-Inspection
+IBL,TPI-PL,160-TPI,TPI
+SMSBL,HoT-PL,160-MHT,Hot Tapping
+SMSBL,HoT-PL,160-MSD,Drilling
+SMSBL,OLS-PL,160-MBT,Bolt Tensioning & Torquing
+SMSBL,OLS-PL,160-MLP,Low Pressure Sealing
+SMSBL,OLS-PL,160-MLS,Leak Sealing
+SMSBL,OLS-PL,160-MSB,Boring
+SMSBL,OLS-PL,160-MSF,Flange Facing
+SMSBL,OLS-PL,160-MSM,Milling
+SMSBL,OLS-PL,160-MSR,Safety Relief Valve Testing
+SMSBL,OLS-PL,160-MVP,Mech Services - Valve Pac
+SMSBL,SD-PL,160-SDM,SD-Mechanical
+,,160-ADM,General Administration
+,,160-AIS,Sundry Costs
+,,160-ATT,Please do not use
+,,160-CSM,Please do not use
+,,160-CSS,Sundry Costs
+,,160-DCC,Default Cost Center
+,,160-FIN,Finance
+,,160-FTR,Please do not use
+,,160-FUS,Sundry Costs
+,,160-HRM,Human Resource
+,,160-HSE,Health & Safety Environment
+,,160-HTC,Calibration
+,,160-HTR,Training
+,,160-HTS,Sundry Costs
+,,160-ICT,ICT
+,,160-LOC,Location Management
+,,160-MPF,Pumps & Gears Facility
+,,160-MSS,Sundry Costs
+,,160-MST,Please do not use
+,,160-N N,Please do not use
+,,160-NDS,Sundry Costs
+,,160-NDT,Please do not use
+,,160-RLA,Please do not use
+,,160-SAM,Sales & Marketing
+,,160-TES,Non Core Services - E.S.H.
+,,160-TNS,Non Core Services - Sundry Costs
+,,160-TOT,Non Core Services - Other

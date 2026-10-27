@@ -16,6 +16,10 @@ def before_validate(doc, method=None):
 	fill_secondary_reporting(doc)
 	fill_default_approvers(doc)
 
+	from cooperheat.cooperheat.cost_center import validate_employee_cost_center
+
+	validate_employee_cost_center(doc)
+
 
 def on_update(doc, method=None):
 	_sync_user_permissions(doc, method)
