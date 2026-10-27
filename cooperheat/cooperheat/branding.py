@@ -23,14 +23,15 @@ THEME = "Cooperheat"
 # can be reviewed on the dev site first. The desk colours are in public/css/cooperheat_theme.css,
 # active while the default below is set (published to the desk as frappe.boot.cooperheat_red_theme).
 RED_THEME_DEFAULT = "cooperheat_red_theme"
-RED = "#952231"
-MARK = "/assets/cooperheat/images/cooperheat-mark-64.png?v=20261027"
+RED = "#97041e"
+# browser-tab icon: the client's red logo tile (their picture of 27 Oct)
+MARK = "/assets/cooperheat/images/cooperheat-tile-64.png?v=20261027b"
 LOGIN_RED_CSS = """
-.for-login .btn-login, .for-login .btn-primary { background-color: #952231 !important; border-color: #952231 !important; }
-.for-login .btn-login:hover, .for-login .btn-primary:hover { background-color: #7a1b28 !important; }
-.for-login .page-card { border-color: #952231 !important; border-top: 4px solid #952231 !important; }
-.for-login .form-control { border-color: #95223166 !important; }
-[data-path="login"] .navbar-light, [data-path="login"] .web-footer { border-color: #952231 !important; }
+.for-login .btn-login, .for-login .btn-primary { background-color: #97041e !important; border-color: #97041e !important; }
+.for-login .btn-login:hover, .for-login .btn-primary:hover { background-color: #730317 !important; }
+.for-login .page-card { border-color: #97041e !important; border-top: 4px solid #97041e !important; }
+.for-login .form-control { border-color: #97041e66 !important; }
+[data-path="login"] .navbar-light, [data-path="login"] .web-footer { border-color: #97041e !important; }
 """
 
 # The in-built AI assistant of the Grey Theme app is called "Fateh AI" there; on this site it carries

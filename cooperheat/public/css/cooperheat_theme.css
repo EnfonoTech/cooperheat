@@ -1,20 +1,20 @@
-/* Cooperheat red and white desk (client request 2026-10-27).
+/* Cooperheat red and white desk (client request 2026-10-27; darker red #97041e = the client's logo tile).
  * Active only while html carries the class "ch-red", which public/js/branding.js sets when
  * branding.apply_red_theme() was run on the site (dev site first, production after review).
  * The Grey Theme app styles the desk through these variables; this file only re-points them. */
 
 html.ch-red {
-	--ch-red: #952231;
-	--ch-red-dark: #7a1b28;
-	--ch-red-soft: #95223114;
+	--ch-red: #97041e;
+	--ch-red-dark: #730317;
+	--ch-red-soft: #97041e1a;
 	--navbar-bg: var(--ch-red);
 	--btn-primary: var(--ch-red);
 	--primary: var(--ch-red);
 	--primary-color: var(--ch-red);
 	--secondary: var(--ch-red-dark);
-	--btn-secondary: #95223180;
+	--btn-secondary: #97041e80;
 	--sidebar-select-color: var(--ch-red-soft);
-	--table-border-color: #95223133;
+	--table-border-color: #97041e33;
 	--checkbox-gradient: linear-gradient(180deg, var(--ch-red) -124.51%, var(--ch-red) 100%);
 	--bg-color: #f4f2f2;
 }
@@ -25,8 +25,9 @@ html.ch-red .navbar {
 	border-bottom: 0 !important;
 }
 html.ch-red .navbar .navbar-brand .app-logo {
-	content: url("/assets/cooperheat/images/cooperheat-logo-white.png");
-	max-height: 30px;
+	/* the client's logo on its white card (client, 27 Oct: "white logo in the red header") */
+	content: url("/assets/cooperheat/images/cooperheat-logo-card.png");
+	max-height: 34px;
 	width: auto;
 }
 html.ch-red .navbar .search-bar .form-control,
@@ -83,6 +84,6 @@ html.ch-red .widget.links-widget-box:hover {
 
 /* Grey Theme paints icons teal (.es-icon) */
 html.ch-red .es-icon {
-	fill: #95223166 !important;
-	stroke: #952231cc !important;
+	fill: #97041e66 !important;
+	stroke: #97041ecc !important;
 }
