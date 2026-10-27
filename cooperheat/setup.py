@@ -547,6 +547,9 @@ def after_migrate():
 	ensure_slip_print_format()
 	ensure_no_automatic_slip_email()
 	ensure_ai_restricted()
+	from cooperheat.cooperheat.roles_simple import ensure_timesheet_reviewer
+
+	ensure_timesheet_reviewer()
 	from cooperheat.cooperheat.employee_security import ensure_employee_field_security
 
 	ensure_employee_field_security()

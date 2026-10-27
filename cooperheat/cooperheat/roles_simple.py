@@ -4,7 +4,8 @@ The client's HR Manager found the roles list of a user ("too many roles", most o
 the site does not use: Agriculture, Manufacturing, Sales, Blogger ...) impossible to reason about.
 This sets up eight Role Profiles, each one a single choice on the User form:
 
-    Employee, Supervisor, Manager, HR Staff, HR Manager, Payroll, Payroll and HR Manager, Store, Full Access, IT
+    Employee, Supervisor, Manager, Operations Manager, HR Staff, HR Manager, Payroll, Payroll and HR Manager,
+    Store, Full Access, IT
 
 ``apply`` (run by hand, never from migrate - it removes roles from users):
 
@@ -45,6 +46,7 @@ KEEP = {
 	"HR Manager",
 	"Payroll",
 	"Store",
+	"Timesheet Reviewer",
 	"Stock User",
 	"Stock Manager",
 	"Item Manager",
@@ -86,6 +88,8 @@ PROFILES = {
 	"Employee": _EMPLOYEE,
 	"Supervisor": [*_EMPLOYEE, "Supervisor", *_APPROVER],
 	"Manager": [*_EMPLOYEE, "Manager", *_APPROVER],
+	# a Manager who also reviews (read only) the timesheets of every Business Line (client, 2026-10-25)
+	"Operations Manager": [*_EMPLOYEE, "Manager", "Timesheet Reviewer", *_APPROVER],
 	"HR Staff": [*_EMPLOYEE, "HR User", *_APPROVER],
 	"HR Manager": [*_EMPLOYEE, "HR User", "HR Manager", *_APPROVER],
 	"Payroll": [*_EMPLOYEE, "Payroll"],
@@ -137,6 +141,34 @@ PTYPES = (
 	"read", "write", "create", "delete", "submit", "cancel", "amend",
 	"report", "export", "import", "share", "print", "email",
 )  # fmt: skip
+
+
+REVIEWER_READ = ("Attendance", "Employee Checkin", "Project", "Shift Type")
+
+
+def ensure_timesheet_reviewer() -> dict:
+	"""Idempotent, add-only (runs from after_migrate): the Timesheet Reviewer role with
+	read rights, and the Operations Manager profile. Team scoping lets the role read the
+	attendance of everyone (permissions/scope.py) but write nothing outside the team."""
+	from cooperheat.setup import _grant
+
+	if not frappe.db.exists("Role", "Timesheet Reviewer"):
+		frappe.get_doc({"doctype": "Role", "role_name": "Timesheet Reviewer", "desk_access": 1}).insert(
+			ignore_permissions=True
+		)
+	for doctype in REVIEWER_READ:
+		if frappe.db.exists("DocType", doctype):
+			_grant(doctype, "Timesheet Reviewer", 0, ("read", "report", "export", "print"))
+	_grant("Employee Checkin", "Timesheet Reviewer", 1, ("read",))  # the time field
+	if frappe.db.exists("Role Profile", "Operations Manager"):
+		return {"profile": "kept"}
+	doc = frappe.new_doc("Role Profile")
+	doc.role_profile = "Operations Manager"
+	for role in PROFILES["Operations Manager"]:
+		if frappe.db.exists("Role", role):
+			doc.append("roles", {"role": role})
+	doc.insert(ignore_permissions=True)
+	return {"profile": "created"}
 
 
 def snapshot_file() -> str:
