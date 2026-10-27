@@ -1,0 +1,82 @@
+/* Cooperheat red and white desk (client request 2026-10-27).
+ * Active only while html carries the class "ch-red", which public/js/branding.js sets when
+ * branding.apply_red_theme() was run on the site (dev site first, production after review).
+ * The Grey Theme app styles the desk through these variables; this file only re-points them. */
+
+html.ch-red {
+	--ch-red: #952231;
+	--ch-red-dark: #7a1b28;
+	--ch-red-soft: #95223114;
+	--navbar-bg: var(--ch-red);
+	--btn-primary: var(--ch-red);
+	--primary: var(--ch-red);
+	--primary-color: var(--ch-red);
+	--secondary: var(--ch-red-dark);
+	--btn-secondary: #95223180;
+	--sidebar-select-color: var(--ch-red-soft);
+	--table-border-color: #95223133;
+	--checkbox-gradient: linear-gradient(180deg, var(--ch-red) -124.51%, var(--ch-red) 100%);
+	--bg-color: #f4f2f2;
+}
+
+/* header: red bar, white logo and text */
+html.ch-red .navbar {
+	background-color: var(--ch-red) !important;
+	border-bottom: 0 !important;
+}
+html.ch-red .navbar .navbar-brand .app-logo {
+	content: url("/assets/cooperheat/images/cooperheat-logo-white.png");
+	max-height: 30px;
+	width: auto;
+}
+html.ch-red .navbar .search-bar .form-control,
+html.ch-red .navbar .search-bar input {
+	background-color: #ffffff !important;
+	color: var(--text-color) !important;
+}
+html.ch-red .navbar .nav-link svg,
+html.ch-red .navbar .navbar-expand .icon use {
+	stroke: #ffffff;
+}
+
+/* buttons and highlights */
+html.ch-red .btn-primary,
+html.ch-red .btn-primary:focus {
+	background-color: var(--ch-red) !important;
+	border-color: var(--ch-red) !important;
+	color: #ffffff !important;
+}
+html.ch-red .btn-primary:hover,
+html.ch-red .btn-primary:active {
+	background-color: var(--ch-red-dark) !important;
+	border-color: var(--ch-red-dark) !important;
+}
+html.ch-red .btn-default:hover {
+	border-color: var(--ch-red) !important;
+	color: var(--ch-red) !important;
+}
+html.ch-red a.text-primary,
+html.ch-red .indicator-pill.blue,
+html.ch-red .form-tabs .nav-link.active {
+	color: var(--ch-red) !important;
+}
+html.ch-red .form-tabs .nav-link.active {
+	border-bottom-color: var(--ch-red) !important;
+}
+html.ch-red .standard-sidebar-item.selected,
+html.ch-red .desk-sidebar .standard-sidebar-item.selected {
+	background-color: var(--ch-red-soft) !important;
+	border-left: 3px solid var(--ch-red);
+}
+html.ch-red input[type="checkbox"]:checked {
+	background-color: var(--ch-red) !important;
+	border-color: var(--ch-red) !important;
+}
+html.ch-red .form-control:focus {
+	border-color: var(--ch-red) !important;
+	box-shadow: 0 0 0 2px var(--ch-red-soft) !important;
+}
+html.ch-red .widget.shortcut-widget-box:hover,
+html.ch-red .widget.links-widget-box:hover {
+	border-color: var(--ch-red) !important;
+}

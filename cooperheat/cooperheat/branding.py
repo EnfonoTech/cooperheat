@@ -19,6 +19,20 @@ LOGO = "/assets/cooperheat/images/cooperheat-logo.png"
 FAVICON = "/assets/cooperheat/images/cooperheat-favicon.png?v=20261024"
 THEME = "Cooperheat"
 
+# Red and white look (client request 2026-10-27), switched on separately with apply_red_theme so it
+# can be reviewed on the dev site first. The desk colours are in public/css/cooperheat_theme.css,
+# active while the default below is set (published to the desk as frappe.boot.cooperheat_red_theme).
+RED_THEME_DEFAULT = "cooperheat_red_theme"
+RED = "#952231"
+MARK = "/assets/cooperheat/images/cooperheat-mark-64.png?v=20261027"
+LOGIN_RED_CSS = """
+.for-login .btn-login, .for-login .btn-primary { background-color: #952231 !important; border-color: #952231 !important; }
+.for-login .btn-login:hover, .for-login .btn-primary:hover { background-color: #7a1b28 !important; }
+.for-login .page-card { border-color: #952231 !important; border-top: 4px solid #952231 !important; }
+.for-login .form-control { border-color: #95223166 !important; }
+[data-path="login"] .navbar-light, [data-path="login"] .web-footer { border-color: #952231 !important; }
+"""
+
 # The in-built AI assistant of the Grey Theme app is called "Fateh AI" there; on this site it carries
 # the client's name instead (workspace + page title; the page text is renamed by public/js/branding.js).
 AI_WORKSPACE = "FATEH AI"
@@ -59,6 +73,37 @@ def apply_branding() -> dict:
 	brand_ai_workspace()
 	frappe.clear_cache()
 	return current()
+
+
+def apply_red_theme() -> dict:
+	"""Idempotent. Red header with the white logo, red buttons and highlights, the "C" mark as
+	browser-tab icon, red login button. Needs apply_branding first (name, logos)."""
+	frappe.db.set_default(RED_THEME_DEFAULT, "1")
+	frappe.db.set_single_value("Website Settings", "favicon", MARK)
+	_ensure_theme()
+	frappe.clear_cache()
+	return current()
+
+
+def revert_red_theme() -> dict:
+	"""Back to the grey desk of apply_branding (logo, favicon and login as they were)."""
+	frappe.db.set_default(RED_THEME_DEFAULT, None)
+	frappe.db.set_single_value("Website Settings", "favicon", FAVICON)
+	_ensure_theme()
+	frappe.clear_cache()
+	return current()
+
+
+def red_theme_on() -> bool:
+	return frappe.db.get_default(RED_THEME_DEFAULT) == "1"
+
+
+def extend_bootinfo(bootinfo):
+	"""Tells public/js/branding.js whether to switch the red desk on. Never raises."""
+	try:
+		bootinfo.cooperheat_red_theme = 1 if red_theme_on() else 0
+	except Exception:
+		bootinfo.cooperheat_red_theme = 0
 
 
 def is_applied() -> bool:
@@ -110,6 +155,7 @@ def revert_branding() -> dict:
 	)
 	frappe.db.set_single_value("Navbar Settings", "app_logo", None)
 	frappe.db.set_single_value("System Settings", "app_name", "Frappe")
+	frappe.db.set_default(RED_THEME_DEFAULT, None)
 	brand_ai_workspace(reverse=True)
 	frappe.clear_cache()
 	return current()
@@ -123,6 +169,7 @@ def current() -> dict:
 		"navbar_logo": frappe.db.get_single_value("Navbar Settings", "app_logo"),
 		"theme": frappe.db.get_single_value("Website Settings", "website_theme"),
 		"system_app_name": frappe.db.get_single_value("System Settings", "app_name"),
+		"red_theme": red_theme_on(),
 	}
 
 
@@ -134,7 +181,7 @@ def _ensure_theme() -> str:
 		theme.theme = THEME
 	theme.custom = 1
 	theme.js = LOGIN_JS
-	theme.custom_scss = LOGIN_CSS
+	theme.custom_scss = LOGIN_CSS + (LOGIN_RED_CSS if red_theme_on() else "")
 	theme.flags.ignore_permissions = True
 	theme.save()
 	return theme.name
