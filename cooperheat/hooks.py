@@ -28,7 +28,8 @@ app_license = "mit"
 # app_include_css = "/assets/cooperheat/css/cooperheat.css"
 # app_include_js = "/assets/cooperheat/js/cooperheat.js"
 app_include_js = ["/assets/cooperheat/js/branding.js"]
-app_include_css = ["/assets/cooperheat/css/cooperheat_theme.css"]
+# bump ?v= when the file changes: the CDN in front of the site caches assets by URL
+app_include_css = ["/assets/cooperheat/css/cooperheat_theme.css?v=20261027d"]
 extend_bootinfo = ["cooperheat.cooperheat.branding.extend_bootinfo"]
 
 # include js, css files in header of web template

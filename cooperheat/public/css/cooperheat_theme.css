@@ -87,3 +87,13 @@ html.ch-red .es-icon {
 	fill: #97041e66 !important;
 	stroke: #97041ecc !important;
 }
+/* ... but keep the header icons (notifications, sidebar) white on the red bar */
+html.ch-red .navbar .es-icon,
+html.ch-red .navbar .icon {
+	fill: none !important;
+	stroke: #ffffff !important;
+}
+html.ch-red .navbar .search-bar .icon,
+html.ch-red .navbar .search-bar .es-icon {
+	stroke: var(--gray-600, #687178) !important;
+}
