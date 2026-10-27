@@ -130,10 +130,19 @@ def _lines_of(product_line: str) -> list[str]:
 
 
 def _filters_for(business_line: str | None, product_line: str | None) -> list:
+	"""Narrowest list that has something in it: the Product Line's Cost Centers, else
+	the Business Line's, else all. Until the client's list is loaded (no Cost Center
+	is tagged yet) the picker shows every Cost Center, as before."""
+	if not frappe.db.exists("Cost Center", {"custom_business_line": ["is", "set"]}):
+		return []
 	if product_line:
-		return [["custom_product_line", "in", _lines_of(product_line)]]
+		lines = _lines_of(product_line)
+		if frappe.db.exists("Cost Center", {"custom_product_line": ["in", lines]}):
+			return [["custom_product_line", "in", lines]]
 	if business_line:
-		return [["custom_business_line", "=", business_line]]
+		if frappe.db.exists("Cost Center", {"custom_business_line": business_line}):
+			return [["custom_business_line", "=", business_line]]
+		return []
 	return [["custom_business_line", "is", "not set"]]
 
 

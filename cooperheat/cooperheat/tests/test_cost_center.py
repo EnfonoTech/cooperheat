@@ -71,3 +71,10 @@ class TestCostCenter(FrappeTestCase):
 	def test_general_cost_center_is_allowed_for_anyone(self):
 		emp = make_employee("CCGeneral", custom_business_line=self.bl, custom_product_line=self.pl, custom_job_code=self.cc_admin)
 		self.assertEqual(emp.custom_job_code, self.cc_admin)
+
+	def test_product_line_without_cost_centers_falls_back_to_its_business_line(self):
+		empty_pl = make_unit("CC Empty PL", org.PRODUCT_LINE, parent=self.bl, is_group=0)
+		org.clear_cache()
+		got = query(business_line=self.bl, product_line=empty_pl)
+		self.assertIn(self.cc_ndt, got)
+		self.assertIn(self.cc_tpi, got)
