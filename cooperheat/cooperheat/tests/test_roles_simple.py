@@ -112,6 +112,33 @@ class TestRolesSimple(FrappeTestCase):
 				self.assertTrue({"HR Manager", "Payroll"} <= roles, name)
 		self.assertEqual(roles_simple.ensure_payroll_report_rights(), {"granted": [], "report_roles": []})
 
+	def test_hr_manager_creates_users_but_not_administrators(self):
+		# client 2026-10-28: Luqman (HR Manager) could not create the user of an employee
+		from cooperheat.cooperheat import dev_seed
+
+		roles_simple.ensure_hr_can_create_users()
+		frappe.clear_cache()
+		email = "hr-made-user" + dev_seed.DOMAIN
+		admin_email = "hr-made-admin" + dev_seed.DOMAIN
+		for e in (email, admin_email):
+			if frappe.db.exists("User", e):
+				frappe.delete_doc("User", e, force=True, ignore_permissions=True)
+		frappe.set_user(dev_seed.email("mustafa"))  # HR Manager in the dev seed
+		try:
+			user = frappe.get_doc({"doctype": "User", "email": email, "first_name": "HR Made", "send_welcome_email": 0})
+			user.append("roles", {"role": "Employee"})
+			user.insert()
+			self.assertTrue(frappe.db.exists("User", email))
+			admin = frappe.get_doc({"doctype": "User", "email": admin_email, "first_name": "HR Admin", "send_welcome_email": 0})
+			admin.append("roles", {"role": "System Manager"})
+			with self.assertRaises(frappe.PermissionError):
+				admin.insert()
+		finally:
+			frappe.set_user("Administrator")
+			for e in (email, admin_email):
+				if frappe.db.exists("User", e):
+					frappe.delete_doc("User", e, force=True, ignore_permissions=True)
+
 	def test_payroll_works_on_payroll_not_on_stock(self):
 		self.assertTrue(self.can(PAYROLL_USER, "read", "Salary Slip"))
 		self.assertTrue(self.can(PAYROLL_USER, "write", "Salary Slip"))

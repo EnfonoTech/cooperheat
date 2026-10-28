@@ -61,24 +61,28 @@ def _own_employees(user: str) -> list[str]:
 	return frappe.get_all("Employee", filters={"user_id": user}, pluck="name")
 
 
-def _subtree(roots: list[str]) -> set[str]:
+def _subtree(roots: list[str], with_support: bool = True) -> set[str]:
+	"""Everyone below ``roots`` through the reporting fields. ``with_support=False`` leaves
+	out Support Reporting: a support person handles shifts and attendance, but never
+	sees pay (client, 2026-10-28)."""
 	seen = set(roots)
 	frontier = list(roots)
 	for _ in range(MAX_DEPTH):
 		if not frontier:
 			break
-		children = frappe.get_all(
-			"Employee",
-			or_filters={
-				"reports_to": ["in", frontier],
-				"custom_secondary_reporting": ["in", frontier],
-				"custom_support_reporting": ["in", frontier],
-			},
-			pluck="name",
-		)
+		links = {"reports_to": ["in", frontier], "custom_secondary_reporting": ["in", frontier]}
+		if with_support:
+			links["custom_support_reporting"] = ["in", frontier]
+		children = frappe.get_all("Employee", or_filters=links, pluck="name")
 		frontier = [c for c in children if c not in seen]
 		seen.update(frontier)
 	return seen
+
+
+def pay_scope(user: str | None = None) -> set[str]:
+	"""The team whose pay ``user`` may read: the reporting line only, without Support Reporting."""
+	user = user or frappe.session.user
+	return _subtree(_own_employees(user), with_support=False)
 
 
 def get_scope(user: str | None = None) -> frappe._dict:

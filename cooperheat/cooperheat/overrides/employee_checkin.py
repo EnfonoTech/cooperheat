@@ -9,7 +9,28 @@ def validate(doc, method):
 	_enforce_edit_window(doc)
 	_auto_set_project(doc)
 	_validate_no_open_checkin(doc)
+	_validate_no_instant_checkout(doc)
 	_validate_no_overlap(doc)
+
+
+# A check-out seconds after the check-in is a second tap, not a shift (production, 28 Oct:
+# an iPhone user tapped twice and turned every check-in into a 30-second pair).
+MIN_SHIFT = timedelta(minutes=2)
+
+
+def _validate_no_instant_checkout(doc):
+	if not doc.is_new() or doc.log_type != "OUT" or not doc.employee or not doc.time:
+		return
+	from cooperheat.cooperheat.work_day import open_in_before
+
+	opened = open_in_before(doc.employee, doc.time)
+	if opened and get_datetime(doc.time) - get_datetime(opened.time) < MIN_SHIFT:
+		frappe.throw(
+			_("You checked in at {0}. A check-out is possible from 2 minutes after the check-in.").format(
+				get_datetime(opened.time).strftime("%H:%M")
+			),
+			title=_("Already checked in"),
+		)
 
 
 def after_insert(doc, method):

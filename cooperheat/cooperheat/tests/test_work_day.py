@@ -152,3 +152,31 @@ class TestNightShiftAttendance(FrappeTestCase):
 		self._punch("IN", self.THU + " 22:00:00")
 		self._punch("OUT", self.FRI + " 02:00:00")  # would have been refused as an OUT with no IN today
 		self.assertEqual(frappe.db.count("Employee Checkin", {"employee": self.emp, "time": ["between", [self.THU + " 00:00:00", self.SAT + " 23:59:59"]]}), 2)
+
+
+class TestAutoCheckout(TestNightShiftAttendance):
+	"""A check-in left open for 24 h is closed by the system after 8 h (client, 2026-10-28)."""
+
+	def test_open_check_in_is_closed_after_8_hours_with_a_note(self):
+		from cooperheat.cooperheat.auto_checkout import NOTE, close_forgotten_checkins
+
+		self._punch("IN", self.THU + " 07:30:00")
+		res = close_forgotten_checkins(now=self.FRI + " 08:00:00", employees=[self.emp])
+		self.assertEqual(res["closed"], [self.emp])
+		out = frappe.get_all(
+			"Employee Checkin",
+			filters={"employee": self.emp, "log_type": "OUT", "time": ["between", [self.THU + " 00:00:00", self.SAT + " 23:59:59"]]},
+			fields=["time", "activity_log"],
+		)
+		self.assertEqual([(str(o.time), o.activity_log) for o in out], [(self.THU + " 15:30:00", NOTE)])
+
+	def test_a_check_in_from_this_morning_is_left_open(self):
+		from cooperheat.cooperheat.auto_checkout import close_forgotten_checkins
+
+		self._punch("IN", self.THU + " 07:30:00")
+		self.assertEqual(close_forgotten_checkins(now=self.THU + " 20:00:00", employees=[self.emp])["closed"], [])
+
+	def test_a_second_tap_seconds_after_the_check_in_is_refused(self):
+		self._punch("IN", self.THU + " 07:30:00")
+		with self.assertRaises(frappe.ValidationError):
+			self._punch("OUT", self.THU + " 07:30:40")

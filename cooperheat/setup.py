@@ -553,6 +553,9 @@ def after_migrate():
 	from cooperheat.cooperheat.roles_simple import ensure_payroll_report_rights
 
 	ensure_payroll_report_rights()
+	from cooperheat.cooperheat.roles_simple import ensure_hr_can_create_users
+
+	ensure_hr_can_create_users()
 	from cooperheat.cooperheat.employee_security import ensure_employee_field_security
 
 	ensure_employee_field_security()

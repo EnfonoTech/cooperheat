@@ -212,6 +212,13 @@ fixtures = [
 				# Shift Assignment
 				"Shift Assignment-main-field_order",
 				"Shift Assignment-shift_location-fetch_from",
+				# Employee: Location is enough (client, 2026-10-28)
+				"Employee-branch-hidden",
+				# show "HTLS", "160-MSS" instead of "HTLS - C", "160-MSS - C" (client, 2026-10-28)
+				"Department-main-title_field",
+				"Department-main-show_title_field_in_link",
+				"Cost Center-main-title_field",
+				"Cost Center-main-show_title_field_in_link",
 			]],
 		],
 	},
@@ -319,6 +326,7 @@ doc_events = {
 		"on_update": "cooperheat.cooperheat.approval_workflows.on_update",
 	},
 	"User": {
+		"validate": "cooperheat.cooperheat.roles_simple.guard_admin_accounts",
 		"on_update": "cooperheat.cooperheat.permissions.scope.on_user_update",
 	},
 	"Employee Checkin": {
@@ -333,6 +341,7 @@ doc_events = {
 
 scheduler_events = {
 	"hourly": [
+		"cooperheat.cooperheat.auto_checkout.close_forgotten_checkins",
 		"cooperheat.cooperheat.api.attendance_gen.generate_attendance_from_checkins",
 		"cooperheat.cooperheat.api.tasks.process_attendance_approval_windows",
 	],

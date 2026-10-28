@@ -30,6 +30,7 @@ import json
 import os
 
 import frappe
+from frappe import _
 from frappe.core.doctype.role.role import STANDARD_ROLES
 
 NEW_ROLES = ("Payroll", "Store")
@@ -184,6 +185,45 @@ def ensure_payroll_report_rights() -> dict:
 		report.flags.ignore_permissions = True
 		report.save()
 	return {"granted": granted, "report_roles": added}
+
+
+# HR Manager creates the user account of an employee (Employee > Create User; client,
+# 2026-10-28: Luqman). Administrator accounts stay with IT: see guard_admin_accounts.
+ADMIN_ROLES = frozenset({"System Manager", "Script Manager", "Administrator"})
+
+
+def ensure_hr_can_create_users() -> list[str]:
+	"""Idempotent, add-only (after_migrate): read / write / create on User for HR Manager."""
+	from frappe.permissions import add_permission, update_permission_property
+
+	if not frappe.db.exists("Role", "HR Manager"):
+		return []
+	if not frappe.db.exists("Custom DocPerm", {"parent": "User", "role": "HR Manager", "permlevel": 0}):
+		add_permission("User", "HR Manager", 0)
+	row = frappe.db.get_value(
+		"Custom DocPerm", {"parent": "User", "role": "HR Manager", "permlevel": 0}, ["read", "write", "create"], as_dict=True
+	) or {}
+	granted = []
+	for ptype in ("read", "write", "create"):
+		if not row.get(ptype):
+			update_permission_property("User", "HR Manager", 0, ptype, 1)
+			granted.append(ptype)
+	return granted
+
+
+def guard_admin_accounts(doc, method=None):
+	"""User validate: only a System Manager may create, change or give an administrator account
+	(System Manager / Script Manager, e.g. the IT profile)."""
+	if frappe.session.user == "Administrator" or "System Manager" in frappe.get_roles():
+		return
+	if doc.flags.ignore_permissions and frappe.flags.in_install:
+		return
+	new = {r.role for r in doc.get("roles") or []}
+	old = set()
+	if not doc.is_new():
+		old = set(frappe.get_all("Has Role", filters={"parent": doc.name, "parenttype": "User"}, pluck="role"))
+	if (new | old) & ADMIN_ROLES:
+		frappe.throw(_("Only IT (System Manager) can create or change an administrator account."), frappe.PermissionError)
 
 
 REVIEWER_READ = ("Attendance", "Employee Checkin", "Project", "Shift Type")

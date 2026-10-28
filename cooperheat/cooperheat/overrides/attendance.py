@@ -1,3 +1,4 @@
+import math
 import frappe
 from frappe import _
 from frappe.utils import cint, flt, get_url_to_form, now, now_datetime, get_datetime, time_diff_in_hours, add_to_date, getdate
@@ -421,10 +422,17 @@ def _recalculate_site_hours_from_times(doc):
 		doc.out_time = max(all_out_times)
 
 
+def whole_hours(hours) -> float:
+	"""Hours count whole only: 12.7 -> 12 (client, 2026-10-28)."""
+	return float(math.floor(flt(hours) + 1e-6))
+
+
 def _apply_billable(row):
-	"""Billable ticked -> Billable Hours = Payable Hours. Never negative."""
+	"""Payable in whole hours; Billable ticked -> Billable Hours = Payable Hours. Never negative."""
 	if row.payroll_hours is not None and flt(row.payroll_hours) < 0:
 		frappe.throw(_("Row #{0}: Payable Hours cannot be negative.").format(row.idx))
+	if row.payroll_hours is not None:
+		row.payroll_hours = whole_hours(row.payroll_hours)
 	if flt(row.hours) < 0:
 		frappe.throw(_("Row #{0}: Billable Hours cannot be negative.").format(row.idx))
 	if cint(row.is_billable):
@@ -769,6 +777,7 @@ def _populate_site_hours(doc) -> None:
 		frappe.db.set_value("Employee Checkin", {"name": ["in", unlinked]}, "attendance", doc.name, update_modified=False)
 
 	frappe.db.delete("Attendance Site Hours", {"parent": doc.name})
+	total_hours = sum(whole_hours(r["hours"]) for r in site_rows)
 	for idx, row in enumerate(site_rows, start=1):
 		child = frappe.new_doc("Attendance Site Hours")
 		child.parent = doc.name
@@ -777,7 +786,7 @@ def _populate_site_hours(doc) -> None:
 		child.idx = idx
 		child.project = row["project"]
 		child.project_name = row["project_name"]
-		child.payroll_hours = flt(row["hours"], 2)
+		child.payroll_hours = whole_hours(row["hours"])
 		previous = billing.get(row["project"] or "")
 		child.is_billable = cint(previous.is_billable) if previous else 0
 		child.hours = child.payroll_hours if child.is_billable else flt(previous.hours if previous else 0, 2)
