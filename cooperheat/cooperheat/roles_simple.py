@@ -4,7 +4,8 @@ The client's HR Manager found the roles list of a user ("too many roles", most o
 the site does not use: Agriculture, Manufacturing, Sales, Blogger ...) impossible to reason about.
 This sets up eight Role Profiles, each one a single choice on the User form:
 
-    Employee, Supervisor, Manager, HR Staff, HR Manager, Payroll, Payroll and HR Manager, Store, Full Access, IT
+    Employee, Supervisor, Manager, Operations Manager, HR Staff, HR Manager, Payroll, Payroll and HR Manager,
+    Store, Full Access, IT
 
 ``apply`` (run by hand, never from migrate - it removes roles from users):
 
@@ -29,6 +30,7 @@ import json
 import os
 
 import frappe
+from frappe import _
 from frappe.core.doctype.role.role import STANDARD_ROLES
 
 NEW_ROLES = ("Payroll", "Store")
@@ -45,6 +47,7 @@ KEEP = {
 	"HR Manager",
 	"Payroll",
 	"Store",
+	"Timesheet Reviewer",
 	"Stock User",
 	"Stock Manager",
 	"Item Manager",
@@ -86,6 +89,8 @@ PROFILES = {
 	"Employee": _EMPLOYEE,
 	"Supervisor": [*_EMPLOYEE, "Supervisor", *_APPROVER],
 	"Manager": [*_EMPLOYEE, "Manager", *_APPROVER],
+	# a Manager who also reviews (read only) the timesheets of every Business Line (client, 2026-10-25)
+	"Operations Manager": [*_EMPLOYEE, "Manager", "Timesheet Reviewer", *_APPROVER],
 	"HR Staff": [*_EMPLOYEE, "HR User", *_APPROVER],
 	"HR Manager": [*_EMPLOYEE, "HR User", "HR Manager", *_APPROVER],
 	"Payroll": [*_EMPLOYEE, "Payroll"],
@@ -137,6 +142,116 @@ PTYPES = (
 	"read", "write", "create", "delete", "submit", "cancel", "amend",
 	"report", "export", "import", "share", "print", "email",
 )  # fmt: skip
+
+
+# The pay-sheet reports run on Payroll Sheet: opening them needs the "report" right on it,
+# which HR Manager / Payroll lacked once System Manager was removed from them (client,
+# 2026-10-28: Irtaza could not run payroll).
+PAY_SHEET_REPORTS = ("Pay Sheet Detail", "Pay Sheet Summary")
+
+
+def ensure_payroll_report_rights() -> dict:
+	"""Idempotent, add-only (runs from after_migrate): report / export / print on Payroll
+	Sheet for HR Manager and Payroll, and both roles on the pay-sheet reports."""
+	from frappe.permissions import update_permission_property
+
+	if not frappe.db.exists("DocType", "Payroll Sheet"):
+		return {}
+	granted = []
+	for role in ("HR Manager", "Payroll"):
+		if not frappe.db.exists("Role", role):
+			continue
+		row = frappe.db.get_value(
+			"Custom DocPerm", {"parent": "Payroll Sheet", "role": role, "permlevel": 0}, ["report", "export", "print"], as_dict=True
+		)
+		if not row:
+			continue  # no rights on Payroll Sheet at all: not ours to create here
+		for ptype in ("report", "export", "print"):
+			if not row.get(ptype):
+				update_permission_property("Payroll Sheet", role, 0, ptype, 1)
+				granted.append(f"{role}:{ptype}")
+	added = []
+	for name in PAY_SHEET_REPORTS:
+		if not frappe.db.exists("Report", name):
+			continue
+		report = frappe.get_doc("Report", name)
+		have = {r.role for r in report.roles}
+		missing = [r for r in ("HR Manager", "Payroll") if r not in have and frappe.db.exists("Role", r)]
+		if not missing:
+			continue
+		for role in missing:
+			report.append("roles", {"role": role})
+			added.append(f"{name}:{role}")
+		report.flags.ignore_permissions = True
+		report.save()
+	return {"granted": granted, "report_roles": added}
+
+
+# HR Manager creates the user account of an employee (Employee > Create User; client,
+# 2026-10-28: Luqman). Administrator accounts stay with IT: see guard_admin_accounts.
+ADMIN_ROLES = frozenset({"System Manager", "Script Manager", "Administrator"})
+
+
+def ensure_hr_can_create_users() -> list[str]:
+	"""Idempotent, add-only (after_migrate): read / write / create on User for HR Manager."""
+	from frappe.permissions import add_permission, update_permission_property
+
+	if not frappe.db.exists("Role", "HR Manager"):
+		return []
+	if not frappe.db.exists("Custom DocPerm", {"parent": "User", "role": "HR Manager", "permlevel": 0}):
+		add_permission("User", "HR Manager", 0)
+	row = frappe.db.get_value(
+		"Custom DocPerm", {"parent": "User", "role": "HR Manager", "permlevel": 0}, ["read", "write", "create"], as_dict=True
+	) or {}
+	granted = []
+	for ptype in ("read", "write", "create"):
+		if not row.get(ptype):
+			update_permission_property("User", "HR Manager", 0, ptype, 1)
+			granted.append(ptype)
+	return granted
+
+
+def guard_admin_accounts(doc, method=None):
+	"""User validate: only a System Manager may create, change or give an administrator account
+	(System Manager / Script Manager, e.g. the IT profile)."""
+	if frappe.session.user == "Administrator" or "System Manager" in frappe.get_roles():
+		return
+	if doc.flags.ignore_permissions and frappe.flags.in_install:
+		return
+	new = {r.role for r in doc.get("roles") or []}
+	old = set()
+	if not doc.is_new():
+		old = set(frappe.get_all("Has Role", filters={"parent": doc.name, "parenttype": "User"}, pluck="role"))
+	if (new | old) & ADMIN_ROLES:
+		frappe.throw(_("Only IT (System Manager) can create or change an administrator account."), frappe.PermissionError)
+
+
+REVIEWER_READ = ("Attendance", "Employee Checkin", "Project", "Shift Type")
+
+
+def ensure_timesheet_reviewer() -> dict:
+	"""Idempotent, add-only (runs from after_migrate): the Timesheet Reviewer role with
+	read rights, and the Operations Manager profile. Team scoping lets the role read the
+	attendance of everyone (permissions/scope.py) but write nothing outside the team."""
+	from cooperheat.setup import _grant
+
+	if not frappe.db.exists("Role", "Timesheet Reviewer"):
+		frappe.get_doc({"doctype": "Role", "role_name": "Timesheet Reviewer", "desk_access": 1}).insert(
+			ignore_permissions=True
+		)
+	for doctype in REVIEWER_READ:
+		if frappe.db.exists("DocType", doctype):
+			_grant(doctype, "Timesheet Reviewer", 0, ("read", "report", "export", "print"))
+	_grant("Employee Checkin", "Timesheet Reviewer", 1, ("read",))  # the time field
+	if frappe.db.exists("Role Profile", "Operations Manager"):
+		return {"profile": "kept"}
+	doc = frappe.new_doc("Role Profile")
+	doc.role_profile = "Operations Manager"
+	for role in PROFILES["Operations Manager"]:
+		if frappe.db.exists("Role", role):
+			doc.append("roles", {"role": role})
+	doc.insert(ignore_permissions=True)
+	return {"profile": "created"}
 
 
 def snapshot_file() -> str:

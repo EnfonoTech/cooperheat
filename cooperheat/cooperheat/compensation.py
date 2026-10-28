@@ -126,9 +126,10 @@ def _view_scope(employee: str) -> str | None:
 	if frappe.db.get_value("Employee", {"user_id": user}, "name") == employee:
 		return "own"
 	if "Manager" in frappe.get_roles(user):
-		from cooperheat.cooperheat.permissions.scope import get_scope
+		from cooperheat.cooperheat.permissions.scope import pay_scope
 
-		if employee in get_scope(user).employees:
+		# reporting line only: a Support Reporting person never sees pay
+		if employee in pay_scope(user):
 			return "team"
 	return None
 

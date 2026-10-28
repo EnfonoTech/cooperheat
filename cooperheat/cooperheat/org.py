@@ -181,6 +181,12 @@ def l1_approver(department: str | None, employee: str | None = None, location: s
 # Level 2  Secondary Reporting (field staff only)                   = Employee.custom_secondary_reporting
 # Level 3  Payroll                                                  = Pay Sheet Settings.payroll_approver
 #
+# With a Support Reporting person (Employee.custom_support_reporting, client call
+# 2026-10-25, any employee) the attendance goes Support Reporting (1) -> Immediate
+# Reporting (2) -> Payroll (3); office staff go Support Reporting -> Payroll (client,
+# 2026-10-28). Secondary Reporting then stays the technical / appraisal line and does not
+# approve attendance.
+#
 # A level nobody holds is skipped by the Attendance workflow (it passes on by
 # itself), so an office employee goes Direct Reporting -> Payroll, and everything
 # passes to Payroll alone when no Payroll Approver is set. Nobody approves their
@@ -228,9 +234,10 @@ def approval_chain(employee: str | None) -> list:
 	Only levels that have somebody are returned."""
 	if not employee:
 		return []
-	emp = frappe.db.get_value(
-		"Employee", employee, ["reports_to", "custom_secondary_reporting", "custom_staff_category"], as_dict=True
-	)
+	fields = ["reports_to", "custom_secondary_reporting", "custom_staff_category"]
+	if frappe.get_meta("Employee").has_field("custom_support_reporting"):
+		fields.append("custom_support_reporting")
+	emp = frappe.db.get_value("Employee", employee, fields, as_dict=True)
 	if not emp:
 		return []
 	rows, used = [], {employee}
@@ -248,9 +255,15 @@ def approval_chain(employee: str | None) -> list:
 				)
 			)
 
-	add(1, emp.reports_to, "reports_to")
-	if emp.custom_staff_category != OFFICE_STAFF:
-		add(2, emp.custom_secondary_reporting, "custom_secondary_reporting")
+	if emp.get("custom_support_reporting") and emp.custom_support_reporting != employee:
+		add(1, emp.custom_support_reporting, "custom_support_reporting")
+		# office staff: Support Reporting, then straight to Payroll (client, 2026-10-28)
+		if emp.custom_staff_category != OFFICE_STAFF:
+			add(2, emp.reports_to, "reports_to")
+	else:
+		add(1, emp.reports_to, "reports_to")
+		if emp.custom_staff_category != OFFICE_STAFF:
+			add(2, emp.custom_secondary_reporting, "custom_secondary_reporting")
 	add(3, payroll_approver(), "payroll_approver")
 	return rows
 

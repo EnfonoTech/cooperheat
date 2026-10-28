@@ -23,6 +23,11 @@ restricted, and users without a scoped role keep the standard behaviour.
 import frappe
 
 SCOPED_ROLES = frozenset({"Supervisor", "Manager"})
+# Reads the attendance / check-ins of every Business Line, approves nothing outside the
+# own team (client call 2026-10-25: the operations head reviews all timesheets).
+REVIEWER_ROLE = "Timesheet Reviewer"
+_REVIEW_DOCTYPES = ("Attendance", "Employee Checkin")
+_REVIEW_PTYPES = (None, "read", "report", "export", "print")
 UNRESTRICTED_ROLES = frozenset({"System Manager", "HR Manager", "HR User"})
 
 # reports_to chains in a company this size are a handful deep; the cap is a
@@ -56,20 +61,28 @@ def _own_employees(user: str) -> list[str]:
 	return frappe.get_all("Employee", filters={"user_id": user}, pluck="name")
 
 
-def _subtree(roots: list[str]) -> set[str]:
+def _subtree(roots: list[str], with_support: bool = True) -> set[str]:
+	"""Everyone below ``roots`` through the reporting fields. ``with_support=False`` leaves
+	out Support Reporting: a support person handles shifts and attendance, but never
+	sees pay (client, 2026-10-28)."""
 	seen = set(roots)
 	frontier = list(roots)
 	for _ in range(MAX_DEPTH):
 		if not frontier:
 			break
-		children = frappe.get_all(
-			"Employee",
-			or_filters={"reports_to": ["in", frontier], "custom_secondary_reporting": ["in", frontier]},
-			pluck="name",
-		)
+		links = {"reports_to": ["in", frontier], "custom_secondary_reporting": ["in", frontier]}
+		if with_support:
+			links["custom_support_reporting"] = ["in", frontier]
+		children = frappe.get_all("Employee", or_filters=links, pluck="name")
 		frontier = [c for c in children if c not in seen]
 		seen.update(frontier)
 	return seen
+
+
+def pay_scope(user: str | None = None) -> set[str]:
+	"""The team whose pay ``user`` may read: the reporting line only, without Support Reporting."""
+	user = user or frappe.session.user
+	return _subtree(_own_employees(user), with_support=False)
 
 
 def get_scope(user: str | None = None) -> frappe._dict:
@@ -129,14 +142,18 @@ def employee_query(user=None, doctype=None):
 	return _in_clause("`tabEmployee`.`name`", get_scope(user or frappe.session.user).employees)
 
 
+def reviews_timesheets(user: str | None = None) -> bool:
+	return REVIEWER_ROLE in frappe.get_roles(user or frappe.session.user)
+
+
 def employee_checkin_query(user=None, doctype=None):
-	if not is_scoped(user):
+	if not is_scoped(user) or reviews_timesheets(user):
 		return ""
 	return _in_clause("`tabEmployee Checkin`.`employee`", get_scope(user or frappe.session.user).employees)
 
 
 def attendance_query(user=None, doctype=None):
-	if not is_scoped(user):
+	if not is_scoped(user) or reviews_timesheets(user):
 		return ""
 	return _in_clause("`tabAttendance`.`employee`", get_scope(user or frappe.session.user).employees)
 
@@ -174,7 +191,10 @@ def employee_has_permission(doc, ptype=None, user=None, debug=False):
 
 def employee_doc_has_permission(doc, ptype=None, user=None, debug=False):
 	# Employee Checkin / Attendance / Shift Assignment all carry ``employee``
-	return _deny_unless_in(user, doc.get("employee"))
+	verdict = _deny_unless_in(user, doc.get("employee"))
+	if verdict is False and doc.doctype in _REVIEW_DOCTYPES and ptype in _REVIEW_PTYPES and reviews_timesheets(user):
+		return None  # read only: writing / approving stays with the record's own approvers
+	return verdict
 
 
 def department_has_permission(doc, ptype=None, user=None, debug=False):

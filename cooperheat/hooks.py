@@ -28,6 +28,9 @@ app_license = "mit"
 # app_include_css = "/assets/cooperheat/css/cooperheat.css"
 # app_include_js = "/assets/cooperheat/js/cooperheat.js"
 app_include_js = ["/assets/cooperheat/js/branding.js"]
+# bump ?v= when the file changes: the CDN in front of the site caches assets by URL
+app_include_css = ["/assets/cooperheat/css/cooperheat_theme.css?v=20261027d"]
+extend_bootinfo = ["cooperheat.cooperheat.branding.extend_bootinfo"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/cooperheat/css/cooperheat.css"
@@ -168,6 +171,11 @@ fixtures = [
 					"Employee-custom_work_schedule_section",
 					"Employee-custom_staff_category",
 					"Employee-custom_secondary_reporting",
+					"Employee-custom_support_reporting",
+					"Employee-custom_job_code",
+					"Cost Center-custom_business_line",
+					"Cost Center-custom_product_line",
+					"Cost Center-custom_description",
 					"Employee-custom_compensation_tab",
 					"Employee-custom_compensation_html",
 					"Attendance-custom_overtime_section",
@@ -204,6 +212,13 @@ fixtures = [
 				# Shift Assignment
 				"Shift Assignment-main-field_order",
 				"Shift Assignment-shift_location-fetch_from",
+				# Employee: Location is enough (client, 2026-10-28)
+				"Employee-branch-hidden",
+				# show "HTLS", "160-MSS" instead of "HTLS - C", "160-MSS - C" (client, 2026-10-28)
+				"Department-main-title_field",
+				"Department-main-show_title_field_in_link",
+				"Cost Center-main-title_field",
+				"Cost Center-main-show_title_field_in_link",
 			]],
 		],
 	},
@@ -311,6 +326,7 @@ doc_events = {
 		"on_update": "cooperheat.cooperheat.approval_workflows.on_update",
 	},
 	"User": {
+		"validate": "cooperheat.cooperheat.roles_simple.guard_admin_accounts",
 		"on_update": "cooperheat.cooperheat.permissions.scope.on_user_update",
 	},
 	"Employee Checkin": {
@@ -325,6 +341,7 @@ doc_events = {
 
 scheduler_events = {
 	"hourly": [
+		"cooperheat.cooperheat.auto_checkout.close_forgotten_checkins",
 		"cooperheat.cooperheat.api.attendance_gen.generate_attendance_from_checkins",
 		"cooperheat.cooperheat.api.tasks.process_attendance_approval_windows",
 	],

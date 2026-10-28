@@ -1,6 +1,9 @@
 // Cooperheat: the browser-tab title ends with the platform name ("Division | Cooperheat"), and the
 // in-built AI assistant (a page of the Grey Theme app, "Fateh AI") shows the client's name.
 (function () {
+	// Red and white desk (public/css/cooperheat_theme.css) once switched on for the site.
+	if (frappe.boot?.cooperheat_red_theme) document.documentElement.classList.add("ch-red");
+
 	const BRAND = "Cooperheat";
 	const original = frappe.utils.set_title;
 	frappe.utils.set_title = function (title) {
