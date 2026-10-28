@@ -76,7 +76,7 @@ class TestRolesSimple(FrappeTestCase):
 			doc = frappe.get_doc("Role Profile", name)
 			self.assertEqual({r.role for r in doc.roles}, set(roles), name)
 		self.assertEqual(set(roles_simple.PROFILES), {
-			"Employee", "Supervisor", "Manager", "HR Staff", "HR Manager", "Payroll", "Payroll and HR Manager",
+			"Employee", "Supervisor", "Manager", "Operations Manager", "HR Staff", "HR Manager", "Payroll", "Payroll and HR Manager",
 			"Store", "Full Access", "IT",
 		})  # fmt: skip
 
@@ -96,6 +96,21 @@ class TestRolesSimple(FrappeTestCase):
 		)
 		for name in roles_simple.UNUSED_PROFILES:
 			self.assertFalse(frappe.db.exists("Role Profile", name), name)
+
+	def test_payroll_and_hr_manager_can_open_the_pay_sheet_reports(self):
+		# client 2026-10-28: Irtaza (Payroll and HR Manager, no System Manager) could not run payroll
+		roles_simple.ensure_payroll_report_rights()
+		for role in ("HR Manager", "Payroll"):
+			row = frappe.db.get_value(
+				"Custom DocPerm", {"parent": "Payroll Sheet", "role": role, "permlevel": 0}, ["report", "export", "print"], as_dict=True
+			)
+			if row:
+				self.assertEqual((row.report, row.export, row.print), (1, 1, 1), role)
+		for name in roles_simple.PAY_SHEET_REPORTS:
+			if frappe.db.exists("Report", name):
+				roles = {r.role for r in frappe.get_doc("Report", name).roles}
+				self.assertTrue({"HR Manager", "Payroll"} <= roles, name)
+		self.assertEqual(roles_simple.ensure_payroll_report_rights(), {"granted": [], "report_roles": []})
 
 	def test_payroll_works_on_payroll_not_on_stock(self):
 		self.assertTrue(self.can(PAYROLL_USER, "read", "Salary Slip"))

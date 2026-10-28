@@ -143,6 +143,49 @@ PTYPES = (
 )  # fmt: skip
 
 
+# The pay-sheet reports run on Payroll Sheet: opening them needs the "report" right on it,
+# which HR Manager / Payroll lacked once System Manager was removed from them (client,
+# 2026-10-28: Irtaza could not run payroll).
+PAY_SHEET_REPORTS = ("Pay Sheet Detail", "Pay Sheet Summary")
+
+
+def ensure_payroll_report_rights() -> dict:
+	"""Idempotent, add-only (runs from after_migrate): report / export / print on Payroll
+	Sheet for HR Manager and Payroll, and both roles on the pay-sheet reports."""
+	from frappe.permissions import update_permission_property
+
+	if not frappe.db.exists("DocType", "Payroll Sheet"):
+		return {}
+	granted = []
+	for role in ("HR Manager", "Payroll"):
+		if not frappe.db.exists("Role", role):
+			continue
+		row = frappe.db.get_value(
+			"Custom DocPerm", {"parent": "Payroll Sheet", "role": role, "permlevel": 0}, ["report", "export", "print"], as_dict=True
+		)
+		if not row:
+			continue  # no rights on Payroll Sheet at all: not ours to create here
+		for ptype in ("report", "export", "print"):
+			if not row.get(ptype):
+				update_permission_property("Payroll Sheet", role, 0, ptype, 1)
+				granted.append(f"{role}:{ptype}")
+	added = []
+	for name in PAY_SHEET_REPORTS:
+		if not frappe.db.exists("Report", name):
+			continue
+		report = frappe.get_doc("Report", name)
+		have = {r.role for r in report.roles}
+		missing = [r for r in ("HR Manager", "Payroll") if r not in have and frappe.db.exists("Role", r)]
+		if not missing:
+			continue
+		for role in missing:
+			report.append("roles", {"role": role})
+			added.append(f"{name}:{role}")
+		report.flags.ignore_permissions = True
+		report.save()
+	return {"granted": granted, "report_roles": added}
+
+
 REVIEWER_READ = ("Attendance", "Employee Checkin", "Project", "Shift Type")
 
 
