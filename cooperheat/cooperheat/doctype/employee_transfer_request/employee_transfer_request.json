@@ -1,0 +1,271 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-10-28 22:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "employee",
+  "employee_name",
+  "status",
+  "column_break_1",
+  "transfer_date",
+  "reason",
+  "from_section",
+  "from_business_line",
+  "from_product_line",
+  "column_break_2",
+  "from_department",
+  "from_reports_to",
+  "to_section",
+  "to_business_line",
+  "to_product_line",
+  "column_break_3",
+  "to_department",
+  "new_reports_to",
+  "approval_section",
+  "approver",
+  "approver_name",
+  "approver_user",
+  "column_break_4",
+  "decided_on",
+  "rejection_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "ETR-.YYYY.-",
+   "default": "ETR-.YYYY.-",
+   "hidden": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "fetch_from": "employee.employee_name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPending Approval\nApproved\nRejected",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transfer_date",
+   "fieldtype": "Date",
+   "label": "Transfer Date",
+   "reqd": 1,
+   "default": "Today"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason for Transfer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "from_section",
+   "fieldtype": "Section Break",
+   "label": "From (now)"
+  },
+  {
+   "fieldname": "from_business_line",
+   "fieldtype": "Link",
+   "label": "Business Line",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fieldname": "from_product_line",
+   "fieldtype": "Link",
+   "label": "Product Line",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "from_department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fieldname": "from_reports_to",
+   "fieldtype": "Link",
+   "label": "Direct / Immediate Reporting",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "to_section",
+   "fieldtype": "Section Break",
+   "label": "To",
+   "description": "Operations staff: pick the Business Line (and Product Line). Support staff: pick the Department of the new Division."
+  },
+  {
+   "fieldname": "to_business_line",
+   "fieldtype": "Link",
+   "label": "Business Line",
+   "options": "Department"
+  },
+  {
+   "fieldname": "to_product_line",
+   "fieldtype": "Link",
+   "label": "Product Line",
+   "options": "Department"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "depends_on": "eval:!doc.to_business_line"
+  },
+  {
+   "fieldname": "new_reports_to",
+   "fieldtype": "Link",
+   "label": "New Direct / Immediate Reporting",
+   "options": "Employee",
+   "ignore_user_permissions": 1,
+   "description": "Optional. Empty = unchanged."
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval"
+  },
+  {
+   "fieldname": "approver",
+   "fieldtype": "Link",
+   "label": "Receiving Manager",
+   "options": "Employee",
+   "reqd": 1,
+   "ignore_user_permissions": 1,
+   "description": "Manager of the receiving Business Line / Division. Only this person approves."
+  },
+  {
+   "fieldname": "approver_name",
+   "fieldtype": "Data",
+   "label": "Receiving Manager Name",
+   "fetch_from": "approver.employee_name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approver_user",
+   "fieldtype": "Link",
+   "label": "Receiving Manager User",
+   "options": "User",
+   "fetch_from": "approver.user_id",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "decided_on",
+   "fieldtype": "Datetime",
+   "label": "Decided On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "read_only": 1,
+   "depends_on": "eval:doc.status=='Rejected'"
+  }
+ ],
+ "links": [],
+ "modified": "2026-10-28 22:00:00",
+ "modified_by": "Administrator",
+ "module": "cooperheat",
+ "name": "Employee Transfer Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "HR Manager",
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1
+  },
+  {
+   "role": "HR User",
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "create": 1,
+   "write": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1
+  },
+  {
+   "role": "Manager",
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1
+  },
+  {
+   "role": "Supervisor",
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee_name",
+ "track_changes": 1
+}

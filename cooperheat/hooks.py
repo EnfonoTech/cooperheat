@@ -447,6 +447,7 @@ permission_query_conditions = {
 	"Shift Assignment": "cooperheat.cooperheat.permissions.scope.shift_assignment_query",
 	"Department": "cooperheat.cooperheat.permissions.scope.department_query",
 	"Service Request": "cooperheat.cooperheat.service_request_tools.query_conditions",
+	"Employee Transfer Request": "cooperheat.cooperheat.doctype.employee_transfer_request.employee_transfer_request.query_conditions",
 }
 
 has_permission = {
@@ -456,4 +457,5 @@ has_permission = {
 	"Shift Assignment": "cooperheat.cooperheat.permissions.scope.employee_doc_has_permission",
 	"Department": "cooperheat.cooperheat.permissions.scope.department_has_permission",
 	"Service Request": "cooperheat.cooperheat.service_request_tools.has_permission",
+	"Employee Transfer Request": "cooperheat.cooperheat.doctype.employee_transfer_request.employee_transfer_request.has_permission",
 }
