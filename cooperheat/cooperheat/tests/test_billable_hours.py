@@ -65,3 +65,10 @@ class TestWholeHours(FrappeTestCase):
 		from cooperheat.cooperheat.overrides.attendance import whole_hours
 
 		self.assertEqual([whole_hours(h) for h in (12.7, 12.3, 12.0, 11.999999, 0.4)], [12, 12, 12, 12, 0])
+
+	def test_a_shift_seconds_short_of_the_hour_counts_as_that_hour(self):
+		from cooperheat.cooperheat.overrides.attendance import whole_hours
+
+		# system check-out 8 h after an IN at 08:25:48.828, stored as 16:25:48.000
+		self.assertEqual(whole_hours(7.99977), 8)
+		self.assertEqual(whole_hours(7.95), 7)  # 3 minutes short is not 8

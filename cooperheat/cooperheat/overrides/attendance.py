@@ -422,9 +422,15 @@ def _recalculate_site_hours_from_times(doc):
 		doc.out_time = max(all_out_times)
 
 
+# Check-in times carry milliseconds and a punch can be a few seconds early: a shift less
+# than a minute short of the hour still counts as that hour (an 8 h system check-out came
+# out as 7.9998 h and then as 7).
+_HOUR_TOLERANCE = 1 / 60
+
+
 def whole_hours(hours) -> float:
 	"""Hours count whole only: 12.7 -> 12 (client, 2026-10-28)."""
-	return float(math.floor(flt(hours) + 1e-6))
+	return float(math.floor(flt(hours) + _HOUR_TOLERANCE))
 
 
 def _apply_billable(row):
