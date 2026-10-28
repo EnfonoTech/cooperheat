@@ -120,22 +120,37 @@ class TestRolesSimple(FrappeTestCase):
 		frappe.clear_cache()
 		email = "hr-made-user" + dev_seed.DOMAIN
 		admin_email = "hr-made-admin" + dev_seed.DOMAIN
-		for e in (email, admin_email):
+		hr_email = "hr-only-manager" + dev_seed.DOMAIN
+		for e in (email, admin_email, hr_email):
 			if frappe.db.exists("User", e):
 				frappe.delete_doc("User", e, force=True, ignore_permissions=True)
-		frappe.set_user(dev_seed.email("mustafa"))  # HR Manager in the dev seed
+		# an HR Manager WITHOUT System Manager (the dev seed's HR user also has it)
+		hr = frappe.get_doc({"doctype": "User", "email": hr_email, "first_name": "HR Only", "send_welcome_email": 0})
+		hr.insert(ignore_permissions=True)
+		for role in ("Employee", "HR Manager"):
+			frappe.get_doc({"doctype": "Has Role", "parent": hr_email, "parenttype": "User", "parentfield": "roles", "role": role}).db_insert()
+		frappe.clear_cache(user=hr_email)
+		frappe.set_user(hr_email)
 		try:
 			user = frappe.get_doc({"doctype": "User", "email": email, "first_name": "HR Made", "send_welcome_email": 0})
 			user.append("roles", {"role": "Employee"})
 			user.insert()
 			self.assertTrue(frappe.db.exists("User", email))
+			# Frappe drops roles the creator does not hold: no administrator can come out of it
 			admin = frappe.get_doc({"doctype": "User", "email": admin_email, "first_name": "HR Admin", "send_welcome_email": 0})
 			admin.append("roles", {"role": "System Manager"})
-			with self.assertRaises(frappe.PermissionError):
-				admin.insert()
+			admin.insert()
+			self.assertNotIn("System Manager", frappe.get_roles(admin_email))
+			# and an existing administrator account cannot be changed by HR
+			it_user = frappe.get_all("Has Role", filters={"role": "System Manager", "parenttype": "User", "parent": ["not in", ["Administrator"]]}, pluck="parent", limit=1)
+			if it_user:
+				doc = frappe.get_doc("User", it_user[0])
+				doc.first_name = (doc.first_name or "") + " x"
+				with self.assertRaises(frappe.PermissionError):
+					doc.save()
 		finally:
 			frappe.set_user("Administrator")
-			for e in (email, admin_email):
+			for e in (email, admin_email, hr_email):
 				if frappe.db.exists("User", e):
 					frappe.delete_doc("User", e, force=True, ignore_permissions=True)
 
