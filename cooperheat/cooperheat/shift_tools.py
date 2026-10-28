@@ -19,7 +19,7 @@ def _check_access(employee):
 
 
 @frappe.whitelist()
-def assign_shift(employee, shift_type, start_date, end_date=None):
+def assign_shift(employee, shift_type, start_date, end_date=None, project=None, cost_center=None):
 	"""Create and submit an active Shift Assignment. Open-ended when `end_date` is empty."""
 	_check_access(employee)
 	start = getdate(start_date)
@@ -41,6 +41,11 @@ def assign_shift(employee, shift_type, start_date, end_date=None):
 			"status": "Active",
 		}
 	)
+	meta = frappe.get_meta("Shift Assignment")
+	if project and meta.has_field("custom_project_"):
+		doc.custom_project_ = project
+	if cost_center and meta.has_field("custom_cost_center"):
+		doc.custom_cost_center = cost_center
 	doc.insert()
 	doc.submit()
 	return doc.name

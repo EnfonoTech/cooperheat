@@ -78,3 +78,37 @@ class TestCostCenter(FrappeTestCase):
 		got = query(business_line=self.bl, product_line=empty_pl)
 		self.assertIn(self.cc_ndt, got)
 		self.assertIn(self.cc_tpi, got)
+
+	# --- Cost Center on the Shift Assignment (client, 2026-10-28) ---------------------------------
+	def _shift(self, emp, cc):
+		shift_type = frappe.db.get_value("Shift Type", {}, "name")
+		doc = frappe.get_doc(
+			{
+				"doctype": "Shift Assignment",
+				"employee": emp.name,
+				"shift_type": shift_type,
+				"start_date": "2026-11-01",
+				"end_date": "2026-11-05",
+				"status": "Active",
+				"custom_cost_center": cc,
+			}
+		)
+		doc.insert(ignore_permissions=True)
+		doc.submit()
+		return doc
+
+	def test_shift_cost_center_follows_the_employees_product_line(self):
+		from cooperheat.cooperheat.cost_center import cost_center_of_day, employee_cost_center_query
+
+		emp = make_employee("CCShift", custom_business_line=self.bl, custom_product_line=self.pl)
+		got = [r[0] for r in employee_cost_center_query("Cost Center", "", "name", 0, 100, {"employee": emp.name})]
+		self.assertIn(self.cc_ndt, got)
+		self.assertNotIn(self.cc_tpi, got)
+		self._shift(emp, self.cc_ndt)
+		self.assertEqual(cost_center_of_day(emp.name, "2026-11-03"), self.cc_ndt)
+		self.assertIsNone(cost_center_of_day(emp.name, "2026-11-09"))
+
+	def test_shift_with_another_product_lines_cost_center_is_refused(self):
+		emp = make_employee("CCShiftWrong", custom_business_line=self.bl, custom_product_line=self.pl)
+		with self.assertRaises(frappe.ValidationError):
+			self._shift(emp, self.cc_tpi)

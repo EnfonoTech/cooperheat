@@ -100,6 +100,18 @@ function cooperheat_assign_shift(frm) {
 			{ fieldname: "shift_type", label: __("Shift Type"), fieldtype: "Link", options: "Shift Type", reqd: 1 },
 			{ fieldname: "start_date", label: __("Start Date"), fieldtype: "Date", reqd: 1, default: frappe.datetime.get_today() },
 			{ fieldname: "end_date", label: __("End Date (empty = open-ended)"), fieldtype: "Date" },
+			{ fieldname: "project", label: __("Project"), fieldtype: "Link", options: "Project" },
+			{
+				fieldname: "cost_center",
+				label: __("Cost Center"),
+				fieldtype: "Link",
+				options: "Cost Center",
+				description: __("What this technician works on in this shift."),
+				get_query: () => ({
+					query: "cooperheat.cooperheat.cost_center.employee_cost_center_query",
+					filters: { employee: frm.doc.name, company: frm.doc.company || "" },
+				}),
+			},
 		],
 		primary_action_label: __("Assign"),
 		primary_action(values) {

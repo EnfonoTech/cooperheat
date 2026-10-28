@@ -33,6 +33,19 @@ def before_validate(doc, method):
 	pass
 
 
+def _stamp_cost_center(doc):
+	"""Cost Center of the day's Shift Assignment (client, 2026-10-28: the supervisor picks it
+	when assigning the shift)."""
+	if not frappe.get_meta("Attendance").has_field("custom_cost_center"):
+		return
+	from cooperheat.cooperheat.cost_center import cost_center_of_day
+
+	cc = cost_center_of_day(doc.employee, doc.attendance_date)
+	if cc:
+		frappe.db.set_value("Attendance", doc.name, "custom_cost_center", cc, update_modified=False)
+		doc.custom_cost_center = cc
+
+
 def on_submit(doc, method):
 	"""Seed initial approval state and populate per-site hours.
 
@@ -48,6 +61,7 @@ def on_submit(doc, method):
 		update_modified=False,
 	)
 	_populate_site_hours(doc)
+	_stamp_cost_center(doc)
 	_correct_status_on_submitted(doc)
 	_send_notification_for_level(doc, 1)
 	_stamp_tracking_fields(doc, 1)

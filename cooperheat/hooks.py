@@ -52,6 +52,7 @@ doctype_js = {
 	"Employee": "public/js/employee.js",
 	"Department": "public/js/department.js",
 	"Service Request": "public/js/service_request.js",
+	"Shift Assignment": "public/js/shift_assignment.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 doctype_list_js = {
@@ -173,6 +174,8 @@ fixtures = [
 					"Employee-custom_secondary_reporting",
 					"Employee-custom_support_reporting",
 					"Employee-custom_job_code",
+					"Shift Assignment-custom_cost_center",
+					"Attendance-custom_cost_center",
 					"Cost Center-custom_business_line",
 					"Cost Center-custom_product_line",
 					"Cost Center-custom_description",
@@ -328,6 +331,9 @@ doc_events = {
 	"User": {
 		"validate": "cooperheat.cooperheat.roles_simple.guard_admin_accounts",
 		"on_update": "cooperheat.cooperheat.permissions.scope.on_user_update",
+	},
+	"Shift Assignment": {
+		"validate": "cooperheat.cooperheat.cost_center.validate_shift_cost_center",
 	},
 	"Employee Checkin": {
 		"validate": "cooperheat.cooperheat.overrides.employee_checkin.validate",

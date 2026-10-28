@@ -193,3 +193,47 @@ def validate_employee_cost_center(doc):
 				frappe.bold(cc), frappe.bold(tags.custom_product_line), frappe.bold(pl)
 			)
 		)
+
+
+# --- Cost Center on the Shift Assignment (client, 2026-10-28) -----------------------------------
+def _employee_lines(employee: str | None):
+	if not employee:
+		return None, None
+	return frappe.db.get_value("Employee", employee, ["custom_business_line", "custom_product_line"]) or (None, None)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def employee_cost_center_query(doctype, txt, searchfield, start, page_len, filters):
+	"""The Cost Centers of the employee's Product Line / Business Line, for a Shift Assignment."""
+	filters = dict(filters or {})
+	bl, pl = _employee_lines(filters.pop("employee", None))
+	filters.update(business_line=bl, product_line=pl)
+	return cost_center_query(doctype, txt, searchfield, start, page_len, filters)
+
+
+def validate_shift_cost_center(doc, method=None):
+	"""Shift Assignment validate: a tagged Cost Center must belong to the employee's lines."""
+	if not doc.get("custom_cost_center"):
+		return
+	probe = frappe._dict(custom_job_code=doc.custom_cost_center)
+	probe.custom_business_line, probe.custom_product_line = _employee_lines(doc.employee)
+	validate_employee_cost_center(probe)
+
+
+def cost_center_of_day(employee: str, day) -> str | None:
+	"""Cost Center of the employee's active Shift Assignment covering ``day``."""
+	sa = frappe.qb.DocType("Shift Assignment")
+	rows = (
+		frappe.qb.from_(sa)
+		.select(sa.custom_cost_center)
+		.where(sa.employee == employee)
+		.where(sa.docstatus == 1)
+		.where(sa.status == "Active")
+		.where(sa.start_date <= day)
+		.where((sa.end_date.isnull()) | (sa.end_date >= day))
+		.where(sa.custom_cost_center.isnotnull())
+		.orderby(sa.start_date, order=frappe.qb.desc)
+		.limit(1)
+	).run()
+	return rows[0][0] if rows else None
