@@ -443,12 +443,16 @@ def product_line_query(doctype, txt, searchfield, start, page_len, filters):
 	business_line = (filters or {}).get("business_line")
 	if business_line:
 		conditions.append(["name", "in", list(descendants([business_line])) or [""]])
+	or_filters = None
 	if txt:
-		conditions.append(["name", "like", "%" + txt + "%"])
+		pattern = "%" + txt + "%"
+		or_filters = [["name", "like", pattern], ["department_name", "like", pattern]]
+	# Department shows its title in links: Frappe takes the 2nd column as the label
 	return frappe.get_list(
 		"Department",
 		filters=conditions,
-		fields=["name", "parent_department"],
+		or_filters=or_filters,
+		fields=["name", "department_name", "parent_department"],
 		limit_start=start,
 		limit_page_length=page_len,
 		order_by="lft asc",
@@ -694,7 +698,7 @@ def departments_in_division(doctype, txt, searchfield, start, page_len, filters)
 		"Department",
 		filters=conditions,
 		or_filters=[["name", "like", f"%{txt}%"], ["department_name", "like", f"%{txt}%"]],
-		fields=["name", "custom_unit_type"],
+		fields=["name", "department_name", "custom_unit_type"],  # 2nd column = link label
 		order_by="name asc",
 		limit_start=cint(start),
 		limit_page_length=cint(page_len),

@@ -163,7 +163,7 @@ def cost_center_query(doctype, txt, searchfield, start, page_len, filters):
 		"Cost Center",
 		filters=conditions,
 		or_filters=or_filters,
-		fields=["name", "custom_description"],
+		fields=["name", "cost_center_name", "custom_description"],  # 2nd column = link label
 		limit_start=start,
 		limit_page_length=page_len,
 		order_by="name asc",
