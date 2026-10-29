@@ -97,6 +97,46 @@ class TestEmployeeTransfer(FrappeTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			doc.save(ignore_permissions=True)
 
+	def supervisor_request(self, employee, **kw):
+		frappe.set_user(dev_seed.email("anil"))
+		doc = frappe.get_doc(
+			{
+				"doctype": "Employee Transfer Request",
+				"employee": employee,
+				"reason": "Raised by the supervisor",
+				"to_business_line": self.to_bl,
+				"to_product_line": self.to_pl,
+				**kw,
+			}
+		)
+		return doc.insert()  # with permission checks, as from the form
+
+	def test_supervisor_raises_a_transfer_for_their_own_team(self):
+		doc = self.supervisor_request(self.emp.name)
+		self.assertEqual((doc.status, doc.approver), ("Pending Approval", self.khalid))
+		self.assertTrue(frappe.has_permission("Employee Transfer Request", "read", doc=doc.name))
+		frappe.set_user(dev_seed.email("khalid"))
+		etr.approve(doc.name)
+		frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Employee", self.emp.name, "custom_business_line"), self.to_bl)
+
+	def test_supervisor_cannot_raise_for_someone_outside_the_team(self):
+		frappe.set_user("Administrator")
+		other = make_employee("ETROther", custom_business_line=self.from_bl)
+		with self.assertRaises(frappe.PermissionError):
+			self.supervisor_request(other.name)
+
+	def test_requester_cannot_approve_their_own_request(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.supervisor_request(self.emp.name, approver=self.anil)
+
+	def test_supervisor_cannot_edit_a_decided_transfer(self):
+		doc = self.supervisor_request(self.emp.name)
+		frappe.set_user(dev_seed.email("khalid"))
+		etr.reject(doc.name, "Not now")
+		frappe.set_user(dev_seed.email("anil"))
+		self.assertFalse(frappe.has_permission("Employee Transfer Request", "write", doc=doc.name))
+
 	def test_moving_to_where_the_employee_already_is_is_refused(self):
 		with self.assertRaises(frappe.ValidationError):
 			self.request(to_business_line=self.from_bl, to_product_line=None)

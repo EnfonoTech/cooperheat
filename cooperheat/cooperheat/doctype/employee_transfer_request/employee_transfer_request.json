@@ -208,7 +208,7 @@
   }
  ],
  "links": [],
- "modified": "2026-10-28 22:00:00",
+ "modified": "2026-10-29 10:30:00.000000",
  "modified_by": "Administrator",
  "module": "cooperheat",
  "name": "Employee Transfer Request",
@@ -252,7 +252,9 @@
    "report": 1,
    "print": 1,
    "email": 1,
-   "export": 1
+   "export": 1,
+   "create": 1,
+   "write": 1
   },
   {
    "role": "Supervisor",
@@ -260,7 +262,9 @@
    "report": 1,
    "print": 1,
    "email": 1,
-   "export": 1
+   "export": 1,
+   "create": 1,
+   "write": 1
   }
  ],
  "sort_field": "modified",

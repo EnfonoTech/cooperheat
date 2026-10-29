@@ -24,6 +24,7 @@ _SEES_ALL = {"HR Manager", "HR User", "System Manager"}
 
 class EmployeeTransferRequest(Document):
 	def validate(self):
+		self._check_requester()
 		self._fill_from()
 		self._check_target()
 		if not self.approver:
@@ -32,8 +33,11 @@ class EmployeeTransferRequest(Document):
 			frappe.throw(_("Please choose the receiving manager who approves this transfer."))
 		if self.approver == self.employee:
 			frappe.throw(_("The employee cannot approve their own transfer."))
-		if not frappe.db.get_value("Employee", self.approver, "user_id"):
+		approver_user = frappe.db.get_value("Employee", self.approver, "user_id")
+		if not approver_user:
 			frappe.throw(_("The receiving manager has no user account, so cannot approve."))
+		if approver_user == (self.owner or frappe.session.user) and approver_user != "Administrator":
+			frappe.throw(_("The person who raises a transfer cannot also approve it."))
 		before = self.get_doc_before_save()
 		if before and before.status in (APPROVED, REJECTED) and not self.flags.deciding:
 			frappe.throw(_("This transfer is already decided."))
@@ -44,6 +48,14 @@ class EmployeeTransferRequest(Document):
 		before = self.get_doc_before_save()
 		if self.status == OPEN and (not before or before.status != OPEN or before.approver != self.approver):
 			_notify(self, self.approver, _("Transfer of {0} waits for your approval").format(self.employee_name))
+
+	def _check_requester(self):
+		"""HR raises a transfer for anyone; a supervisor or manager only for their own team (client, 29 Oct)."""
+		user = frappe.session.user
+		if self.flags.deciding or _sees_all(user):
+			return
+		if not _in_team(user, self.employee):
+			frappe.throw(_("You can raise a transfer only for employees of your own team."), frappe.PermissionError)
 
 	def _fill_from(self):
 		emp = frappe.db.get_value(
@@ -196,15 +208,22 @@ def _sees_all(user: str) -> bool:
 	return user == "Administrator" or bool(set(frappe.get_roles(user)) & _SEES_ALL)
 
 
+def _in_team(user: str, employee: str | None) -> bool:
+	from cooperheat.cooperheat.permissions.scope import get_scope
+
+	return bool(employee) and employee in get_scope(user).employees
+
+
 def query_conditions(user=None, doctype=None):
-	"""HR sees every transfer; anyone else the ones they approve or of their own team."""
+	"""HR sees every transfer; anyone else the ones they raised, approve, or of their own team."""
 	user = user or frappe.session.user
 	if _sees_all(user):
 		return ""
 	from cooperheat.cooperheat.permissions.scope import _in_clause, get_scope
 
 	team = get_scope(user).employees
-	mine = "`tabEmployee Transfer Request`.`approver_user` = " + frappe.db.escape(user)
+	esc = frappe.db.escape(user)
+	mine = "`tabEmployee Transfer Request`.`approver_user` = " + esc + " or `tabEmployee Transfer Request`.`owner` = " + esc
 	return "(" + mine + " or " + _in_clause("`tabEmployee Transfer Request`.`employee`", team) + ")"
 
 
@@ -212,10 +231,16 @@ def has_permission(doc, ptype=None, user=None, debug=False):
 	user = user or frappe.session.user
 	if _sees_all(user):
 		return None
+	if ptype in ("create", "write"):
+		# a supervisor raises (and may correct, while it waits) a transfer for their own team;
+		# decisions still go through approve / reject
+		if doc.get("status") in (APPROVED, REJECTED):
+			return False
+		if not doc.is_new() and doc.get("owner") != user:
+			return False
+		return None if not doc.get("employee") or _in_team(user, doc.get("employee")) else False
 	if ptype not in (None, "read", "print", "email", "report", "export"):
-		return False  # decisions go through approve / reject
-	if doc.get("approver_user") == user:
+		return False
+	if user in (doc.get("approver_user"), doc.get("owner")):
 		return None
-	from cooperheat.cooperheat.permissions.scope import get_scope
-
-	return None if doc.get("employee") in get_scope(user).employees else False
+	return None if _in_team(user, doc.get("employee")) else False
