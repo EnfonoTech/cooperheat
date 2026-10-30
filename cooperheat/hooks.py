@@ -176,6 +176,7 @@ fixtures = [
 					"Employee-custom_staff_category",
 					"Employee-custom_secondary_reporting",
 					"Employee-custom_support_reporting",
+					"Employee-custom_weekly_attendance_approval",
 					"Employee-custom_job_code",
 					"Shift Assignment-custom_cost_center",
 					"Attendance-custom_cost_center",
@@ -357,6 +358,10 @@ scheduler_events = {
 	"daily": [
 		"cooperheat.cooperheat.work_schedule.roll_over_calendars",
 	],
+	"cron": {
+		# Weekly Attendance Approval summary: Sunday 08:00 (weekly_approval.REVIEW_WEEKDAY / REVIEW_HOUR)
+		"0 8 * * 0": ["cooperheat.cooperheat.weekly_approval.send_weekly_summaries"],
+	},
 }
 
 # Testing

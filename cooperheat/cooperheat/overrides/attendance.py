@@ -647,6 +647,8 @@ def _send_notification_for_level(doc, level: int):
 	row = _row_for_level(matrix, level)
 	if not row:
 		return
+	if row.get("weekly"):
+		return  # weekly approver: one summary e-mail on the review day (weekly_approval)
 
 	recipient = _approver_email(row.approver)
 	if not recipient:
@@ -866,6 +868,12 @@ def _stamp_tracking_fields(doc, level: int):
 		window_hours = flt(row.approval_window_hours)
 
 	expires_at = add_to_date(now(), hours=window_hours) if window_hours else None
+	if row.get("weekly"):
+		# weekly approver: the window runs from the next weekly review, not from today
+		from cooperheat.cooperheat.weekly_approval import window_expiry
+
+		expires_at = window_expiry(level)
+		window_hours = round((expires_at - now_datetime()).total_seconds() / 3600, 1)
 
 	approver_name = frappe.db.get_value("Employee", row.approver, "employee_name") or row.approver
 

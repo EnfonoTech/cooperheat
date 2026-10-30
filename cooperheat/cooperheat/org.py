@@ -230,6 +230,8 @@ def is_payroll_approver(user: str | None = None) -> bool:
 
 
 SUPPORT_L2_SECONDARY = "cooperheat_support_level2_secondary"
+# Employee tick box: the Direct / Immediate Reporting person approves weekly (cooperheat.cooperheat.weekly_approval)
+WEEKLY_FIELD = "custom_weekly_attendance_approval"
 
 
 def support_level2_from_secondary() -> bool:
@@ -254,6 +256,8 @@ def approval_chain(employee: str | None) -> list:
 	fields = ["reports_to", "custom_secondary_reporting", "custom_staff_category"]
 	if frappe.get_meta("Employee").has_field("custom_support_reporting"):
 		fields.append("custom_support_reporting")
+	if frappe.get_meta("Employee").has_field(WEEKLY_FIELD):
+		fields.append(WEEKLY_FIELD)
 	emp = frappe.db.get_value("Employee", employee, fields, as_dict=True)
 	if not emp:
 		return []
@@ -269,6 +273,8 @@ def approval_chain(employee: str | None) -> list:
 					approval_window_hours=window_hours(level),
 					location=None,
 					source=source,
+					# client 2026-10-30: Direct / Immediate Reporting approves this employee weekly
+					weekly=bool(source == "reports_to" and cint(emp.get(WEEKLY_FIELD))),
 				)
 			)
 
