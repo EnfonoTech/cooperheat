@@ -180,3 +180,19 @@ class TestAutoCheckout(TestNightShiftAttendance):
 		self._punch("IN", self.THU + " 07:30:00")
 		with self.assertRaises(frappe.ValidationError):
 			self._punch("OUT", self.THU + " 07:30:40")
+
+	def test_a_check_in_a_second_after_the_check_out_is_refused(self):
+		# production 29 Oct: OUT 19:30:29 + IN 19:30:30 made a 12-hour day count 23 hours
+		self._punch("IN", self.THU + " 07:30:00")
+		self._punch("OUT", self.THU + " 19:30:29")
+		with self.assertRaises(frappe.ValidationError):
+			self._punch("IN", self.THU + " 19:30:30")
+
+	def test_closing_yesterday_then_starting_today_still_works(self):
+		# the real pattern: forgot to check out, so OUT then IN about 15 seconds apart
+		self._punch("IN", self.THU + " 07:30:00")
+		self._punch("OUT", self.FRI + " 06:00:00")
+		self._punch("IN", self.FRI + " 06:00:15")
+		self.assertEqual(
+			frappe.db.count("Employee Checkin", {"employee": self.emp, "time": [">=", self.FRI + " 00:00:00"]}), 2
+		)

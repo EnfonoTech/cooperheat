@@ -186,3 +186,12 @@ def _ensure_theme() -> str:
 	theme.flags.ignore_permissions = True
 	theme.save()
 	return theme.name
+
+
+def welcome_email() -> str:
+	"""Subject and heading of the new-user e-mail (hook ``welcome_email``): the platform name,
+	not the legal Company name (client, 2026-10-29)."""
+	from frappe import _
+
+	name = frappe.db.get_single_value("System Settings", "app_name") or NAME
+	return _("Welcome to {0}").format(name)

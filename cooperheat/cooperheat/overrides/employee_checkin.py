@@ -10,6 +10,7 @@ def validate(doc, method):
 	_auto_set_project(doc)
 	_validate_no_open_checkin(doc)
 	_validate_no_instant_checkout(doc)
+	_validate_no_instant_reopen(doc)
 	_validate_no_overlap(doc)
 
 
@@ -30,6 +31,32 @@ def _validate_no_instant_checkout(doc):
 				get_datetime(opened.time).strftime("%H:%M")
 			),
 			title=_("Already checked in"),
+		)
+
+
+# The mirror case: a check-in a second after the check-out is the same tap landing twice
+# (production, 29 Oct: OUT 19:30:29 + IN 19:30:30 turned a 12-hour day into 23 hours).
+# A real "close yesterday, start today" pair is 6-25 seconds apart, so 10 seconds keeps it.
+MIN_REOPEN = timedelta(seconds=10)
+
+
+def _validate_no_instant_reopen(doc):
+	if not doc.is_new() or doc.log_type != "IN" or not doc.employee or not doc.time:
+		return
+	ts = get_datetime(doc.time)
+	last = frappe.get_all(
+		"Employee Checkin",
+		filters={"employee": doc.employee, "time": ["between", [ts - MIN_REOPEN, ts]]},
+		fields=["log_type", "time"],
+		order_by="time desc",
+		limit=1,
+	)
+	if last and last[0].log_type == "OUT":
+		frappe.throw(
+			_("You checked out at {0}. Please wait a few seconds before checking in again.").format(
+				get_datetime(last[0].time).strftime("%H:%M:%S")
+			),
+			title=_("Just checked out"),
 		)
 
 

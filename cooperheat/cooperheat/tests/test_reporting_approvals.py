@@ -135,6 +135,38 @@ class TestApprovalChain(ReportingTestCase):
 		self.assertEqual([(r.approval_level, r.approver) for r in chain], [(1, saleh), (2, anil), (3, irtaza)])
 		self.assertEqual(org.first_approver(emp.name), saleh)
 
+	def test_option_b_support_then_secondary_then_payroll(self):
+		# client 2026-10-30: with the switch on, the manager (Immediate Reporting) is not asked
+		anil, khalid, irtaza = self.people()
+		saleh = emp_of("saleh")
+		emp = make_employee(
+			"SupportOptB", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid,
+			custom_support_reporting=saleh,
+		)
+		org.set_support_level2_from_secondary(1)
+		try:
+			chain = [(r.approval_level, r.approver) for r in org.approval_chain(emp.name)]
+			self.assertEqual(chain, [(1, saleh), (2, khalid), (3, irtaza)])
+			frappe.db.set_value("Employee", emp.name, "custom_secondary_reporting", None)
+			chain = [(r.approval_level, r.approver) for r in org.approval_chain(emp.name)]
+			self.assertEqual(chain, [(1, saleh), (2, anil), (3, irtaza)])  # empty: the manager, as before
+		finally:
+			org.set_support_level2_from_secondary(0)
+		self.assertFalse(org.support_level2_from_secondary())
+
+	def test_option_b_never_asks_the_same_person_twice(self):
+		anil, khalid, irtaza = self.people()
+		emp = make_employee(
+			"SupportOptB2", custom_staff_category=FIELD, reports_to=anil, custom_secondary_reporting=khalid,
+			custom_support_reporting=khalid,
+		)
+		org.set_support_level2_from_secondary(1)
+		try:
+			chain = [(r.approval_level, r.approver) for r in org.approval_chain(emp.name)]
+			self.assertEqual(chain, [(1, khalid), (3, irtaza)])
+		finally:
+			org.set_support_level2_from_secondary(0)
+
 	def test_office_staff_with_support_reporting_go_straight_to_payroll(self):
 		anil, khalid, irtaza = self.people()
 		emp = make_employee("SupportOffice", custom_staff_category=OFFICE, reports_to=anil, custom_support_reporting=khalid)

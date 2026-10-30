@@ -229,6 +229,23 @@ def is_payroll_approver(user: str | None = None) -> bool:
 	return frappe.db.get_value("Employee", approver, "user_id") == (user or frappe.session.user)
 
 
+SUPPORT_L2_SECONDARY = "cooperheat_support_level2_secondary"
+
+
+def support_level2_from_secondary() -> bool:
+	"""Option B (client, 2026-10-30): with Support Reporting, field staff go
+	Support -> Secondary Reporting -> Payroll. A site default, switched on once the
+	client has named the Level 2 people."""
+	return bool(cint(frappe.db.get_default(SUPPORT_L2_SECONDARY)))
+
+
+@frappe.whitelist()
+def set_support_level2_from_secondary(on: int = 1) -> bool:
+	frappe.only_for("System Manager")
+	frappe.db.set_default(SUPPORT_L2_SECONDARY, "1" if cint(on) else "0")
+	return support_level2_from_secondary()
+
+
 def approval_chain(employee: str | None) -> list:
 	"""Approval rows for one employee: approval_level, approver, approval_window_hours, source.
 	Only levels that have somebody are returned."""
@@ -257,9 +274,16 @@ def approval_chain(employee: str | None) -> list:
 
 	if emp.get("custom_support_reporting") and emp.custom_support_reporting != employee:
 		add(1, emp.custom_support_reporting, "custom_support_reporting")
-		# office staff: Support Reporting, then straight to Payroll (client, 2026-10-28)
+		# office staff: Support Reporting, then straight to Payroll (client, 2026-10-28).
+		# field staff: Level 2 is the Secondary Reporting person when set, so the
+		# manager is not asked daily; else Direct / Immediate Reporting (client, 2026-10-30, "option B").
+		# Off until switched on (support_level2_from_secondary): the auto-filled Secondary
+		# Reporting is the Business Line manager for most staff, the person B is meant to spare.
 		if emp.custom_staff_category != OFFICE_STAFF:
-			add(2, emp.reports_to, "reports_to")
+			if emp.get("custom_secondary_reporting") and support_level2_from_secondary():
+				add(2, emp.custom_secondary_reporting, "custom_secondary_reporting")
+			else:
+				add(2, emp.reports_to, "reports_to")
 	else:
 		add(1, emp.reports_to, "reports_to")
 		if emp.custom_staff_category != OFFICE_STAFF:

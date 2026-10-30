@@ -31,6 +31,9 @@ app_include_js = ["/assets/cooperheat/js/branding.js"]
 # bump ?v= when the file changes: the CDN in front of the site caches assets by URL
 app_include_css = ["/assets/cooperheat/css/cooperheat_theme.css?v=20261027d"]
 extend_bootinfo = ["cooperheat.cooperheat.branding.extend_bootinfo"]
+# "Welcome to <name>" on the new-user e-mail: ERPNext builds it from the Company name
+# ("COOPERHEAT Saudi Arabia Co. Ltd"); the client wants "Cooperheat" (2026-10-29). Last app wins.
+welcome_email = "cooperheat.cooperheat.branding.welcome_email"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/cooperheat/css/cooperheat.css"
